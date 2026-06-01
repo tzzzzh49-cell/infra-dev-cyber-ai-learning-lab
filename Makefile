@@ -1,8 +1,11 @@
-.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diagnostic diagnostic-local ansible-check shellcheck compose-config run test clean
+.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diagnostic diagnostic-local ansible-check shellcheck compose-config run setup-dev test clean
 
 APP_URL ?= http://127.0.0.1:8000
 COMPOSE ?= ./scripts/compose.sh
 CURL ?= curl -fsS
+PYTHON ?= python3
+VENV ?= .venv
+VENV_PYTHON := $(VENV)/bin/python
 
 help:
 	@echo "Commandes disponibles :"
@@ -27,6 +30,7 @@ help:
 	@echo "  make diagnostic        Alias de make diag"
 	@echo "  make diagnostic-local  Génère un rapport local read-only"
 	@echo "  make ansible-check     Lance le playbook Ansible en mode check"
+	@echo "  make setup-dev         Prépare l'environnement Python de développement"
 	@echo "  make test              Lance les tests Python"
 	@echo "  make clean             Nettoyage léger"
 	@echo ""
@@ -35,10 +39,10 @@ help:
 
 check: check-fast
 
-check-fast:
+check-fast: setup-dev
 	./scripts/check_reproducibility.sh
 
-check-full:
+check-full: setup-dev
 	./scripts/check_reproducibility.sh --full
 
 bootstrap: bootstrap-fedora
@@ -90,8 +94,15 @@ diagnostic-local:
 ansible-check:
 	ansible-playbook -i ansible/inventory.yml ansible/playbooks/diagnostic.yml --check
 
-test:
-	PYTHONPATH=. python -m pytest app/tests -v
+$(VENV_PYTHON):
+	$(PYTHON) -m venv $(VENV)
+	$(VENV_PYTHON) -m pip install --upgrade pip
+	$(VENV_PYTHON) -m pip install -r app/requirements-dev.txt
+
+setup-dev: $(VENV_PYTHON)
+
+test: setup-dev
+	PYTHONPATH=. $(VENV_PYTHON) -m pytest app/tests -v
 
 clean:
 	$(COMPOSE) down

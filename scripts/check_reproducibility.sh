@@ -33,6 +33,11 @@ esac
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+PYTHON_CMD="${PYTHON:-python3}"
+if [ -x ".venv/bin/python" ]; then
+    PYTHON_CMD=".venv/bin/python"
+fi
+
 require_command() {
     local cmd="$1"
 
@@ -89,7 +94,7 @@ check_versions() {
     echo
     echo "==> Versions"
     git --version
-    python3 --version
+    "$PYTHON_CMD" --version
     docker --version
     ./scripts/compose.sh version
     ansible-playbook --version | head -n 1
@@ -126,7 +131,7 @@ check_paths() {
 check_python() {
     echo
     echo "==> Vérification Python"
-    python3 -m py_compile app/main.py
+    "$PYTHON_CMD" -m py_compile app/main.py
     echo "OK   app/main.py est syntaxiquement valide"
 }
 
@@ -140,14 +145,14 @@ check_pytest() {
         exit 1
     fi
 
-    if ! python3 -m pytest --version >/dev/null 2>&1; then
+    if ! "$PYTHON_CMD" -m pytest --version >/dev/null 2>&1; then
         echo "ERREUR : pytest est introuvable." >&2
         echo "Installe les dépendances de développement :" >&2
-        echo "  python3 -m pip install -r app/requirements-dev.txt" >&2
+        echo "  make setup-dev" >&2
         exit 1
     fi
 
-    PYTHONPATH=. python3 -m pytest app/tests -v
+    PYTHONPATH=. "$PYTHON_CMD" -m pytest app/tests -v
     echo "OK   tests Python validés"
 }
 
