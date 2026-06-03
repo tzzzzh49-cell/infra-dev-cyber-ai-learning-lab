@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # shellcheck disable=SC2129
 
 # Script de diagnostic local pour le projet voice-controlled-network-lab.

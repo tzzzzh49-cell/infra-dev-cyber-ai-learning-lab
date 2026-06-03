@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
+
 
 find_compose_cmd() {
     if docker compose version >/dev/null 2>&1; then

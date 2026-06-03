@@ -1,77 +1,57 @@
 # Roadmap
 
-## v0.1.0 - Reproduction locale stable
+## Phase 1 - MVP Telegram
 
-Objectif : stabiliser la base locale du projet.
+- [x] Documenter l'architecture Hermes + OpenClaw Gateway.
+- [x] Ajouter `.env.example` sans secret.
+- [x] Préparer les scripts locaux.
+- [ ] Installer OpenClaw sur VPS Ubuntu 24.04.
+- [ ] Installer Hermes sur VPS Ubuntu 24.04.
+- [ ] Valider un message Telegram de bout en bout.
 
-Inclus :
-- API FastAPI minimale ;
-- Docker Compose fonctionnel ;
-- Makefile utilisable ;
-- documentation initiale ;
-- reproduction Fedora 44 validée ;
-- première cible Ubuntu 24.04 documentée ;
-- règles de sécurité en lecture seule.
+## Phase 2 - Validation MCP
 
-## v0.2.0 - Tests, lint et CI
+- [ ] Lister les outils MCP réellement disponibles.
+- [ ] Limiter les outils au strict nécessaire.
+- [ ] Tester lecture conversation et envoi réponse.
+- [ ] Documenter les commandes exactes selon versions officielles.
 
-Objectif : rendre le projet vérifiable automatiquement.
+## Phase 3 - systemd utilisateur
 
-Préparé :
-- `make check` pour une validation rapide ;
-- `make check-full` pour la validation complète ;
-- `make shellcheck` pour les scripts Bash ;
-- `make compose-config` pour Docker Compose ;
-- documentation du workflow Git/GitHub.
+- [x] Ajouter `systemd/hermes-openclaw-loop.service`.
+- [ ] Installer l'unité sur le VPS.
+- [ ] Valider `systemctl --user`.
+- [ ] Valider `loginctl enable-linger`.
 
-Prochaines étapes :
-- ajouter `pytest` et des tests unitaires pour `/health`, `/version` et `/diag` ;
-- ajouter `ruff` pour le lint Python ;
-- créer une GitHub Action qui lance `make check` sur chaque Pull Request ;
-- valider réellement le bootstrap Ubuntu dans une VM Ubuntu 24.04.4 propre ;
-- documenter le résultat de cette validation Ubuntu.
+## Phase 4 - Sauvegardes
 
-## v0.3.0 - Diagnostic réseau avancé
+- [x] Ajouter un script de sauvegarde exemple.
+- [x] Documenter checksum, chmod et chiffrement.
+- [ ] Tester une restauration dans un dossier temporaire.
+- [ ] Ajouter une routine hebdomadaire.
 
-Objectif : enrichir le diagnostic système/réseau.
+## Phase 5 - Monitoring
 
-Prévu :
-- collecte interfaces réseau ;
-- routes ;
-- DNS ;
-- ports ouverts ;
-- export JSON ;
-- export Markdown.
+- [ ] Ajouter une vérification périodique de santé.
+- [ ] Ajouter une alerte en cas de service arrêté.
+- [ ] Suivre disque, mémoire et erreurs répétées.
 
-## v0.4.0 - Déploiement VPS
+## Phase 6 - WhatsApp plus tard
 
-Objectif : déployer le lab sur un VPS sécurisé.
+- [ ] Évaluer le connecteur WhatsApp OpenClaw.
+- [ ] Protéger les sessions et QR codes.
+- [ ] Tester sans publier de capture brute.
 
-Prévu :
-- SSH sécurisé ;
-- firewall ;
-- Docker Compose distant ;
-- HTTPS ;
-- nom de domaine ;
-- premiers backups.
+## Phase 7 - CI/CD plus tard
 
-## v0.5.0 - Résumé IA
+- [ ] Ajouter lint Markdown.
+- [ ] Ajouter lint shell.
+- [ ] Ajouter vérification de secrets en CI.
+- [ ] Publier automatiquement la documentation si utile.
 
-Objectif : intégrer progressivement l'API OpenAI.
+## Phase 8 - Sécurité avancée plus tard
 
-Prévu :
-- résumé de rapports ;
-- explication d'erreurs ;
-- budget API limité ;
-- absence d'exécution automatique de commandes.
-
-## v0.6.0 - OpenClaw contrôlé
-
-Objectif : intégrer OpenClaw avec sécurité.
-
-Prévu :
-- allowlist stricte ;
-- runbooks ;
-- mode lecture seule ;
-- sandbox ;
-- validation humaine.
+- [ ] Durcir systemd.
+- [ ] Auditer les permissions MCP.
+- [ ] Chiffrer toutes les sauvegardes hors VPS.
+- [ ] Ajouter rotation et révocation documentées.

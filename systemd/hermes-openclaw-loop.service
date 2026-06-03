@@ -1,0 +1,16 @@
+[Unit]
+Description=Hermes + OpenClaw Gateway loop
+Documentation=%h/hermes-openclaw/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/hermes-openclaw
+ExecStart=%h/hermes-openclaw/scripts/loop.sh
+Restart=always
+RestartSec=5
+EnvironmentFile=-%h/hermes-openclaw/.env
+
+[Install]
+WantedBy=default.target

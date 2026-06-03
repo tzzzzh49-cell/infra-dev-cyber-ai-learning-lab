@@ -1,27 +1,45 @@
 # Python
 __pycache__/
+**pycache**/
 *.py[cod]
+*.pyc
 *.pyo
 .venv/
 venv/
 .pytest_cache/
 .ruff_cache/
 
-# Environnement local
+# Environnement local et secrets
 .env
-.env.local
+.env.*
+!.env.example
+*.token
+*.key
+*.pem
+credentials/
+gateway.token
+gateway.password
+.openclaw/
+.hermes/
 
-# Logs
+# Bases et journaux
+*.sqlite
+*.db
 *.log
 
 # Fichiers temporaires / sauvegardes
+backups/
+*.tar.gz
+*.zip
+*.gpg
+*.age
 *.bak
 *.tmp
 *.swp
 *.swo
 *~
 
-# Sorties générées
+# Sorties générées historiques
 outputs/raw/*
 outputs/rendered/*
 outputs/backups/*
@@ -34,8 +52,8 @@ outputs/reports/*
 !outputs/reports/.gitkeep
 
 # IDE
-.vscode/
 .idea/
+.vscode/
 
 # OS
 .DS_Store
