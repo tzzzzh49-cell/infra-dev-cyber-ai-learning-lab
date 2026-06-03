@@ -1,179 +1,116 @@
-# Network and Systems Training
+# Hermes + OpenClaw Gateway
 
-Projet d'apprentissage autour de Linux, réseau, Docker, FastAPI, automatisation et diagnostic défensif.
+## Pitch en 30 secondes
 
-## Objectif
+Ce dépôt prépare un assistant personnel auto-hébergé sur un VPS Ubuntu 24.04. L'objectif est de recevoir un message depuis Telegram, puis WhatsApp plus tard, de le faire passer par OpenClaw Gateway, MCP et Hermes Agent, puis de renvoyer une réponse courte via OpenClaw. Le dépôt sert de portfolio technique : documentation claire, scripts sûrs, unité systemd utilisateur, règles de sécurité et validations locales.
 
-Permettre à une personne de :
+> Aucun secret réel ne doit être commité dans ce dépôt. Utiliser uniquement `.env.example` et les placeholders documentés.
 
-1. cloner le dépôt ;
-2. installer les prérequis adaptés à sa distribution ;
-3. valider rapidement l'état du dépôt ;
-4. lancer l'application avec Docker Compose ;
-5. tester `/`, `/health`, `/version`, `/diag` ;
-6. arrêter proprement le projet.
+## Architecture cible
 
-## Statut du projet
-
-Version actuelle : v0.1.0
-
-Le projet est actuellement une base de lab systèmes/réseaux/DevOps/cybersécurité.
-
-Fonctionnalités disponibles :
-- API FastAPI minimale ;
-- endpoints `/`, `/health`, `/version` et `/diag` ;
-- lancement avec Docker Compose ;
-- commandes Makefile principales ;
-- tests automatisés avec pytest ;
-- validation rapide du dépôt avec `make check` / `make check-fast` ;
-- validation complète de reproductibilité avec `make check-full` ;
-- reproduction testée sur VM Fedora 44 ;
-- documentation de reproductibilité Fedora et Ubuntu ;
-- documentation technique initiale ;
-- règles de sécurité en lecture seule.
-
-Fonctionnalités prévues :
-- lint Python avec ruff ;
-- CI GitHub Actions ;
-- diagnostic réseau plus avancé ;
-- déploiement VPS ;
-- intégration progressive OpenAI API ;
-- intégration contrôlée OpenClaw.
-
-## Matrice de compatibilité Linux
-
-| Distribution | Version | Statut |
-|---|---|---|
-| Fedora Workstation VM | 44 | Cible validée/à valider |
-| Ubuntu LTS | 24.04.4 | Cible validée/à valider |
-
-> Le projet **ne prétend pas** fonctionner sur toutes les distributions Linux à ce stade.
-
-## Pré-requis
-
-- Git
-- Docker Engine
-- Docker Compose plugin (`docker compose`)
-- Make
-- Curl
-- Python 3
-- Pytest
-- Ansible
-- ShellCheck
-
-Les prérequis sont installés automatiquement via les scripts de bootstrap ci-dessous.
-
-Les dépendances Python de développement sont listées dans `app/requirements-dev.txt`.
-
-## Bootstrap par distribution
-
-### Fedora 44 Workstation VM
-
-```bash
-make bootstrap-fedora
+```text
+Utilisateur Telegram/WhatsApp
+        |
+        v
++---------------------+
+| OpenClaw Gateway    |
+| Entrée/sortie chat  |
++---------------------+
+        |
+        v
++---------------------+
+| MCP                 |
+| Pont outillé        |
++---------------------+
+        |
+        v
++---------------------+
+| Hermes Agent        |
+| Orchestration IA    |
++---------------------+
+        |
+        v
++-----------------------------+
+| Fournisseur IA / modèle     |
+| configuré hors Git          |
++-----------------------------+
+        |
+        v
+Réponse envoyée via OpenClaw
 ```
 
-Documentation détaillée : `docs/reproductibilite-fedora-44-vm.md`.
-
-### Ubuntu 24.04.4 LTS
-
-```bash
-make bootstrap-ubuntu
+```mermaid
+flowchart LR
+    U[Utilisateur Telegram/WhatsApp] --> O[OpenClaw Gateway]
+    O --> M[MCP]
+    M --> H[Hermes Agent]
+    H --> P[Fournisseur IA / modèle configuré]
+    P --> H
+    H --> M
+    M --> O
+    O --> U
 ```
 
-Documentation détaillée : `docs/reproductibilite-ubuntu-24.04.md`.
+## Stack technique
 
-## Démarrage rapide
+- VPS Ubuntu 24.04.
+- Utilisateur non-root.
+- OpenClaw Gateway pour les canaux Telegram/WhatsApp.
+- MCP comme pont entre Gateway et agent.
+- Hermes Agent comme cerveau applicatif.
+- Fournisseur IA configurable via variables d'environnement locales.
+- Node.js LTS compatible avec OpenClaw, à vérifier selon la version officielle utilisée.
+- Docker Engine et Docker Compose v2 avec `docker compose`, optionnels pour le MVP.
+- systemd utilisateur pour maintenir la boucle d'orchestration.
+- Bash pour les scripts d'aide locaux.
 
-```bash
-git clone https://github.com/tzzzzh49-cell/network-and-systems-training.git
-cd network-and-systems-training
-make check
-make build
-make up
-curl -fsS http://127.0.0.1:8000/
-make health
-make version
-make diag
-make down
-```
+## État du projet
 
-Pour construire, démarrer et attendre automatiquement que `/health` réponde :
+- [x] Documentation cible du projet créée.
+- [x] Règles de sécurité et de non-publication des secrets documentées.
+- [x] Scripts d'exemple sûrs ajoutés.
+- [x] Unité systemd utilisateur fournie.
+- [x] Structure `docs/incidents/` et `screenshots/` préparée.
+- [ ] Installation réelle OpenClaw à valider sur VPS.
+- [ ] Installation réelle Hermes à valider sur VPS.
+- [ ] Configuration MCP réelle à valider.
+- [ ] Test Telegram réel à exécuter.
+- [ ] WhatsApp à traiter plus tard.
 
-```bash
-make run
-```
+## Documentation principale
 
-Pour lancer la validation lourde avant une Pull Request :
+- [Installation](docs/INSTALL.md)
+- [Runbook d'exploitation](docs/RUNBOOK.md)
+- [Sécurité](docs/SECURITY.md)
+- [Sauvegardes](docs/BACKUP.md)
+- [Décisions techniques](docs/DECISIONS.md)
+- [Architecture détaillée](docs/ARCHITECTURE.md)
 
-```bash
-make check-full
-```
+## Ce qui est fait
 
-## Commandes Makefile
+- Réorientation du dépôt vers Hermes + OpenClaw Gateway.
+- Documentation d'installation manuelle pour Ubuntu 24.04.
+- Runbook d'exploitation et de diagnostic.
+- Checklist de sécurité avant publication GitHub.
+- Script de boucle avec arrêt propre et délai configurable.
+- Script de healthcheck basé sur les exit codes.
+- Script de sauvegarde d'exemple sans transfert automatique.
+- Unité systemd utilisateur `hermes-openclaw-loop.service`.
 
-| Commande | Description |
-|---|---|
-| `make help` | Affiche les commandes disponibles |
-| `make check` | Vérifie rapidement le dépôt |
-| `make check-fast` | Alias de `make check` |
-| `make check-full` | Lance la validation complète avec build Docker et Ansible |
-| `make bootstrap` | Alias de `make bootstrap-fedora` |
-| `make bootstrap-fedora` | Installe les prérequis sur Fedora 44 VM |
-| `make bootstrap-ubuntu` | Installe les prérequis sur Ubuntu 24.04.4 LTS |
-| `make compose-config` | Valide `compose.yaml` |
-| `make shellcheck` | Vérifie les scripts Bash |
-| `make build` | Construit l'image Docker |
-| `make up` | Démarre l'application via Docker Compose |
-| `make run` | Build, démarre et attend `/health` |
-| `make health` | Teste `GET /health` |
-| `make version` | Teste `GET /version` |
-| `make diag` | Teste `GET /diag` |
-| `make diagnostic-local` | Génère un rapport local read-only |
-| `make ansible-check` | Lance le playbook Ansible en mode check |
-| `make test` | Lance les tests Python |
-| `make logs` | Affiche les logs Docker |
-| `make down` | Arrête proprement le projet |
-| `make clean` | Effectue un nettoyage léger |
+## Ce qui reste à faire
 
-## Tests
+- Tester OpenClaw Gateway sur un VPS réel.
+- Tester Hermes Agent sur un VPS réel.
+- Valider la configuration MCP OpenClaw vers Hermes.
+- Connecter Telegram avec un token réel stocké hors Git.
+- Évaluer WhatsApp après stabilisation Telegram.
+- Ajouter monitoring, alerting et CI/CD.
+- Décider quoi faire des anciens contenus de lab réseau/FastAPI conservés dans le dépôt.
 
-Les tests automatisés couvrent les fonctions associées aux endpoints FastAPI.
+## Contenus legacy conservés
 
-```bash
-python3 -m pip install -r app/requirements-dev.txt
-make test
-```
+Le dépôt contient encore des éléments de lab réseau/FastAPI, par exemple `app/`, `compose.yaml`, `ansible/`, `openclaw/allowlists/` et certains documents historiques. Ils ne sont pas supprimés brutalement. La migration recommandée est de les déplacer progressivement vers `docs/legacy/` ou de les adapter si certains éléments restent utiles au projet Hermes + OpenClaw.
 
-`make check` lance aussi ces tests, en plus des vérifications de fichiers, syntaxe Python, Docker Compose et ShellCheck.
+## Règles de captures d'écran
 
-## Workflow de développement recommandé
-
-```bash
-git switch master
-git pull
-git switch -c nom-de-branche
-make check
-# modifications
-make check
-git status
-git diff
-git add .
-git commit -m "Message clair"
-git push origin nom-de-branche
-```
-
-Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
-
-## Documentation
-
-- [Architecture](docs/architecture.md)
-- [Sécurité](docs/securite.md)
-- [Workflow Git et GitHub](docs/workflow-git.md)
-- [Reproductibilité Linux générique](docs/reproductibilite-linux-generique.md)
-- [Reproductibilité Fedora 44](docs/reproductibilite-fedora-44-vm.md)
-- [Reproductibilité Ubuntu 24.04](docs/reproductibilite-ubuntu-24.04.md)
-- [Journal d'apprentissage](docs/journal-apprentissage.md)
-- [ADR-001 - Mode lecture seule](docs/decisions/ADR-001-mode-read-only.md)
-
-Le projet est documenté progressivement afin de montrer les choix techniques, les règles de sécurité et les apprentissages réalisés.
+Avant toute publication, flouter les IP, tokens, noms, messages privés et QR codes. Ne jamais publier une capture brute.

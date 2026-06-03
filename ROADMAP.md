@@ -1,77 +1,67 @@
-# Roadmap
+# Roadmap Hermes + OpenClaw Gateway
 
-## v0.1.0 - Reproduction locale stable
+## Phase 1 - MVP Telegram
 
-Objectif : stabiliser la base locale du projet.
+- [x] Documenter l'architecture cible.
+- [x] Préparer `.env.example` sans secrets.
+- [x] Ajouter une boucle d'orchestration d'exemple.
+- [ ] Installer OpenClaw sur VPS Ubuntu 24.04.
+- [ ] Installer Hermes sur VPS Ubuntu 24.04.
+- [ ] Configurer Telegram avec token réel hors Git.
+- [ ] Envoyer un message de test non sensible.
 
-Inclus :
-- API FastAPI minimale ;
-- Docker Compose fonctionnel ;
-- Makefile utilisable ;
-- documentation initiale ;
-- reproduction Fedora 44 validée ;
-- première cible Ubuntu 24.04 documentée ;
-- règles de sécurité en lecture seule.
+## Phase 2 - Validation MCP
 
-## v0.2.0 - Tests, lint et CI
+- [ ] Déclarer le pont OpenClaw vers Hermes.
+- [ ] Limiter les outils MCP.
+- [ ] Tester lecture d'événement.
+- [ ] Tester envoi de réponse.
+- [ ] Documenter les erreurs observées.
 
-Objectif : rendre le projet vérifiable automatiquement.
+## Phase 3 - systemd utilisateur
 
-Préparé :
-- `make check` pour une validation rapide ;
-- `make check-full` pour la validation complète ;
-- `make shellcheck` pour les scripts Bash ;
-- `make compose-config` pour Docker Compose ;
-- documentation du workflow Git/GitHub.
+- [x] Fournir `systemd/hermes-openclaw-loop.service`.
+- [ ] Installer l'unité sur le VPS.
+- [ ] Valider `systemctl --user status`.
+- [ ] Valider les logs `journalctl --user`.
+- [ ] Activer le linger si nécessaire.
 
-Prochaines étapes :
-- ajouter `pytest` et des tests unitaires pour `/health`, `/version` et `/diag` ;
-- ajouter `ruff` pour le lint Python ;
-- créer une GitHub Action qui lance `make check` sur chaque Pull Request ;
-- valider réellement le bootstrap Ubuntu dans une VM Ubuntu 24.04.4 propre ;
-- documenter le résultat de cette validation Ubuntu.
+## Phase 4 - Sauvegardes
 
-## v0.3.0 - Diagnostic réseau avancé
+- [x] Documenter la stratégie de sauvegarde.
+- [x] Ajouter `scripts/backup-example.sh`.
+- [ ] Tester une archive locale.
+- [ ] Tester le checksum.
+- [ ] Tester le chiffrement GPG ou age.
+- [ ] Tester une restauration dans un dossier temporaire.
 
-Objectif : enrichir le diagnostic système/réseau.
+## Phase 5 - Monitoring
 
-Prévu :
-- collecte interfaces réseau ;
-- routes ;
-- DNS ;
-- ports ouverts ;
-- export JSON ;
-- export Markdown.
+- [ ] Ajouter une vérification périodique.
+- [ ] Ajouter une alerte simple en cas de service arrêté.
+- [ ] Suivre disque, mémoire et erreurs récurrentes.
 
-## v0.4.0 - Déploiement VPS
+## Phase 6 - WhatsApp plus tard
 
-Objectif : déployer le lab sur un VPS sécurisé.
+- [ ] Étudier le support OpenClaw WhatsApp.
+- [ ] Protéger les sessions et QR codes.
+- [ ] Tester sur un environnement séparé.
+- [ ] Documenter les limites et risques.
 
-Prévu :
-- SSH sécurisé ;
-- firewall ;
-- Docker Compose distant ;
-- HTTPS ;
-- nom de domaine ;
-- premiers backups.
+## Phase 7 - CI/CD plus tard
 
-## v0.5.0 - Résumé IA
+- [ ] Ajouter lint Markdown.
+- [ ] Ajouter ShellCheck en CI.
+- [ ] Ajouter validation des scripts.
+- [ ] Ajouter scan basique de secrets.
 
-Objectif : intégrer progressivement l'API OpenAI.
+## Phase 8 - Sécurité avancée plus tard
 
-Prévu :
-- résumé de rapports ;
-- explication d'erreurs ;
-- budget API limité ;
-- absence d'exécution automatique de commandes.
+- [ ] Durcir l'unité systemd si compatible.
+- [ ] Ajouter rotation de secrets.
+- [ ] Ajouter sauvegardes chiffrées automatisées.
+- [ ] Ajouter revue MCP régulière.
 
-## v0.6.0 - OpenClaw contrôlé
+## Migration prudente du contenu legacy
 
-Objectif : intégrer OpenClaw avec sécurité.
-
-Prévu :
-- allowlist stricte ;
-- runbooks ;
-- mode lecture seule ;
-- sandbox ;
-- validation humaine.
+Le dépôt contient encore un ancien lab réseau/FastAPI. Il est conservé pour éviter une suppression brutale. À terme, déplacer les éléments utiles vers `docs/legacy/` ou supprimer après revue explicite.

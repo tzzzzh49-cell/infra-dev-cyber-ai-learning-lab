@@ -1,5 +1,32 @@
+# Environnement local et secrets
+.env
+.env.*
+!.env.example
+*.token
+*.key
+*.pem
+credentials/
+gateway.token
+gateway.password
+
+# Bases locales, logs et sauvegardes
+*.sqlite
+*.db
+*.log
+backups/
+*.tar.gz
+*.zip
+*.gpg
+*.age
+
+# Configurations locales OpenClaw/Hermes
+.openclaw/
+.hermes/
+
 # Python
 __pycache__/
+**pycache__/
+*.pyc
 *.py[cod]
 *.pyo
 .venv/
@@ -7,36 +34,25 @@ venv/
 .pytest_cache/
 .ruff_cache/
 
-# Environnement local
-.env
-.env.local
-
-# Logs
-*.log
-
-# Fichiers temporaires / sauvegardes
+# Fichiers temporaires
 *.bak
 *.tmp
 *.swp
 *.swo
 *~
 
-# Sorties générées
+# Sorties générées legacy
 outputs/raw/*
 outputs/rendered/*
 outputs/backups/*
 outputs/reports/*
-
-# Garder les dossiers vides dans Git
 !outputs/raw/.gitkeep
 !outputs/rendered/.gitkeep
 !outputs/backups/.gitkeep
 !outputs/reports/.gitkeep
 
-# IDE
-.vscode/
+# IDE et OS
 .idea/
-
-# OS
+.vscode/
 .DS_Store
 Thumbs.db
