@@ -1,0 +1,14 @@
+[Unit]
+Description=Hermes OpenClaw user loop
+Documentation=%h/hermes-openclaw/docs/RUNBOOK.md
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/hermes-openclaw
+ExecStart=%h/hermes-openclaw/scripts/loop.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

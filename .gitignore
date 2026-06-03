@@ -1,5 +1,34 @@
+# Environnement local et secrets
+.env
+.env.*
+!.env.example
+*.token
+*.key
+*.pem
+credentials/
+gateway.token
+gateway.password
+.openclaw/
+.hermes/
+
+# Bases locales
+*.sqlite
+*.db
+
+# Logs
+*.log
+
+# Sauvegardes et archives
+backups/
+*.tar.gz
+*.zip
+*.gpg
+*.age
+
 # Python
 __pycache__/
+**pycache__/
+*.pyc
 *.py[cod]
 *.pyo
 .venv/
@@ -7,35 +36,26 @@ venv/
 .pytest_cache/
 .ruff_cache/
 
-# Environnement local
-.env
-.env.local
-
-# Logs
-*.log
-
-# Fichiers temporaires / sauvegardes
+# Fichiers temporaires
 *.bak
 *.tmp
 *.swp
 *.swo
 *~
 
-# Sorties générées
+# Sorties générées historiques
 outputs/raw/*
 outputs/rendered/*
 outputs/backups/*
 outputs/reports/*
-
-# Garder les dossiers vides dans Git
 !outputs/raw/.gitkeep
 !outputs/rendered/.gitkeep
 !outputs/backups/.gitkeep
 !outputs/reports/.gitkeep
 
 # IDE
-.vscode/
 .idea/
+.vscode/
 
 # OS
 .DS_Store

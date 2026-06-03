@@ -1,77 +1,77 @@
 # Roadmap
 
-## v0.1.0 - Reproduction locale stable
+## Phase 1 - MVP Telegram
 
-Objectif : stabiliser la base locale du projet.
+Objectif : valider le flux minimal Telegram -> OpenClaw -> MCP -> Hermes -> réponse.
 
-Inclus :
-- API FastAPI minimale ;
-- Docker Compose fonctionnel ;
-- Makefile utilisable ;
-- documentation initiale ;
-- reproduction Fedora 44 validée ;
-- première cible Ubuntu 24.04 documentée ;
-- règles de sécurité en lecture seule.
+- [x] Documenter l'architecture cible.
+- [x] Ajouter `.env.example` sans secret.
+- [x] Préparer la boucle `scripts/loop.sh`.
+- [ ] Créer un bot Telegram réel hors Git.
+- [ ] Valider OpenClaw Gateway avec Telegram sur VPS.
+- [ ] Vérifier que les logs ne contiennent pas de messages privés.
 
-## v0.2.0 - Tests, lint et CI
+## Phase 2 - Validation MCP
 
-Objectif : rendre le projet vérifiable automatiquement.
+Objectif : sécuriser le pont entre OpenClaw et Hermes.
 
-Préparé :
-- `make check` pour une validation rapide ;
-- `make check-full` pour la validation complète ;
-- `make shellcheck` pour les scripts Bash ;
-- `make compose-config` pour Docker Compose ;
-- documentation du workflow Git/GitHub.
+- [x] Décrire les limites de confiance.
+- [x] Documenter les outils MCP à limiter.
+- [ ] Valider la configuration officielle MCP selon les versions installées.
+- [ ] Tester un message entrant de bout en bout.
+- [ ] Documenter les erreurs courantes.
 
-Prochaines étapes :
-- ajouter `pytest` et des tests unitaires pour `/health`, `/version` et `/diag` ;
-- ajouter `ruff` pour le lint Python ;
-- créer une GitHub Action qui lance `make check` sur chaque Pull Request ;
-- valider réellement le bootstrap Ubuntu dans une VM Ubuntu 24.04.4 propre ;
-- documenter le résultat de cette validation Ubuntu.
+## Phase 3 - systemd utilisateur
 
-## v0.3.0 - Diagnostic réseau avancé
+Objectif : maintenir l'assistant actif sans session SSH.
 
-Objectif : enrichir le diagnostic système/réseau.
+- [x] Ajouter `systemd/hermes-openclaw-loop.service`.
+- [x] Documenter `systemctl --user`.
+- [ ] Tester `enable --now` sur VPS.
+- [ ] Tester `loginctl enable-linger` sur VPS.
+- [ ] Vérifier le redémarrage automatique.
 
-Prévu :
-- collecte interfaces réseau ;
-- routes ;
-- DNS ;
-- ports ouverts ;
-- export JSON ;
-- export Markdown.
+## Phase 4 - Sauvegardes
 
-## v0.4.0 - Déploiement VPS
+Objectif : protéger la configuration locale.
 
-Objectif : déployer le lab sur un VPS sécurisé.
+- [x] Ajouter `scripts/backup-example.sh`.
+- [x] Documenter checksum, permissions et chiffrement.
+- [ ] Tester une archive locale réelle.
+- [ ] Tester une restauration dans un dossier temporaire.
+- [ ] Valider une sauvegarde chiffrée hors VPS.
 
-Prévu :
-- SSH sécurisé ;
-- firewall ;
-- Docker Compose distant ;
-- HTTPS ;
-- nom de domaine ;
-- premiers backups.
+## Phase 5 - Monitoring
 
-## v0.5.0 - Résumé IA
+Objectif : détecter les pannes sans exposer les secrets.
 
-Objectif : intégrer progressivement l'API OpenAI.
+- [ ] Ajouter un healthcheck régulier.
+- [ ] Ajouter une alerte simple en cas d'arrêt du service.
+- [ ] Ajouter une rotation de logs si nécessaire.
 
-Prévu :
-- résumé de rapports ;
-- explication d'erreurs ;
-- budget API limité ;
-- absence d'exécution automatique de commandes.
+## Phase 6 - WhatsApp plus tard
 
-## v0.6.0 - OpenClaw contrôlé
+Objectif : ajouter WhatsApp après stabilisation Telegram.
 
-Objectif : intégrer OpenClaw avec sécurité.
+- [ ] Étudier la gestion de session.
+- [ ] Définir une règle stricte pour QR codes.
+- [ ] Tester sans publier de capture brute.
 
-Prévu :
-- allowlist stricte ;
-- runbooks ;
-- mode lecture seule ;
-- sandbox ;
-- validation humaine.
+## Phase 7 - CI/CD plus tard
+
+Objectif : automatiser les validations sûres.
+
+- [ ] Ajouter une GitHub Action pour `bash -n`.
+- [ ] Ajouter `shellcheck` si disponible.
+- [ ] Ajouter `markdownlint` si la configuration est prête.
+- [ ] Ne jamais exécuter de commandes VPS depuis CI.
+
+## Phase 8 - Sécurité avancée plus tard
+
+Objectif : renforcer la production.
+
+- [ ] Gestionnaire de secrets.
+- [ ] Monitoring de coûts IA.
+- [ ] Alerting de sécurité.
+- [ ] Revue d'allowlists MCP.
+- [ ] Procédure de révocation testée.
