@@ -1,0 +1,16 @@
+[Unit]
+Description=Hermes OpenClaw message loop
+Documentation=%h/hermes-openclaw/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/hermes-openclaw
+ExecStart=%h/hermes-openclaw/scripts/loop.sh
+Restart=always
+RestartSec=5
+Environment=HERMES_OPENCLAW_LOOP_SLEEP=10
+
+[Install]
+WantedBy=default.target

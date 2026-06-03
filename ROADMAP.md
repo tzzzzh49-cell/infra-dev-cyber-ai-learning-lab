@@ -1,77 +1,81 @@
 # Roadmap
 
-## v0.1.0 - Reproduction locale stable
+## Phase 1 - MVP Telegram
 
-Objectif : stabiliser la base locale du projet.
+Objectif : recevoir un message Telegram via OpenClaw et renvoyer une réponse
+courte générée par Hermes.
 
-Inclus :
-- API FastAPI minimale ;
-- Docker Compose fonctionnel ;
-- Makefile utilisable ;
-- documentation initiale ;
-- reproduction Fedora 44 validée ;
-- première cible Ubuntu 24.04 documentée ;
-- règles de sécurité en lecture seule.
+- [x] Documenter l'architecture cible.
+- [x] Préparer `.env.example` sans secret.
+- [x] Préparer la boucle `scripts/loop.sh`.
+- [ ] Installer OpenClaw sur VPS Ubuntu 24.04.
+- [ ] Installer Hermes sur VPS Ubuntu 24.04.
+- [ ] Configurer un token Telegram réel dans `.env` local uniquement.
+- [ ] Valider un échange Telegram de bout en bout.
 
-## v0.2.0 - Tests, lint et CI
+## Phase 2 - Validation MCP
 
-Objectif : rendre le projet vérifiable automatiquement.
+Objectif : relier proprement OpenClaw et Hermes avec une surface minimale.
 
-Préparé :
-- `make check` pour une validation rapide ;
-- `make check-full` pour la validation complète ;
-- `make shellcheck` pour les scripts Bash ;
-- `make compose-config` pour Docker Compose ;
-- documentation du workflow Git/GitHub.
+- [x] Documenter MCP comme pont local.
+- [ ] Lister les outils MCP réellement nécessaires.
+- [ ] Bloquer les outils dangereux.
+- [ ] Tester lecture d'événement et envoi de réponse.
+- [ ] Documenter les erreurs courantes.
 
-Prochaines étapes :
-- ajouter `pytest` et des tests unitaires pour `/health`, `/version` et `/diag` ;
-- ajouter `ruff` pour le lint Python ;
-- créer une GitHub Action qui lance `make check` sur chaque Pull Request ;
-- valider réellement le bootstrap Ubuntu dans une VM Ubuntu 24.04.4 propre ;
-- documenter le résultat de cette validation Ubuntu.
+## Phase 3 - Service systemd utilisateur
 
-## v0.3.0 - Diagnostic réseau avancé
+Objectif : faire tourner la boucle sans service root.
 
-Objectif : enrichir le diagnostic système/réseau.
+- [x] Ajouter `systemd/hermes-openclaw-loop.service`.
+- [x] Documenter les commandes `systemctl --user`.
+- [ ] Installer l'unité sur VPS.
+- [ ] Valider `Restart=always`.
+- [ ] Vérifier les logs sans messages privés.
 
-Prévu :
-- collecte interfaces réseau ;
-- routes ;
-- DNS ;
-- ports ouverts ;
-- export JSON ;
-- export Markdown.
+## Phase 4 - Sauvegardes
 
-## v0.4.0 - Déploiement VPS
+Objectif : restaurer la configuration sans fuite de secrets.
 
-Objectif : déployer le lab sur un VPS sécurisé.
+- [x] Ajouter `scripts/backup-example.sh`.
+- [x] Documenter checksum, permissions et chiffrement.
+- [ ] Tester une sauvegarde locale.
+- [ ] Chiffrer avec GPG ou age.
+- [ ] Tester une restauration sur environnement de test.
 
-Prévu :
-- SSH sécurisé ;
-- firewall ;
-- Docker Compose distant ;
-- HTTPS ;
-- nom de domaine ;
-- premiers backups.
+## Phase 5 - Monitoring
 
-## v0.5.0 - Résumé IA
+Objectif : détecter les pannes sans exposer les données privées.
 
-Objectif : intégrer progressivement l'API OpenAI.
+- [ ] Ajouter métriques légères.
+- [ ] Ajouter alerting simple.
+- [ ] Documenter seuils CPU, RAM et disque.
+- [ ] Éviter les messages privés dans les alertes.
 
-Prévu :
-- résumé de rapports ;
-- explication d'erreurs ;
-- budget API limité ;
-- absence d'exécution automatique de commandes.
+## Phase 6 - WhatsApp plus tard
 
-## v0.6.0 - OpenClaw contrôlé
+Objectif : ajouter WhatsApp après sécurisation du MVP.
 
-Objectif : intégrer OpenClaw avec sécurité.
+- [ ] Étudier les contraintes de session.
+- [ ] Protéger QR codes et sessions.
+- [ ] Tester sur compte dédié.
+- [ ] Documenter révocation et rotation.
 
-Prévu :
-- allowlist stricte ;
-- runbooks ;
-- mode lecture seule ;
-- sandbox ;
-- validation humaine.
+## Phase 7 - CI/CD plus tard
+
+Objectif : automatiser seulement les validations sûres.
+
+- [ ] Ajouter lint Markdown.
+- [ ] Ajouter ShellCheck.
+- [ ] Ajouter grep de secrets.
+- [ ] Éviter tout test qui contacte un VPS ou un fournisseur IA réel.
+
+## Phase 8 - Sécurité avancée plus tard
+
+Objectif : réduire encore la surface d'attaque.
+
+- [ ] Durcissement systemd.
+- [ ] Allowlist MCP stricte.
+- [ ] Rotation périodique des tokens.
+- [ ] Sauvegardes chiffrées automatisées.
+- [ ] Revue de menace complète.
