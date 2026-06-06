@@ -1,4 +1,4 @@
-.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diagnostic diagnostic-local ansible-check shellcheck compose-config run setup-dev test clean
+.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diagnostic diagnostic-local ansible-check shellcheck compose-config lint-python lint run setup-dev test clean
 
 APP_URL ?= http://127.0.0.1:8000
 COMPOSE ?= ./scripts/compose.sh
@@ -19,6 +19,8 @@ help:
 	@echo "  make bootstrap-ubuntu  Prépare l'environnement Ubuntu 24.04.4 LTS"
 	@echo "  make compose-config    Valide compose.yaml"
 	@echo "  make shellcheck        Vérifie les scripts Bash"
+	@echo "  make lint-python       Vérifie le code Python avec ruff"
+	@echo "  make lint              Lance ruff, ShellCheck et Docker Compose config"
 	@echo "  make build             Construit l'image Docker"
 	@echo "  make up                Lance l'application"
 	@echo "  make run               Build, démarre et attend /health"
@@ -58,6 +60,11 @@ compose-config:
 
 shellcheck:
 	shellcheck scripts/*.sh
+
+lint-python: setup-dev
+	$(VENV_PYTHON) -m ruff check app
+
+lint: lint-python shellcheck compose-config
 
 build:
 	$(COMPOSE) build
