@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from fastapi import FastAPI
 
 app = FastAPI(
-    title="Voice Controlled Network Lab API",
+    title="Infra Dev Cyber AI Learning Lab API",
     description="Mini API locale pour apprendre le DevOps, Docker et les diagnostics.",
     version="0.1.0",
 )
@@ -30,7 +30,7 @@ def health():
 @app.get("/version")
 def version():
     return {
-        "app": "voice-controlled-network-lab-api",
+        "app": "infra-dev-cyber-ai-learning-lab-api",
         "version": "0.1.0",
     }
 

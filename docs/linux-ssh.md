@@ -121,7 +121,7 @@ Cette commande affiche le dossier dans lequel je me trouve.
 
 Exemple de résultat :
 
-/home/thomas/labs/voice-controlled-network-lab
+/home/thomas/labs/infra-dev-cyber-ai-learning-lab
 
 ---
 
