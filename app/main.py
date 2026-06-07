@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
 import platform
 import socket
+from datetime import UTC, datetime
 
 from fastapi import FastAPI
 
@@ -42,5 +42,5 @@ def diag():
         "platform": platform.system(),
         "platform_version": platform.version(),
         "python_version": platform.python_version(),
-        "time_utc": datetime.now(timezone.utc).isoformat(),
+        "time_utc": datetime.now(UTC).isoformat(),
     }

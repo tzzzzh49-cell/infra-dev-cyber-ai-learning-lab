@@ -1,15 +1,15 @@
-name: voice-controlled-network-lab
+name: controlled-network-lab
 
 services:
   api:
     build:
       context: ./app
     image: voice-controlled-network-lab-api:0.1.0
-    container_name: lab-api
+    container_name: controlled-network-lab-api
     environment:
       APP_ENV: lab
     ports:
-      - "127.0.0.1:8000:8000"
+      - "${APP_HOST:-127.0.0.1}:${APP_PORT:-8000}:8000"
     healthcheck:
       test:
         - CMD

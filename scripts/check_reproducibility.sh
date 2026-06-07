@@ -135,6 +135,21 @@ check_python() {
     echo "OK   app/main.py est syntaxiquement valide"
 }
 
+check_ruff() {
+    echo
+    echo "==> Vérification Ruff"
+
+    if ! "$PYTHON_CMD" -m ruff --version >/dev/null 2>&1; then
+        echo "ERREUR : ruff est introuvable." >&2
+        echo "Installe les dépendances de développement :" >&2
+        echo "  make setup-dev" >&2
+        exit 1
+    fi
+
+    "$PYTHON_CMD" -m ruff check app
+    echo "OK   Ruff validé"
+}
+
 check_pytest() {
     echo
     echo "==> Tests Python"
@@ -185,6 +200,7 @@ check_versions
 check_paths
 check_no_conflict_markers
 check_python
+check_ruff
 check_pytest
 check_compose
 check_shell_scripts
