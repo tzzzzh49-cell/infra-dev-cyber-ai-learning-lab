@@ -12,8 +12,8 @@ Ce guide décrit un flux reproductible **validé/à valider uniquement pour Ubun
 ## 1) Cloner le dépôt
 
 ```bash
-git clone <URL_DU_DEPOT>
-cd network-and-systems-training
+git clone https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab.git
+cd infra-dev-cyber-ai-learning-lab
 ```
 
 ## 2) Bootstrap système Ubuntu
