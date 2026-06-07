@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  check:
+    name: Quick checks
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: |
+            app/requirements.txt
+            app/requirements-dev.txt
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            make \
+            curl \
+            shellcheck \
+            ansible
+
+      - name: Show tool versions
+        run: |
+          git --version
+          python --version
+          docker --version
+          docker compose version
+          ansible-playbook --version | head -n 1
+          shellcheck --version | head -n 2
+
+      - name: Set up development environment
+        run: make setup-dev
+
+      - name: Validate Docker Compose
+        run: make compose-config
+
+      - name: Run ShellCheck
+        run: make shellcheck
+
+      - name: Run Python lint
+        run: make lint-python
+
+      - name: Run Python tests
+        run: make test
+
+      - name: Run quick reproducibility check
+        run: make check
+
+  full-check:
+    name: Full reproducibility check
+    runs-on: ubuntu-24.04
+    needs: check
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: |
+            app/requirements.txt
+            app/requirements-dev.txt
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            make \
+            curl \
+            shellcheck \
+            ansible
+
+      - name: Set up development environment
+        run: make setup-dev
+
+      - name: Run full reproducibility check
+        run: make check-full
