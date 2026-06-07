@@ -25,6 +25,9 @@ Fonctionnalités disponibles :
 - lancement avec Docker Compose ;
 - commandes Makefile principales ;
 - tests automatisés avec pytest ;
+- lint Python avec Ruff ;
+- vérification Bash avec ShellCheck ;
+- validation Docker Compose ;
 - validation rapide du dépôt avec `make check` / `make check-fast` ;
 - validation complète de reproductibilité avec `make check-full` ;
 - reproduction testée sur VM Fedora 44 ;
@@ -33,7 +36,6 @@ Fonctionnalités disponibles :
 - règles de sécurité en lecture seule.
 
 Fonctionnalités prévues :
-- lint Python avec ruff ;
 - CI GitHub Actions ;
 - diagnostic réseau plus avancé ;
 - déploiement VPS ;

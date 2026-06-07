@@ -22,11 +22,11 @@ Préparé :
 - `make check-full` pour la validation complète ;
 - `make shellcheck` pour les scripts Bash ;
 - `make compose-config` pour Docker Compose ;
+- `make lint-python` pour Ruff ;
+- `make lint` pour lancer Ruff, ShellCheck et Docker Compose config ;
 - documentation du workflow Git/GitHub.
 
 Prochaines étapes :
-- ajouter `pytest` et des tests unitaires pour `/health`, `/version` et `/diag` ;
-- ajouter `ruff` pour le lint Python ;
 - créer une GitHub Action qui lance `make check` sur chaque Pull Request ;
 - valider réellement le bootstrap Ubuntu dans une VM Ubuntu 24.04.4 propre ;
 - documenter le résultat de cette validation Ubuntu.
