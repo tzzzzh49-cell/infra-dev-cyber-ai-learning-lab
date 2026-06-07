@@ -1,25 +1,30 @@
-# Network and Systems Training
+# infra-dev-cyber-ai-learning-lab
 
-Projet d'apprentissage autour de Linux, réseau, Docker, FastAPI, automatisation et diagnostic défensif.
+Lab d'apprentissage reproductible autour de Linux, réseau, Docker, FastAPI, automatisation et diagnostic défensif en **lecture seule**.
 
 ## Objectif
 
-Permettre à une personne de :
+L'objectif du projet est de fournir un dépôt simple à cloner pour apprendre à :
 
-1. cloner le dépôt ;
-2. installer les prérequis adaptés à sa distribution ;
-3. valider rapidement l'état du dépôt ;
-4. lancer l'application avec Docker Compose ;
-5. tester `/`, `/health`, `/version`, `/diag` ;
-6. arrêter proprement le projet.
+1. préparer une machine Linux avec les prérequis nécessaires ;
+2. valider rapidement l'état du dépôt ;
+3. lancer une API locale avec Docker Compose ;
+4. tester les endpoints `/`, `/health`, `/version` et `/diag` ;
+5. générer un diagnostic local sans action destructive ;
+6. arrêter proprement l'environnement.
+
+## Cible prioritaire
+
+La cible prioritaire de reproductibilité est **Ubuntu 24.04.4 LTS Desktop**.
+
+Le projet conserve aussi une documentation Fedora 44 Workstation VM, mais Ubuntu 24.04.4 LTS Desktop est la cible principale à valider pour la suite de la roadmap.
 
 ## Statut du projet
 
 Version actuelle : v0.1.0
 
-Le projet est actuellement une base de lab systèmes/réseaux/DevOps/cybersécurité.
-
 Fonctionnalités disponibles :
+
 - API FastAPI minimale ;
 - endpoints `/`, `/health`, `/version` et `/diag` ;
 - lancement avec Docker Compose ;
@@ -30,26 +35,8 @@ Fonctionnalités disponibles :
 - validation Docker Compose ;
 - validation rapide du dépôt avec `make check` / `make check-fast` ;
 - validation complète de reproductibilité avec `make check-full` ;
-- reproduction testée sur VM Fedora 44 ;
 - documentation de reproductibilité Fedora et Ubuntu ;
-- documentation technique initiale ;
 - règles de sécurité en lecture seule.
-
-Fonctionnalités prévues :
-- CI GitHub Actions ;
-- diagnostic réseau plus avancé ;
-- déploiement VPS ;
-- intégration progressive OpenAI API ;
-- intégration contrôlée OpenClaw.
-
-## Matrice de compatibilité Linux
-
-| Distribution | Version | Statut |
-|---|---|---|
-| Fedora Workstation VM | 44 | Cible validée/à valider |
-| Ubuntu LTS | 24.04.4 | Cible validée/à valider |
-
-> Le projet **ne prétend pas** fonctionner sur toutes les distributions Linux à ce stade.
 
 ## Pré-requis
 
@@ -63,56 +50,33 @@ Fonctionnalités prévues :
 - Ansible
 - ShellCheck
 
-Les prérequis sont installés automatiquement via les scripts de bootstrap ci-dessous.
+Les prérequis sont installés automatiquement via les scripts de bootstrap documentés dans `docs/`.
 
-Les dépendances Python de développement sont listées dans `app/requirements-dev.txt`.
-
-## Bootstrap par distribution
-
-### Fedora 44 Workstation VM
+## Flux de reproduction local Ubuntu
 
 ```bash
-make bootstrap-fedora
-```
+git clone https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab.git
+cd infra-dev-cyber-ai-learning-lab
 
-Documentation détaillée : `docs/reproductibilite-fedora-44-vm.md`.
-
-### Ubuntu 24.04.4 LTS
-
-```bash
 make bootstrap-ubuntu
-```
+# se déconnecter / reconnecter après l'ajout au groupe docker
 
-Documentation détaillée : `docs/reproductibilite-ubuntu-24.04.md`.
-
-## Démarrage rapide
-
-```bash
-git clone https://github.com/tzzzzh49-cell/network-and-systems-training.git
-cd network-and-systems-training
-make check
-make build
-make up
-curl -fsS http://127.0.0.1:8000/
+make check-full
+make run
 make health
 make version
 make diag
+make diagnostic-local
 make down
 ```
 
-Pour construire, démarrer et attendre automatiquement que `/health` réponde :
+Pour une validation rapide pendant le développement :
 
 ```bash
-make run
+make check
 ```
 
-Pour lancer la validation lourde avant une Pull Request :
-
-```bash
-make check-full
-```
-
-## Commandes Makefile
+## Commandes Makefile principales
 
 | Commande | Description |
 |---|---|
@@ -125,6 +89,8 @@ make check-full
 | `make bootstrap-ubuntu` | Installe les prérequis sur Ubuntu 24.04.4 LTS |
 | `make compose-config` | Valide `compose.yaml` |
 | `make shellcheck` | Vérifie les scripts Bash |
+| `make lint-python` | Vérifie le code Python avec Ruff |
+| `make lint` | Lance Ruff, ShellCheck et Docker Compose config |
 | `make build` | Construit l'image Docker |
 | `make up` | Démarre l'application via Docker Compose |
 | `make run` | Build, démarre et attend `/health` |
@@ -137,6 +103,14 @@ make check-full
 | `make logs` | Affiche les logs Docker |
 | `make down` | Arrête proprement le projet |
 | `make clean` | Effectue un nettoyage léger |
+
+## Sécurité locale
+
+- L'API doit rester exposée localement par défaut sur `127.0.0.1`.
+- Ne pas utiliser `APP_HOST=0.0.0.0` sans authentification et sans reverse proxy HTTPS sécurisé.
+- L'endpoint `/diag` ne doit pas être exposé publiquement sans authentification et reverse proxy sécurisé.
+- Ne jamais ajouter de secrets réels dans `.env.example`, `.env.vps.example`, la documentation ou les scripts.
+- Les diagnostics et automatisations du projet doivent rester en mode **lecture seule**.
 
 ## Tests
 

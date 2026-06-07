@@ -20,7 +20,7 @@ def test_health_returns_ok_status():
 def test_version_returns_app_version():
     data = version()
 
-    assert data["app"] == "voice-controlled-network-lab-api"
+    assert data["app"] == "infra-dev-cyber-ai-learning-lab-api"
     assert data["version"] == "0.1.0"
 
 

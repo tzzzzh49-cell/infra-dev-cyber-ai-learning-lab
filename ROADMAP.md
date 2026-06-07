@@ -13,9 +13,17 @@ Inclus :
 - première cible Ubuntu 24.04 documentée ;
 - règles de sécurité en lecture seule.
 
-## v0.2.0 - Tests, lint et CI
+## v0.2.0 - Cohérence, sécurité locale et préparation CI
 
-Objectif : rendre le projet vérifiable automatiquement.
+Objectif semaine 1 : consolider les livrables de base avant d'ajouter de nouvelles fonctionnalités.
+
+Cette étape vise à :
+
+- rendre le projet cohérent avec son nom actuel `infra-dev-cyber-ai-learning-lab` ;
+- sécuriser la configuration locale avec une exposition par défaut sur `127.0.0.1` ;
+- préparer la validation réelle sur Ubuntu 24.04.4 LTS Desktop ;
+- préparer la future CI GitHub Actions sans créer encore de workflow ;
+- garder le projet en mode lecture seule, sans commandes destructives, secrets ou exposition publique non protégée de `/diag`.
 
 Préparé :
 - `make check` pour une validation rapide ;
@@ -24,12 +32,16 @@ Préparé :
 - `make compose-config` pour Docker Compose ;
 - `make lint-python` pour Ruff ;
 - `make lint` pour lancer Ruff, ShellCheck et Docker Compose config ;
-- documentation du workflow Git/GitHub.
+- documentation du workflow Git/GitHub ;
+- exemples d'environnement local et VPS sûrs par défaut.
 
-Prochaines étapes :
-- créer une GitHub Action qui lance `make check` sur chaque Pull Request ;
+À faire séparément :
+- créer la checklist de validation Ubuntu 24.04.4 LTS Desktop dans une tâche dédiée ;
 - valider réellement le bootstrap Ubuntu dans une VM Ubuntu 24.04.4 propre ;
-- documenter le résultat de cette validation Ubuntu.
+- documenter le résultat de cette validation Ubuntu ;
+- créer une GitHub Action qui lance `make check` sur chaque Pull Request.
+
+> La checklist Ubuntu `docs/checklists/validation-ubuntu-24.04.4-desktop.md` est prévue séparément et ne doit pas être créée dans la tâche semaine 1 actuelle.
 
 ## v0.3.0 - Diagnostic réseau avancé
 

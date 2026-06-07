@@ -2,7 +2,7 @@
 
 ## Rôle du journal
 
-Ce document suit ma progression dans le projet `network-and-systems-training`.
+Ce document suit ma progression dans le projet `infra-dev-cyber-ai-learning-lab`.
 
 Le but n’est pas de remplir des cases, mais de garder une trace claire de ce que j’ai réellement appris, testé, corrigé et compris.
 
