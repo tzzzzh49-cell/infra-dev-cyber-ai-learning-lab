@@ -208,3 +208,5 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 - [ADR-001 - Mode lecture seule](docs/decisions/ADR-001-mode-read-only.md)
 
 Le projet est documenté progressivement afin de montrer les choix techniques, les règles de sécurité et les apprentissages réalisés.
+
+Test CI GitHub Actions.
