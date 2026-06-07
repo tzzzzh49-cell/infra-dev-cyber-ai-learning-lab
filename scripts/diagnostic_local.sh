@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2129
 
-# Script de diagnostic local pour le projet voice-controlled-network-lab.
+# Script de diagnostic local pour le projet infra-dev-cyber-ai-learning-lab.
 # Objectif : observer l'état du système et générer un rapport Markdown.
 # Ce script ne modifie rien sur la machine.
 
@@ -69,7 +69,7 @@ write_title() {
     echo "" >> "$REPORT_FILE"
     echo "Date du diagnostic : $(date)" >> "$REPORT_FILE"
     echo "" >> "$REPORT_FILE"
-    echo "Projet : voice-controlled-network-lab" >> "$REPORT_FILE"
+    echo "Projet : infra-dev-cyber-ai-learning-lab" >> "$REPORT_FILE"
     echo "" >> "$REPORT_FILE"
 }
 

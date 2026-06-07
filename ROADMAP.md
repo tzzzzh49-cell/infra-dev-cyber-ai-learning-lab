@@ -13,23 +13,28 @@ Inclus :
 - première cible Ubuntu 24.04 documentée ;
 - règles de sécurité en lecture seule.
 
-## v0.2.0 - Tests, lint et CI
+## v0.2.0 - Semaine 1 : cohérence, sécurité locale et préparation CI
 
-Objectif : rendre le projet vérifiable automatiquement.
+Objectif : préparer les livrables définitifs de la semaine 1 sans ajouter de fonctionnalité applicative lourde.
 
-Préparé :
-- `make check` pour une validation rapide ;
-- `make check-full` pour la validation complète ;
-- `make shellcheck` pour les scripts Bash ;
-- `make compose-config` pour Docker Compose ;
-- `make lint-python` pour Ruff ;
-- `make lint` pour lancer Ruff, ShellCheck et Docker Compose config ;
-- documentation du workflow Git/GitHub.
+Axes de travail :
+- rendre le projet cohérent avec son nom actuel `infra-dev-cyber-ai-learning-lab` ;
+- nettoyer les anciens noms lorsqu'ils désignent le projet actuel ;
+- sécuriser la configuration locale avec une exposition par défaut sur `127.0.0.1` ;
+- ajouter un exemple de configuration VPS sans secret et sans exposition directe de `/diag` ;
+- préparer la validation réelle sur Ubuntu 24.04.4 LTS Desktop ;
+- préparer la future CI GitHub Actions en gardant `make check` et `make check-full` comme commandes de référence ;
+- garder le projet en mode lecture seule.
 
-Prochaines étapes :
-- créer une GitHub Action qui lance `make check` sur chaque Pull Request ;
-- valider réellement le bootstrap Ubuntu dans une VM Ubuntu 24.04.4 propre ;
-- documenter le résultat de cette validation Ubuntu.
+Limites de la semaine 1 :
+- ne pas ajouter GitHub Actions dans cette tâche ;
+- ne pas ajouter Caddy, Restic, PostgreSQL, OpenAI API, OpenClaw, Containerlab, déploiement VPS ou authentification ;
+- ne pas exposer publiquement `/diag` ;
+- ne pas introduire de secrets.
+
+À faire séparément :
+- créer la checklist de validation Ubuntu 24.04.4 LTS Desktop dans une tâche dédiée ;
+- le fichier `docs/checklists/validation-ubuntu-24.04.4-desktop.md` ne doit pas être créé pour cette tâche.
 
 ## v0.3.0 - Diagnostic réseau avancé
 

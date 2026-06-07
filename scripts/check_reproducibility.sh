@@ -121,6 +121,7 @@ check_paths() {
         scripts/diagnostic_local.sh
         scripts/run_lab.sh
         .env.example
+        .env.vps.example
     )
 
     for path in "${required_paths[@]}"; do

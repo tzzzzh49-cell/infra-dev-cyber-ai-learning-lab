@@ -1,171 +1,109 @@
-# Network and Systems Training
+# infra-dev-cyber-ai-learning-lab
 
-Projet d'apprentissage autour de Linux, réseau, Docker, FastAPI, automatisation et diagnostic défensif.
+Lab reproductible d'apprentissage autour de Linux, réseau, Docker, FastAPI, automatisation, cybersécurité défensive et diagnostic local en **mode lecture seule**.
 
 ## Objectif
 
-Permettre à une personne de :
+Ce projet sert à apprendre et valider un socle infrastructure/dev/cyber/IA sans action destructive :
 
-1. cloner le dépôt ;
-2. installer les prérequis adaptés à sa distribution ;
-3. valider rapidement l'état du dépôt ;
-4. lancer l'application avec Docker Compose ;
-5. tester `/`, `/health`, `/version`, `/diag` ;
-6. arrêter proprement le projet.
+1. cloner le dépôt canonique ;
+2. préparer les prérequis sur une distribution supportée ;
+3. vérifier rapidement l'état du dépôt ;
+4. lancer l'API locale avec Docker Compose ;
+5. tester `/`, `/health`, `/version` et `/diag` ;
+6. générer un diagnostic local read-only ;
+7. arrêter proprement le lab.
 
-## Statut du projet
+## Cible prioritaire
 
-Version actuelle : v0.1.0
-
-Le projet est actuellement une base de lab systèmes/réseaux/DevOps/cybersécurité.
-
-Fonctionnalités disponibles :
-- API FastAPI minimale ;
-- endpoints `/`, `/health`, `/version` et `/diag` ;
-- lancement avec Docker Compose ;
-- commandes Makefile principales ;
-- tests automatisés avec pytest ;
-- lint Python avec Ruff ;
-- vérification Bash avec ShellCheck ;
-- validation Docker Compose ;
-- validation rapide du dépôt avec `make check` / `make check-fast` ;
-- validation complète de reproductibilité avec `make check-full` ;
-- reproduction testée sur VM Fedora 44 ;
-- documentation de reproductibilité Fedora et Ubuntu ;
-- documentation technique initiale ;
-- règles de sécurité en lecture seule.
-
-Fonctionnalités prévues :
-- CI GitHub Actions ;
-- diagnostic réseau plus avancé ;
-- déploiement VPS ;
-- intégration progressive OpenAI API ;
-- intégration contrôlée OpenClaw.
-
-## Matrice de compatibilité Linux
+La cible prioritaire de reproductibilité est **Ubuntu 24.04.4 LTS Desktop**.
 
 | Distribution | Version | Statut |
 |---|---|---|
-| Fedora Workstation VM | 44 | Cible validée/à valider |
-| Ubuntu LTS | 24.04.4 | Cible validée/à valider |
+| Ubuntu Desktop | 24.04.4 LTS | Cible prioritaire à valider réellement |
+| Fedora Workstation VM | 44 | Base historique validée/à valider |
 
 > Le projet **ne prétend pas** fonctionner sur toutes les distributions Linux à ce stade.
 
-## Pré-requis
-
-- Git
-- Docker Engine
-- Docker Compose plugin (`docker compose`)
-- Make
-- Curl
-- Python 3
-- Pytest
-- Ansible
-- ShellCheck
-
-Les prérequis sont installés automatiquement via les scripts de bootstrap ci-dessous.
-
-Les dépendances Python de développement sont listées dans `app/requirements-dev.txt`.
-
-## Bootstrap par distribution
-
-### Fedora 44 Workstation VM
+## Démarrage reproductible sur Ubuntu 24.04.4 LTS Desktop
 
 ```bash
-make bootstrap-fedora
-```
+git clone https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab.git
+cd infra-dev-cyber-ai-learning-lab
 
-Documentation détaillée : `docs/reproductibilite-fedora-44-vm.md`.
-
-### Ubuntu 24.04.4 LTS
-
-```bash
 make bootstrap-ubuntu
+# se déconnecter / reconnecter après l'ajout au groupe docker
+
+make check-full
+make run
+make health
+make version
+make diag
+make diagnostic-local
+make down
 ```
 
 Documentation détaillée : `docs/reproductibilite-ubuntu-24.04.md`.
 
-## Démarrage rapide
+## Configuration locale sûre
+
+Copier l'exemple si une configuration locale est nécessaire :
 
 ```bash
-git clone https://github.com/tzzzzh49-cell/network-and-systems-training.git
-cd network-and-systems-training
-make check
-make build
-make up
-curl -fsS http://127.0.0.1:8000/
-make health
-make version
-make diag
-make down
+cp .env.example .env
 ```
 
-Pour construire, démarrer et attendre automatiquement que `/health` réponde :
+Par défaut, l'application doit rester exposée uniquement en local :
 
-```bash
-make run
+```env
+APP_HOST=127.0.0.1
+APP_PORT=8000
 ```
 
-Pour lancer la validation lourde avant une Pull Request :
+Ne pas utiliser `APP_HOST=0.0.0.0` sans authentification et sans reverse proxy HTTPS sécurisé.
 
-```bash
-make check-full
-```
+## Rappel sécurité
 
-## Commandes Makefile
+- Le projet reste en mode **lecture seule** : aucun script ne doit exécuter d'action destructive.
+- Aucun secret réel ne doit être ajouté dans le dépôt ou dans les fichiers `.env*.example`.
+- L'endpoint `/diag` expose des informations de diagnostic système : il ne doit **jamais** être exposé publiquement sans authentification et reverse proxy HTTPS sécurisé.
+- Sur VPS, l'exposition publique devra passer par Caddy ou un reverse proxy équivalent ; ce n'est pas inclus dans les livrables de semaine 1.
+
+## Commandes Makefile principales
 
 | Commande | Description |
 |---|---|
 | `make help` | Affiche les commandes disponibles |
-| `make check` | Vérifie rapidement le dépôt |
-| `make check-fast` | Alias de `make check` |
-| `make check-full` | Lance la validation complète avec build Docker et Ansible |
-| `make bootstrap` | Alias de `make bootstrap-fedora` |
-| `make bootstrap-fedora` | Installe les prérequis sur Fedora 44 VM |
 | `make bootstrap-ubuntu` | Installe les prérequis sur Ubuntu 24.04.4 LTS |
+| `make bootstrap-fedora` | Installe les prérequis sur Fedora 44 Workstation |
+| `make check` / `make check-fast` | Vérifie rapidement le dépôt |
+| `make check-full` | Lance la validation complète avec build Docker et Ansible en mode check |
+| `make lint` | Lance Ruff, ShellCheck et Docker Compose config |
 | `make compose-config` | Valide `compose.yaml` |
 | `make shellcheck` | Vérifie les scripts Bash |
+| `make test` | Lance les tests Python |
 | `make build` | Construit l'image Docker |
 | `make up` | Démarre l'application via Docker Compose |
 | `make run` | Build, démarre et attend `/health` |
 | `make health` | Teste `GET /health` |
 | `make version` | Teste `GET /version` |
 | `make diag` | Teste `GET /diag` |
-| `make diagnostic-local` | Génère un rapport local read-only |
+| `make diagnostic-local` | Génère un rapport local read-only dans `outputs/reports/` |
 | `make ansible-check` | Lance le playbook Ansible en mode check |
-| `make test` | Lance les tests Python |
 | `make logs` | Affiche les logs Docker |
 | `make down` | Arrête proprement le projet |
-| `make clean` | Effectue un nettoyage léger |
+| `make clean` | Effectue un nettoyage léger limité au projet |
 
-## Tests
-
-Les tests automatisés couvrent les fonctions associées aux endpoints FastAPI.
+## Tests et validation
 
 ```bash
 python3 -m pip install -r app/requirements-dev.txt
 make test
+make check
+make check-full
 ```
 
-`make check` lance aussi ces tests, en plus des vérifications de fichiers, syntaxe Python, Docker Compose et ShellCheck.
-
-## Workflow de développement recommandé
-
-```bash
-git switch master
-git pull
-git switch -c nom-de-branche
-make check
-# modifications
-make check
-git status
-git diff
-git add .
-git commit -m "Message clair"
-git push origin nom-de-branche
-```
-
-Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
+`make check` lance les tests Python et les validations de base. `make check-full` ajoute le build Docker et le playbook Ansible en mode check.
 
 ## Documentation
 
@@ -178,4 +116,4 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 - [Journal d'apprentissage](docs/journal-apprentissage.md)
 - [ADR-001 - Mode lecture seule](docs/decisions/ADR-001-mode-read-only.md)
 
-Le projet est documenté progressivement afin de montrer les choix techniques, les règles de sécurité et les apprentissages réalisés.
+La documentation évolue progressivement afin de montrer les choix techniques, les règles de sécurité et les apprentissages réalisés.
