@@ -7,7 +7,7 @@ from fastapi import FastAPI
 app = FastAPI(
     title="Infra Dev Cyber AI Learning Lab API",
     description="Mini API locale pour apprendre le DevOps, Docker et les diagnostics.",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 
@@ -31,7 +31,7 @@ def health():
 def version():
     return {
         "app": "infra-dev-cyber-ai-learning-lab-api",
-        "version": "0.1.0",
+        "version": "0.2.0",
     }
 
 

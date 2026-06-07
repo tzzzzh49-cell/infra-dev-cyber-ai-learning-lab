@@ -17,7 +17,7 @@ Le projet doit rester **reproductible en priorité sur Ubuntu 24.04.4 LTS Deskto
 
 ## Statut du projet
 
-Version actuelle : v0.1.0
+Version actuelle : v0.2.0
 
 Fonctionnalités disponibles :
 
@@ -206,5 +206,6 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 - [Reproductibilité Ubuntu 24.04](docs/reproductibilite-ubuntu-24.04.md)
 - [Journal d'apprentissage](docs/journal-apprentissage.md)
 - [ADR-001 - Mode lecture seule](docs/decisions/ADR-001-mode-read-only.md)
+- [Validation Ubuntu 24.04.4 Desktop VM](docs/validations/ubuntu-24.04.4-desktop-vm.md)
 
 Le projet est documenté progressivement afin de montrer les choix techniques, les règles de sécurité et les apprentissages réalisés.

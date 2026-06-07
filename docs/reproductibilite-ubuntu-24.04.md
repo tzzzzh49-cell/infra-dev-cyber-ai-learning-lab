@@ -1,6 +1,6 @@
 # Reproductibilité sur Ubuntu 24.04.4 LTS
 
-Ce guide décrit un flux reproductible **validé/à valider uniquement pour Ubuntu 24.04.4 LTS**.
+Ce guide décrit un flux reproductible validé sur une VM Ubuntu 24.04.4 LTS Desktop.
 
 ## Pré-requis Ubuntu
 
@@ -8,6 +8,14 @@ Ce guide décrit un flux reproductible **validé/à valider uniquement pour Ubun
 - Utilisateur avec droits `sudo`
 - Accès réseau sortant (GitHub + Docker Hub + dépôt Docker)
 - Git installé (sinon via le script de bootstrap)
+
+## Validation réelle
+
+Une validation réelle a été effectuée sur une VM Ubuntu 24.04.4 LTS Desktop.
+
+Rapport de validation :
+
+docs/validations/ubuntu-24.04.4-desktop-vm.md
 
 ## 1) Cloner le dépôt
 

@@ -1,6 +1,8 @@
 .PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diagnostic diagnostic-local ansible-check shellcheck compose-config lint-python lint run setup-dev test clean
 
-APP_URL ?= http://127.0.0.1:8000
+APP_URL_FILE ?= .runtime/app_url
+DEFAULT_APP_URL ?= http://127.0.0.1:8000
+APP_URL ?= $(shell test -f "$(APP_URL_FILE)" && cat "$(APP_URL_FILE)" || printf '%s' "$(DEFAULT_APP_URL)")
 COMPOSE ?= ./scripts/compose.sh
 CURL ?= curl -fsS
 PYTHON ?= python3
@@ -77,20 +79,21 @@ run:
 
 down:
 	$(COMPOSE) down
+	@rm -f $(APP_URL_FILE)
 
 logs:
 	$(COMPOSE) logs -f
 
 health:
-	$(CURL) $(APP_URL)/health
+	@$(CURL) $(APP_URL)/health
 	@echo ""
 
 version:
-	$(CURL) $(APP_URL)/version
+	@$(CURL) $(APP_URL)/version
 	@echo ""
 
 diag:
-	$(CURL) $(APP_URL)/diag
+	@$(CURL) $(APP_URL)/diag
 	@echo ""
 
 diagnostic: diag

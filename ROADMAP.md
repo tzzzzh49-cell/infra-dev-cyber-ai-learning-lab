@@ -15,9 +15,9 @@ Inclus :
 
 ## v0.2.0 - Cohérence, sécurité locale et préparation Ubuntu/CI
 
-Objectif semaine 1 : préparer les livrables définitifs de base sans ajouter de nouvelle grosse fonctionnalité.
+Objectif : livrer une base cohérente, sécurisée localement et validée sur Ubuntu 24.04.4 LTS Desktop.
 
-À réaliser/maintenir :
+Inclus :
 - rendre le dépôt cohérent avec son nom actuel `infra-dev-cyber-ai-learning-lab` ;
 - nettoyer les noms historiques quand ils désignent le projet actuel ;
 - sécuriser la configuration locale avec une exposition par défaut sur `127.0.0.1` ;

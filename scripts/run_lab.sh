@@ -3,6 +3,8 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RUNTIME_DIR="$PROJECT_ROOT/.runtime"
+APP_URL_FILE="$RUNTIME_DIR/app_url"
 APP_HOST="${APP_HOST:-127.0.0.1}"
 APP_PORT_WAS_SET=""
 if [ -n "${APP_PORT:-}" ]; then
@@ -57,7 +59,8 @@ if [ "$HEALTH_HOST" = "0.0.0.0" ]; then
 fi
 
 export APP_HOST APP_PORT
-HEALTH_URL="${HEALTH_URL:-http://$HEALTH_HOST:$APP_PORT/health}"
+APP_URL="http://$HEALTH_HOST:$APP_PORT"
+HEALTH_URL="${HEALTH_URL:-$APP_URL/health}"
 
 "$PROJECT_ROOT/scripts/compose.sh" -f "$PROJECT_ROOT/compose.yaml" up -d --build
 
@@ -65,6 +68,8 @@ echo "Attente de l'API sur $HEALTH_URL ..."
 
 for attempt in $(seq 1 30); do
     if curl -fsS --max-time 2 "$HEALTH_URL" >/dev/null 2>&1; then
+        mkdir -p "$RUNTIME_DIR"
+        printf '%s\n' "$APP_URL" > "$APP_URL_FILE"
         echo "API disponible : $HEALTH_URL"
         exit 0
     fi

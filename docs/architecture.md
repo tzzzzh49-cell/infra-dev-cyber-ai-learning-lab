@@ -73,28 +73,30 @@ Au stade actuel, les scripts doivent rester simples, lisibles et non destructifs
 ## Architecture cible
 
 ```text
-PC local / VM Fedora
-   ↓ développement et tests
+VM Ubuntu 24.04.4 LTS Desktop
+   ↓ développement, tests et validation de reproductibilité
 GitHub
-   ↓ versionnement et CI
-VPS
+   ↓ versionnement puis CI plus tard
+VPS Ubuntu
    ↓ Docker Compose
 Application FastAPI
    ↓
-Diagnostics systèmes/réseaux
+Diagnostics systèmes/réseaux en lecture seule
    ↓
-Rapports Markdown / JSON
+Rapports Markdown / JSON plus tard
    ↓
-Résumé IA via OpenAI API
+Résumé IA via OpenAI API plus tard
    ↓
-Interaction contrôlée via OpenClaw
+Interaction contrôlée via OpenClaw plus tard
 ```
 
 ## Évolution prévue
 
-### Étape 1 — Local
+### Étape 1 — Local Ubuntu
 
-Le projet fonctionne localement sur une VM Fedora 44.
+Le projet fonctionne localement sur une VM Ubuntu 24.04.4 LTS Desktop.
+
+Fedora 44 reste une cible secondaire utile pour vérifier la portabilité, mais la preuve principale de reproductibilité est Ubuntu.
 
 ### Étape 2 — Qualité
 

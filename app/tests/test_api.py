@@ -21,7 +21,7 @@ def test_version_returns_app_version():
     data = version()
 
     assert data["app"] == "infra-dev-cyber-ai-learning-lab-api"
-    assert data["version"] == "0.1.0"
+    assert data["version"] == "0.2.0"
 
 
 def test_diag_returns_system_information():
