@@ -74,6 +74,35 @@ Cette commande lance aussi un build Docker et le playbook Ansible en mode check.
 make down
 ```
 
+
+## Validation v0.3.0 - Diagnostic réseau avancé
+
+Après le bootstrap et la reconnexion au groupe Docker, la validation de la version `v0.3.0` se fait avec la séquence suivante :
+
+```bash
+make check-full
+make run
+make diag
+make diag-json
+make diag-md
+make diagnostic-local
+make reports
+make down
+```
+
+Résultats attendus :
+
+- `make check-full` termine sans erreur et lance la validation complète du dépôt ;
+- `make run` construit l’image, démarre l’application et attend que `/health` réponde ;
+- `make diag` affiche un JSON contenant au minimum `metadata`, `system`, `network`, `resources`, `docker` et `security` ;
+- `make diag-json` crée un rapport JSON horodaté dans `outputs/reports` ;
+- `make diag-md` crée un rapport Markdown horodaté dans `outputs/reports` ;
+- `make diagnostic-local` génère un rapport Markdown local et sauvegarde aussi la réponse `/diag` en JSON si l’API est démarrée ;
+- `make reports` liste les rapports disponibles sans échouer si aucun rapport n’existe ;
+- `make down` arrête proprement l’application Docker Compose du lab.
+
+Si une commande de diagnostic comme `resolvectl`, `ip`, `ss` ou `docker` est absente ou indisponible, le diagnostic doit le signaler dans le rapport sans lancer de commande destructive.
+
 ## Notes de sécurité
 
 - Aucun script de ce guide ne réalise de suppression destructrice du système ;

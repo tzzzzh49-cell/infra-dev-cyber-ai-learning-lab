@@ -42,13 +42,18 @@ Prochaines étapes après semaine 1 :
 
 Objectif : enrichir le diagnostic système/réseau.
 
-Prévu :
-- collecte interfaces réseau ;
-- routes ;
-- DNS ;
-- ports ouverts ;
-- export JSON ;
-- export Markdown.
+Inclus / livré :
+- collecte des interfaces réseau ;
+- collecte des routes ;
+- collecte DNS via `/etc/resolv.conf` et `resolvectl` si disponible ;
+- collecte des ports ouverts ;
+- collecte disque ;
+- collecte mémoire ;
+- collecte Docker en lecture seule ;
+- export JSON horodaté dans `outputs/reports` ;
+- export Markdown horodaté dans `outputs/reports` ;
+- tests API et diagnostics ;
+- documentation dédiée au diagnostic réseau avancé.
 
 ## v0.4.0 - Déploiement VPS
 

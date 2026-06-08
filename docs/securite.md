@@ -57,6 +57,35 @@ docker system prune
 sudo sans justification
 ```
 
+
+## Diagnostic réseau avancé v0.3.0
+
+Le diagnostic avancé `v0.3.0` reste strictement en lecture seule. Il observe l’état local sans modifier le système, le réseau ou Docker.
+
+Commandes et lectures utilisées :
+
+```bash
+ip -j addr
+ip -j route
+ss -tulpn
+df -h
+free -h
+docker ps --format '{{json .}}'
+resolvectl dns
+resolvectl status
+lecture de /etc/resolv.conf
+```
+
+Ces commandes sont autorisées car elles consultent l’état courant : interfaces, routes, DNS, ports, disque, mémoire et conteneurs Docker visibles. Elles ne créent, ne suppriment et ne modifient aucune ressource.
+
+Rappels de sécurité :
+
+- `/diag` peut exposer des informations système/réseau et ne doit pas être exposé publiquement sans authentification ;
+- aucune commande `sudo` n’est autorisée dans le diagnostic ;
+- aucune commande destructive n’est autorisée ;
+- aucune commande modifiant le réseau n’est autorisée ;
+- aucune commande Docker destructive comme `docker rm`, `docker stop` ou `docker system prune` n’est autorisée.
+
 ## Règles pour les scripts
 
 Chaque script doit respecter ces règles :

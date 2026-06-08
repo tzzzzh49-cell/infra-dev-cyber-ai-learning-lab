@@ -24,7 +24,11 @@ Docker Compose
    ↓
 Application FastAPI
    ↓
-Endpoints : /health, /version, /diag
+Endpoints : /health, /version, /diag, /diag/export/json, /diag/export/markdown
+   ↓
+Module app/diagnostics.py
+   ↓
+Rapports locaux Markdown / JSON dans outputs/reports
 ```
 
 ## Composants
@@ -37,7 +41,15 @@ Endpoints actuels :
 
 * `/health` : vérifie que l’application répond ;
 * `/version` : affiche la version ou des informations de base ;
-* `/diag` : lance ou affiche un diagnostic simple.
+* `/diag` : lance un diagnostic système/réseau structuré en lecture seule ;
+* `/diag/export/json` : génère un rapport JSON local ;
+* `/diag/export/markdown` : génère un rapport Markdown local.
+
+### Module `app/diagnostics.py`
+
+Le module `app/diagnostics.py` centralise la collecte en lecture seule : système, interfaces, routes, DNS, ports ouverts, disque, mémoire et Docker. Il utilise uniquement la bibliothèque standard Python, exécute les commandes via `subprocess.run` sans `shell=True`, gère les commandes absentes et produit une structure JSON stable.
+
+Les rapports Markdown et JSON sont disponibles localement dans `outputs/reports`.
 
 ### Docker Compose
 
@@ -83,7 +95,7 @@ Application FastAPI
    ↓
 Diagnostics systèmes/réseaux en lecture seule
    ↓
-Rapports Markdown / JSON plus tard
+Rapports Markdown / JSON locaux
    ↓
 Résumé IA via OpenAI API plus tard
    ↓
@@ -100,7 +112,7 @@ Fedora 44 reste une cible secondaire utile pour vérifier la portabilité, mais 
 
 ### Étape 2 — Qualité
 
-Ajout de tests, lint et GitHub Actions.
+Renforcement des tests, lint et GitHub Actions plus tard.
 
 ### Étape 3 — VPS
 

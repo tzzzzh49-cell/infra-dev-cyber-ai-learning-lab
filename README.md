@@ -17,12 +17,16 @@ Le projet doit rester **reproductible en priorité sur Ubuntu 24.04.4 LTS Deskto
 
 ## Statut du projet
 
-Version actuelle : v0.2.0
+Version actuelle : v0.3.0
 
 Fonctionnalités disponibles :
 
 - API FastAPI minimale ;
-- endpoints `/`, `/health`, `/version` et `/diag` ;
+- endpoints `/`, `/health`, `/version`, `/diag`, `/diag/export/json` et `/diag/export/markdown` ;
+- diagnostic réseau avancé ;
+- export JSON des diagnostics ;
+- export Markdown des diagnostics ;
+- rapports locaux dans `outputs/reports` ;
 - lancement avec Docker Compose ;
 - commandes Makefile principales ;
 - tests automatisés avec pytest ;
@@ -37,7 +41,6 @@ Fonctionnalités disponibles :
 Fonctionnalités prévues plus tard :
 
 - CI GitHub Actions ;
-- diagnostic réseau plus avancé ;
 - déploiement VPS ;
 - intégration progressive OpenAI API ;
 - intégration contrôlée OpenClaw.
@@ -79,11 +82,16 @@ make run
 make health
 make version
 make diag
+make diag-json
+make diag-md
 make diagnostic-local
+make reports
 make down
 ```
 
 Documentation détaillée : `docs/reproductibilite-ubuntu-24.04.md`.
+
+Diagnostic réseau avancé : `docs/diagnostic-reseau-v0.3.md`.
 
 ## Bootstrap par distribution
 
@@ -151,6 +159,9 @@ make check-full
 | `make health` | Teste `GET /health` |
 | `make version` | Teste `GET /version` |
 | `make diag` | Teste `GET /diag` |
+| `make diag-json` | Génère un rapport JSON via `POST /diag/export/json` |
+| `make diag-md` | Génère un rapport Markdown via `POST /diag/export/markdown` |
+| `make reports` | Liste les rapports dans `outputs/reports` sans échouer si le dossier est absent |
 | `make diagnostic-local` | Génère un rapport local read-only |
 | `make ansible-check` | Lance le playbook Ansible en mode check |
 | `make test` | Lance les tests Python |
@@ -164,7 +175,7 @@ La configuration locale doit rester sûre par défaut :
 
 - `.env.example` utilise `APP_HOST=127.0.0.1` pour exposer l'API uniquement sur la machine locale ;
 - ne pas utiliser `APP_HOST=0.0.0.0` sans authentification et sans reverse proxy HTTPS sécurisé ;
-- `/diag` peut contenir des informations système et **ne doit pas être exposé publiquement** sans authentification et reverse proxy sécurisé ;
+- `/diag` peut contenir des informations système/réseau et **ne doit pas être exposé publiquement** sans authentification et reverse proxy sécurisé ;
 - aucun secret réel ne doit être ajouté dans les fichiers `.env*.example`, la documentation ou les scripts.
 
 ## Tests
