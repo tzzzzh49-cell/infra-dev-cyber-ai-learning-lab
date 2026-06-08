@@ -10,19 +10,24 @@ Projet d'apprentissage reproductible autour de Linux, réseau, Docker, FastAPI, 
 2. valider rapidement l'état du dépôt ;
 3. lancer une API FastAPI avec Docker Compose ;
 4. tester les endpoints `/`, `/health`, `/version` et `/diag` ;
-5. générer un diagnostic local en lecture seule ;
-6. arrêter proprement le projet.
+5. générer un diagnostic réseau avancé en lecture seule ;
+6. exporter des rapports JSON et Markdown dans `outputs/reports` ;
+7. arrêter proprement le projet.
 
 Le projet doit rester **reproductible en priorité sur Ubuntu 24.04.4 LTS Desktop** et conserver un mode sécurité **lecture seule** : aucune commande destructive, aucun secret et aucune exposition publique non protégée de `/diag`.
 
 ## Statut du projet
 
-Version actuelle : v0.2.0
+Version actuelle : v0.3.0
 
 Fonctionnalités disponibles :
 
 - API FastAPI minimale ;
 - endpoints `/`, `/health`, `/version` et `/diag` ;
+- diagnostic réseau avancé ;
+- export JSON ;
+- export Markdown ;
+- rapports locaux dans `outputs/reports` ;
 - lancement avec Docker Compose ;
 - commandes Makefile principales ;
 - tests automatisés avec pytest ;
@@ -37,7 +42,6 @@ Fonctionnalités disponibles :
 Fonctionnalités prévues plus tard :
 
 - CI GitHub Actions ;
-- diagnostic réseau plus avancé ;
 - déploiement VPS ;
 - intégration progressive OpenAI API ;
 - intégration contrôlée OpenClaw.
@@ -79,7 +83,10 @@ make run
 make health
 make version
 make diag
+make diag-json
+make diag-md
 make diagnostic-local
+make reports
 make down
 ```
 
@@ -115,6 +122,9 @@ curl -fsS http://127.0.0.1:8000/
 make health
 make version
 make diag
+make diag-json
+make diag-md
+make reports
 make down
 ```
 
@@ -151,6 +161,9 @@ make check-full
 | `make health` | Teste `GET /health` |
 | `make version` | Teste `GET /version` |
 | `make diag` | Teste `GET /diag` |
+| `make diag-json` | Exporte un rapport JSON via `POST /diag/export/json` |
+| `make diag-md` | Exporte un rapport Markdown via `POST /diag/export/markdown` |
+| `make reports` | Liste les rapports locaux dans `outputs/reports` |
 | `make diagnostic-local` | Génère un rapport local read-only |
 | `make ansible-check` | Lance le playbook Ansible en mode check |
 | `make test` | Lance les tests Python |
@@ -164,7 +177,7 @@ La configuration locale doit rester sûre par défaut :
 
 - `.env.example` utilise `APP_HOST=127.0.0.1` pour exposer l'API uniquement sur la machine locale ;
 - ne pas utiliser `APP_HOST=0.0.0.0` sans authentification et sans reverse proxy HTTPS sécurisé ;
-- `/diag` peut contenir des informations système et **ne doit pas être exposé publiquement** sans authentification et reverse proxy sécurisé ;
+- `/diag` et les endpoints d'export peuvent contenir des informations système et **ne doivent pas être exposés publiquement** sans authentification et reverse proxy sécurisé ;
 - aucun secret réel ne doit être ajouté dans les fichiers `.env*.example`, la documentation ou les scripts.
 
 ## Tests
@@ -204,6 +217,7 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 - [Reproductibilité Linux générique](docs/reproductibilite-linux-generique.md)
 - [Reproductibilité Fedora 44](docs/reproductibilite-fedora-44-vm.md)
 - [Reproductibilité Ubuntu 24.04](docs/reproductibilite-ubuntu-24.04.md)
+- [Diagnostic réseau avancé v0.3.0](docs/diagnostic-reseau-v0.3.md)
 - [Journal d'apprentissage](docs/journal-apprentissage.md)
 - [ADR-001 - Mode lecture seule](docs/decisions/ADR-001-mode-read-only.md)
 - [Validation Ubuntu 24.04.4 Desktop VM](docs/validations/ubuntu-24.04.4-desktop-vm.md)

@@ -78,3 +78,33 @@ make down
 
 - Aucun script de ce guide ne réalise de suppression destructrice du système ;
 - les commandes de nettoyage Docker utilisées ici restent limitées au projet (`docker compose down`).
+
+## Validation v0.3.0 - Diagnostic réseau avancé
+
+La version v0.3.0 ajoute un diagnostic système/réseau structuré et des exports locaux JSON/Markdown.
+
+Commandes de validation recommandées sur Ubuntu 24.04.4 LTS Desktop :
+
+```bash
+make check-full
+make run
+make diag
+make diag-json
+make diag-md
+make diagnostic-local
+make reports
+make down
+```
+
+Résultats attendus :
+
+- `make check-full` valide les tests Python, Ruff, ShellCheck, Docker Compose, le build Docker et le playbook Ansible en mode check ;
+- `make run` démarre l'API locale et attend que `/health` réponde ;
+- `make diag` retourne un JSON contenant au minimum `metadata`, `system`, `network`, `resources`, `docker` et `security` ;
+- `make diag-json` crée un rapport JSON horodaté dans `outputs/reports` ;
+- `make diag-md` crée un rapport Markdown horodaté dans `outputs/reports` ;
+- `make diagnostic-local` crée un rapport Markdown local et sauvegarde la réponse `/diag` en JSON si l'API est démarrée ;
+- `make reports` liste les rapports disponibles sans échouer si le dossier est absent ou vide ;
+- `make down` arrête l'application lancée par Docker Compose.
+
+Limites attendues : certaines commandes comme `resolvectl`, `ss`, `ip` ou `docker` peuvent être absentes selon l'environnement. Le diagnostic doit capturer ces indisponibilités sans interrompre la génération du rapport.
