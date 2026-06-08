@@ -78,3 +78,32 @@ make down
 
 - Aucun script de ce guide ne réalise de suppression destructrice du système ;
 - les commandes de nettoyage Docker utilisées ici restent limitées au projet (`docker compose down`).
+
+
+## Validation v0.3.0 - Diagnostic réseau avancé
+
+Depuis une VM Ubuntu 24.04.4 LTS Desktop préparée, exécuter :
+
+```bash
+make check-full
+make run
+make diag
+make diag-json
+make diag-md
+make diagnostic-local
+make reports
+make down
+```
+
+Résultats attendus :
+
+- `make check-full` termine sans erreur et lance la validation complète ;
+- `make run` démarre l'API locale sur `127.0.0.1` et valide `/health` ;
+- `make diag` retourne un JSON structuré avec `metadata`, `system`, `network`, `resources`, `docker` et `security` ;
+- `make diag-json` crée un rapport JSON dans `outputs/reports` ;
+- `make diag-md` crée un rapport Markdown dans `outputs/reports` ;
+- `make diagnostic-local` crée un rapport Markdown local et sauvegarde aussi la réponse `/diag` en JSON si l'API est démarrée ;
+- `make reports` liste les rapports sans échouer si le dossier est absent ;
+- `make down` arrête proprement l'application.
+
+Les commandes de diagnostic restent lecture seule et ne doivent pas utiliser `sudo`, modifier le réseau ou supprimer des ressources Docker.

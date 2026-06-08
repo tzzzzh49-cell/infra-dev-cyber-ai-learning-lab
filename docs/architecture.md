@@ -24,7 +24,7 @@ Docker Compose
    ↓
 Application FastAPI
    ↓
-Endpoints : /health, /version, /diag
+Endpoints : /health, /version, /diag, /diag/export/json, /diag/export/markdown
 ```
 
 ## Composants
@@ -37,7 +37,13 @@ Endpoints actuels :
 
 * `/health` : vérifie que l’application répond ;
 * `/version` : affiche la version ou des informations de base ;
-* `/diag` : lance ou affiche un diagnostic simple.
+* `/diag` : lance un diagnostic système/réseau structuré ;
+* `/diag/export/json` : génère un rapport JSON local ;
+* `/diag/export/markdown` : génère un rapport Markdown local.
+
+### Module diagnostics Python
+
+`app/diagnostics.py` centralise la collecte en lecture seule : informations système, interfaces, routes, DNS, ports, disque, mémoire, Docker et exports locaux JSON/Markdown.
 
 ### Docker Compose
 
@@ -83,7 +89,7 @@ Application FastAPI
    ↓
 Diagnostics systèmes/réseaux en lecture seule
    ↓
-Rapports Markdown / JSON plus tard
+Rapports Markdown / JSON disponibles localement
    ↓
 Résumé IA via OpenAI API plus tard
    ↓

@@ -12,6 +12,8 @@ REPORT_DIR="$PROJECT_ROOT/outputs/reports"
 TIMESTAMP="$(date +"%Y-%m-%d-%H%M%S")"
 REPORT_FILE="$REPORT_DIR/diagnostic-$TIMESTAMP.md"
 API_HEALTH_URL="${API_HEALTH_URL:-http://127.0.0.1:8000/health}"
+API_DIAG_URL="${API_DIAG_URL:-http://127.0.0.1:8000/diag}"
+DIAG_JSON_FILE="$REPORT_DIR/diagnostic-api-$TIMESTAMP.json"
 
 mkdir -p "$REPORT_DIR"
 
@@ -20,6 +22,9 @@ DOCKER_DETAILS="Docker non testé."
 
 API_STATUS="KO"
 API_DETAILS="API non testée."
+
+API_DIAG_STATUS="KO"
+API_DIAG_DETAILS="Endpoint /diag non testé."
 
 check_docker() {
     if ! command -v docker >/dev/null 2>&1; then
@@ -64,6 +69,31 @@ check_api() {
     rm -f "$body_file" "$err_file"
 }
 
+fetch_api_diag() {
+    if ! command -v curl >/dev/null 2>&1; then
+        API_DIAG_STATUS="KO"
+        API_DIAG_DETAILS="La commande curl est introuvable ; aucun JSON /diag sauvegardé."
+        return
+    fi
+
+    local err_file
+    local http_code
+
+    err_file="$(mktemp)"
+    http_code="$(curl -sS --max-time 3 -o "$DIAG_JSON_FILE" -w "%{http_code}" "$API_DIAG_URL" 2>"$err_file" || true)"
+
+    if [ "$http_code" = "200" ]; then
+        API_DIAG_STATUS="OK"
+        API_DIAG_DETAILS="Réponse /diag sauvegardée dans $DIAG_JSON_FILE."
+    else
+        API_DIAG_STATUS="KO"
+        API_DIAG_DETAILS="/diag indisponible ou non démarré. Code HTTP : $http_code. Erreur : $(cat "$err_file")"
+        rm -f "$DIAG_JSON_FILE"
+    fi
+
+    rm -f "$err_file"
+}
+
 write_title() {
     echo "# Rapport de diagnostic local" > "$REPORT_FILE"
     echo "" >> "$REPORT_FILE"
@@ -80,6 +110,7 @@ write_summary() {
     echo "|---|---|---|" >> "$REPORT_FILE"
     echo "| Docker | $DOCKER_STATUS | $DOCKER_DETAILS |" >> "$REPORT_FILE"
     echo "| API /health | $API_STATUS | $API_DETAILS |" >> "$REPORT_FILE"
+    echo "| API /diag JSON | $API_DIAG_STATUS | $API_DIAG_DETAILS |" >> "$REPORT_FILE"
     echo "" >> "$REPORT_FILE"
 }
 
@@ -102,6 +133,26 @@ write_section() {
     else
         echo "Commande introuvable : $1" >> "$REPORT_FILE"
     fi
+}
+
+write_diag_api_section() {
+    echo "" >> "$REPORT_FILE"
+    echo "## Export JSON API /diag" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+    echo "URL testée :" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+    echo "    $API_DIAG_URL" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+
+    if [ "$API_DIAG_STATUS" = "OK" ]; then
+        echo "JSON sauvegardé ici :" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+        echo "    $DIAG_JSON_FILE" >> "$REPORT_FILE"
+    else
+        echo "Aucun JSON sauvegardé : $API_DIAG_DETAILS" >> "$REPORT_FILE"
+    fi
+
+    echo "" >> "$REPORT_FILE"
 }
 
 write_health_check() {
@@ -147,6 +198,7 @@ write_conclusion() {
 
 check_docker
 check_api
+fetch_api_diag
 
 write_title
 write_summary
@@ -161,9 +213,11 @@ write_section "Mémoire" free -h
 write_section "Conteneurs Docker" timeout 5 docker ps
 
 write_health_check
+write_diag_api_section
 write_conclusion
 
 echo "Diagnostic terminé."
 echo "Docker : $DOCKER_STATUS"
 echo "API : $API_STATUS"
+echo "API /diag JSON : $API_DIAG_STATUS"
 echo "Rapport généré : $REPORT_FILE"

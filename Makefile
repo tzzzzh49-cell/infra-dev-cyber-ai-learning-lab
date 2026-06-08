@@ -1,4 +1,4 @@
-.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diagnostic diagnostic-local ansible-check shellcheck compose-config lint-python lint run setup-dev test clean
+.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diag-json diag-md diagnostic diagnostic-local reports ansible-check shellcheck compose-config lint-python lint run setup-dev test clean
 
 APP_URL_FILE ?= .runtime/app_url
 DEFAULT_APP_URL ?= http://127.0.0.1:8000
@@ -31,8 +31,11 @@ help:
 	@echo "  make health            Teste l'endpoint /health"
 	@echo "  make version           Teste l'endpoint /version"
 	@echo "  make diag              Teste l'endpoint /diag"
+	@echo "  make diag-json         Génère un rapport JSON via l'API"
+	@echo "  make diag-md           Génère un rapport Markdown via l'API"
 	@echo "  make diagnostic        Alias de make diag"
 	@echo "  make diagnostic-local  Génère un rapport local read-only"
+	@echo "  make reports           Liste les rapports locaux"
 	@echo "  make ansible-check     Lance le playbook Ansible en mode check"
 	@echo "  make setup-dev         Prépare l'environnement Python de développement"
 	@echo "  make test              Lance les tests Python"
@@ -96,10 +99,21 @@ diag:
 	@$(CURL) $(APP_URL)/diag
 	@echo ""
 
+diag-json:
+	@$(CURL) -X POST $(APP_URL)/diag/export/json
+	@echo ""
+
+diag-md:
+	@$(CURL) -X POST $(APP_URL)/diag/export/markdown
+	@echo ""
+
 diagnostic: diag
 
 diagnostic-local:
 	./scripts/diagnostic_local.sh
+
+reports:
+	@if [ -d outputs/reports ]; then find outputs/reports -maxdepth 1 -type f -print | sort; else echo "Aucun dossier outputs/reports pour le moment."; fi
 
 ansible-check:
 	ansible-playbook -i ansible/inventory.yml ansible/playbooks/diagnostic.yml --check
