@@ -24,7 +24,13 @@ Docker Compose
    ↓
 Application FastAPI
    ↓
-Endpoints : /health, /version, /diag
+app/main.py
+   ↓
+app/diagnostics.py
+   ↓
+Endpoints : /health, /version, /diag, /diag/export/json, /diag/export/markdown
+   ↓
+Rapports locaux : outputs/reports/*.json et outputs/reports/*.md
 ```
 
 ## Composants
@@ -36,8 +42,27 @@ FastAPI expose une API simple permettant de vérifier l’état de l’applicati
 Endpoints actuels :
 
 * `/health` : vérifie que l’application répond ;
-* `/version` : affiche la version ou des informations de base ;
-* `/diag` : lance ou affiche un diagnostic simple.
+* `/version` : affiche la version applicative ;
+* `/diag` : retourne un diagnostic système/réseau structuré en lecture seule ;
+* `/diag/export/json` : génère un rapport JSON local ;
+* `/diag/export/markdown` : génère un rapport Markdown local.
+
+### Module `app/diagnostics.py`
+
+Le module `app/diagnostics.py` centralise la collecte de diagnostic avancé. Il utilise uniquement la bibliothèque standard Python, exécute les commandes sans `shell=True`, applique des timeouts courts et gère les commandes absentes sans exception non contrôlée.
+
+Il collecte :
+
+* informations système ;
+* interfaces réseau ;
+* routes ;
+* DNS ;
+* ports ouverts ;
+* disque ;
+* mémoire ;
+* état Docker en lecture seule.
+
+Il produit également les exports JSON et Markdown dans `outputs/reports`.
 
 ### Docker Compose
 
@@ -61,6 +86,9 @@ make up
 make health
 make version
 make diag
+make diag-json
+make diag-md
+make reports
 make down
 ```
 
@@ -68,7 +96,7 @@ make down
 
 Les scripts servent à automatiser certaines tâches d’installation, de diagnostic ou de vérification.
 
-Au stade actuel, les scripts doivent rester simples, lisibles et non destructifs.
+Le script `scripts/diagnostic_local.sh` génère un rapport Markdown local en lecture seule et sauvegarde aussi la réponse JSON de `/diag` dans `outputs/reports` si l’API est disponible.
 
 ## Architecture cible
 
@@ -83,7 +111,7 @@ Application FastAPI
    ↓
 Diagnostics systèmes/réseaux en lecture seule
    ↓
-Rapports Markdown / JSON plus tard
+Rapports Markdown / JSON disponibles localement
    ↓
 Résumé IA via OpenAI API plus tard
    ↓

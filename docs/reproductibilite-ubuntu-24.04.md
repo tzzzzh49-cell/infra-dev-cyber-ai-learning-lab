@@ -68,7 +68,33 @@ make check-full
 
 Cette commande lance aussi un build Docker et le playbook Ansible en mode check.
 
-## 7) Arrêt propre
+## 7) Validation v0.3.0 - Diagnostic réseau avancé
+
+Exécuter la séquence suivante sur Ubuntu 24.04.4 LTS Desktop :
+
+```bash
+make check-full
+make run
+make diag
+make diag-json
+make diag-md
+make diagnostic-local
+make reports
+make down
+```
+
+Résultats attendus :
+
+- `make check-full` réussit les tests Python, Ruff, ShellCheck, Docker Compose config, le build Docker et Ansible en mode check ;
+- `make run` démarre l'application et attend que `/health` réponde ;
+- `make diag` retourne un JSON contenant au minimum `metadata`, `system`, `network`, `resources`, `docker` et `security` ;
+- `make diag-json` crée un rapport JSON horodaté dans `outputs/reports` ;
+- `make diag-md` crée un rapport Markdown horodaté dans `outputs/reports` ;
+- `make diagnostic-local` crée un rapport Markdown local et sauvegarde la réponse JSON de `/diag` si l'API est disponible ;
+- `make reports` liste les rapports générés sans échouer ;
+- `make down` arrête proprement l'application.
+
+## 8) Arrêt propre
 
 ```bash
 make down
