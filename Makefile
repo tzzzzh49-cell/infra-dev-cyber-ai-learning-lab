@@ -8,6 +8,9 @@ CURL ?= curl -fsS
 PYTHON ?= python3
 VENV ?= .venv
 VENV_PYTHON := $(VENV)/bin/python
+VALIDATION_TMP ?= /tmp/infra-dev-cyber-ai-learning-lab
+ANSIBLE_LOCAL_TEMP ?= $(VALIDATION_TMP)/ansible-local
+BUILDX_CONFIG ?= $(VALIDATION_TMP)/buildx-config
 
 help:
 	@echo "Commandes disponibles :"
@@ -67,12 +70,13 @@ shellcheck:
 	shellcheck scripts/*.sh
 
 lint-python: setup-dev
-	$(VENV_PYTHON) -m ruff check app
+	PYTHONDONTWRITEBYTECODE=1 $(VENV_PYTHON) -m ruff check --no-cache app
 
 lint: lint-python shellcheck compose-config
 
 build:
-	$(COMPOSE) build
+	@mkdir -p "$(BUILDX_CONFIG)"
+	BUILDX_CONFIG="$(BUILDX_CONFIG)" $(COMPOSE) build
 
 up:
 	$(COMPOSE) up -d
@@ -116,7 +120,8 @@ diagnostic-local:
 	./scripts/diagnostic_local.sh
 
 ansible-check:
-	ansible-playbook -i ansible/inventory.yml ansible/playbooks/diagnostic.yml --check
+	@mkdir -p "$(ANSIBLE_LOCAL_TEMP)"
+	ANSIBLE_LOCAL_TEMP="$(ANSIBLE_LOCAL_TEMP)" ansible-playbook -i ansible/inventory.yml ansible/playbooks/diagnostic.yml --check
 
 $(VENV_PYTHON):
 	$(PYTHON) -m venv $(VENV)
@@ -126,7 +131,7 @@ $(VENV_PYTHON):
 setup-dev: $(VENV_PYTHON)
 
 test: setup-dev
-	PYTHONPATH=. $(VENV_PYTHON) -m pytest app/tests -v
+	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. $(VENV_PYTHON) -m pytest -p no:cacheprovider app/tests -v
 
 clean:
 	$(COMPOSE) down

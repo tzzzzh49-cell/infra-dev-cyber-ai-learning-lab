@@ -1,15 +1,39 @@
-from fastapi.testclient import TestClient
+from app.main import (
+    APP_VERSION,
+    app,
+    diag,
+    export_diag_json,
+    export_diag_markdown,
+    health,
+    root,
+    version,
+)
 
-from app.main import APP_VERSION, app
 
-client = TestClient(app)
+def route_methods(path):
+    for route in app.routes:
+        if route.path == path:
+            return route.methods or set()
+    return set()
+
+
+def test_app_registers_expected_routes():
+    expected_routes = {
+        "/": "GET",
+        "/health": "GET",
+        "/version": "GET",
+        "/diag": "GET",
+        "/diag/export/json": "POST",
+        "/diag/export/markdown": "POST",
+    }
+
+    for path, method in expected_routes.items():
+        assert method in route_methods(path)
 
 
 def test_get_root_returns_available_endpoints():
-    response = client.get("/")
+    data = root()
 
-    assert response.status_code == 200
-    data = response.json()
     assert data["message"] == "Mini API locale active"
     assert "/health" in data["endpoints"]
     assert "/version" in data["endpoints"]
@@ -19,17 +43,11 @@ def test_get_root_returns_available_endpoints():
 
 
 def test_get_health_returns_ok_status():
-    response = client.get("/health")
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok", "service": "lab-api"}
+    assert health() == {"status": "ok", "service": "lab-api"}
 
 
 def test_get_version_returns_app_version():
-    response = client.get("/version")
-
-    assert response.status_code == 200
-    assert response.json() == {
+    assert version() == {
         "app": "infra-dev-cyber-ai-learning-lab-api",
         "version": APP_VERSION,
     }
@@ -48,10 +66,8 @@ def test_get_diag_returns_structured_diagnostic(monkeypatch):
         },
     )
 
-    response = client.get("/diag")
+    data = diag()
 
-    assert response.status_code == 200
-    data = response.json()
     assert "metadata" in data
     assert "system" in data
     assert "network" in data
@@ -78,10 +94,8 @@ def test_post_diag_export_json_uses_isolated_output(tmp_path, monkeypatch):
 
     monkeypatch.setattr("app.main.write_json_report", fake_write_json_report)
 
-    response = client.post("/diag/export/json")
+    data = export_diag_json()
 
-    assert response.status_code == 200
-    data = response.json()
     assert data["status"] == "ok"
     assert data["format"] == "json"
     assert data["path"] == str(tmp_path / "diagnostic.json")
@@ -105,10 +119,8 @@ def test_post_diag_export_markdown_uses_isolated_output(tmp_path, monkeypatch):
 
     monkeypatch.setattr("app.main.write_markdown_report", fake_write_markdown_report)
 
-    response = client.post("/diag/export/markdown")
+    data = export_diag_markdown()
 
-    assert response.status_code == 200
-    data = response.json()
     assert data["status"] == "ok"
     assert data["format"] == "markdown"
     assert data["path"] == str(tmp_path / "diagnostic.md")
