@@ -88,3 +88,43 @@ def test_write_markdown_report_uses_requested_directory(tmp_path):
     assert "# Diagnostic réseau avancé v0.3.0" in content
     assert "## Interfaces réseau" in content
     assert "## Conclusion" in content
+
+
+def test_parse_json_output_returns_dict():
+    data = diagnostics.parse_json_output({"stdout": '{"status": "ok"}'})
+
+    assert data == {"status": "ok"}
+
+
+def test_parse_json_output_returns_none_for_invalid_json():
+    data = diagnostics.parse_json_output({"stdout": "not-json"})
+
+    assert data is None
+
+
+def test_parse_json_lines_preserves_invalid_lines():
+    data = diagnostics.parse_json_lines(
+        {"stdout": '{"name": "api"}\nnot-json\n{"name": "worker"}\n'}
+    )
+
+    assert data == [
+        {"name": "api"},
+        {"raw": "not-json"},
+        {"name": "worker"},
+    ]
+
+
+def test_read_resolv_conf_uses_requested_file(tmp_path):
+    resolv_conf = tmp_path / "resolv.conf"
+    resolv_conf.write_text(
+        "# test\nnameserver 1.1.1.1\nsearch lab.local example.test\noptions edns0\n",
+        encoding="utf-8",
+    )
+
+    data = diagnostics.read_resolv_conf(str(resolv_conf))
+
+    assert data["path"] == str(resolv_conf)
+    assert data["available"] is True
+    assert data["nameservers"] == ["1.1.1.1"]
+    assert data["search"] == ["lab.local", "example.test"]
+    assert data["options"] == ["edns0"]

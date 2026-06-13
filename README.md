@@ -20,7 +20,7 @@ Le projet doit rester **reproductible en priorité sur Ubuntu 24.04.4 LTS Deskto
 
 ## Statut du projet
 
-Version actuelle : v0.3.0
+Version actuelle : v0.3.1 (stabilisation qualité/CI/documentation, API v0.3.0)
 
 Fonctionnalités disponibles :
 
@@ -34,17 +34,20 @@ Fonctionnalités disponibles :
 - validation Docker Compose ;
 - validation rapide du dépôt avec `make check` / `make check-fast` ;
 - validation complète de reproductibilité avec `make check-full` ;
+- CI GitHub Actions minimale sur `push` et `pull_request` vers `master` ;
+- `AGENTS.md` documenté pour les agents IA ;
+- tests FastAPI renforcés avec `TestClient` ;
 - diagnostic réseau avancé en lecture seule ;
 - export JSON du diagnostic ;
 - export Markdown du diagnostic ;
 - rapports locaux dans `outputs/reports` ;
 - documentation de reproductibilité Fedora et Ubuntu ;
+- documentation préparatoire VPS et backups pour v0.4.0 ;
 - règles de sécurité en lecture seule.
 
 Fonctionnalités prévues plus tard :
 
-- CI GitHub Actions ;
-- déploiement VPS ;
+- déploiement VPS réel ;
 - intégration progressive OpenAI API ;
 - intégration contrôlée OpenClaw.
 
@@ -52,7 +55,7 @@ Fonctionnalités prévues plus tard :
 
 | Distribution | Version | Statut |
 |---|---|---|
-| Ubuntu Desktop LTS | 24.04.4 | Cible prioritaire à valider réellement |
+| Ubuntu Desktop LTS | 24.04.4 | Cible prioritaire, procédure de validation complétée et validation réelle à finaliser |
 | Fedora Workstation VM | 44 | Cible secondaire validée/à valider |
 
 > Le projet **ne prétend pas** fonctionner sur toutes les distributions Linux à ce stade.
@@ -92,7 +95,7 @@ make reports
 make down
 ```
 
-Documentation détaillée : `docs/reproductibilite-ubuntu-24.04.md`.
+Documentation détaillée : `docs/reproductibilite-ubuntu-24.04.md`. Journal de validation : `docs/validations/ubuntu-24.04.4-desktop-vm.md`.
 
 ## Bootstrap par distribution
 
@@ -184,7 +187,7 @@ La configuration locale doit rester sûre par défaut :
 
 ## Tests
 
-Les tests automatisés couvrent les fonctions associées aux endpoints FastAPI.
+Les tests automatisés couvrent les endpoints FastAPI avec `TestClient` et les fonctions de diagnostic isolées lorsque des fichiers sont écrits.
 
 ```bash
 python3 -m pip install -r app/requirements-dev.txt
@@ -218,6 +221,9 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 - [Workflow Git et GitHub](docs/workflow-git.md)
 - [Reproductibilité Linux générique](docs/reproductibilite-linux-generique.md)
 - [Reproductibilité Fedora 44](docs/reproductibilite-fedora-44-vm.md)
+- [Validation Ubuntu 24.04.4 Desktop](docs/validations/ubuntu-24.04.4-desktop-vm.md)
+- [Préparation VPS v0.4.0](docs/vps/README.md)
+- [Backups](docs/backups/README.md)
 - [Reproductibilité Ubuntu 24.04](docs/reproductibilite-ubuntu-24.04.md)
 - [Diagnostic réseau avancé v0.3.0](docs/diagnostic-reseau-v0.3.md)
 - [Journal d'apprentissage](docs/journal-apprentissage.md)

@@ -55,6 +55,25 @@ Inclus / livré :
 - tests API et diagnostics ;
 - documentation dédiée du diagnostic réseau avancé.
 
+## v0.3.1 - Qualité, CI et documentation de préparation VPS
+
+Objectif : stabiliser le dépôt avant la préparation v0.4.0 VPS.
+
+Inclus / livré :
+- CI GitHub Actions minimale sans secret ;
+- `AGENTS.md` complété avec règles de sécurité et workflow agents ;
+- tests API FastAPI renforcés ;
+- tests unitaires diagnostics complétés ;
+- documentation Ubuntu 24.04.4 LTS Desktop complétée ;
+- préparation documentaire VPS et backups sans déploiement réel ;
+- durcissement léger de l'image applicative Docker.
+
+Limites :
+- pas de déploiement VPS réel ;
+- pas d'authentification applicative ;
+- pas d'intégration OpenAI API ;
+- pas d'intégration OpenClaw.
+
 ## v0.4.0 - Déploiement VPS
 
 Objectif : déployer le lab sur un VPS sécurisé.

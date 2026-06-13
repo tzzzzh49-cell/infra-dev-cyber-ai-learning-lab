@@ -64,7 +64,7 @@ check_no_conflict_markers() {
     echo
     echo "==> Recherche de marqueurs de conflit Git"
 
-    if grep -R --line-number --exclude-dir=.git --exclude-dir=.venv --exclude-dir=outputs --exclude='*.pyc' -E '^(<<<<<<<|=======|>>>>>>>)' .; then
+    if rg --line-number --glob '!/.git' --glob '!/.venv' --glob '!outputs' --glob '!*.pyc' '^(<<<<<<<|=======|>>>>>>>)' .; then
         echo "ERREUR : des marqueurs de conflit Git restent dans le dépôt." >&2
         exit 1
     fi
@@ -83,6 +83,7 @@ check_commands() {
         curl
         shellcheck
         ansible-playbook
+        rg
     )
 
     for cmd in "${commands[@]}"; do
