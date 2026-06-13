@@ -127,8 +127,13 @@ check_paths() {
         scripts/compose.sh
         scripts/diagnostic_local.sh
         scripts/run_lab.sh
+        backup/init-local.sh
+        backup/backup-local.sh
+        backup/restore-test-local.sh
+        backup/restic-excludes.txt
         .env.example
         .env.vps.example
+        .env.backup.example
     )
 
     for path in "${required_paths[@]}"; do
@@ -189,7 +194,7 @@ check_compose() {
 check_shell_scripts() {
     echo
     echo "==> Vérification ShellCheck"
-    shellcheck scripts/*.sh
+    shellcheck scripts/*.sh backup/*.sh
     echo "OK   scripts Bash validés"
 }
 

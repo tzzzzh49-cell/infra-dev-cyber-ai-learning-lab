@@ -68,7 +68,7 @@ compose-config:
 	$(COMPOSE) config >/dev/null
 
 shellcheck:
-	shellcheck scripts/*.sh
+	shellcheck scripts/*.sh backup/*.sh
 
 lint-python: setup-dev
 	PYTHONDONTWRITEBYTECODE=1 $(VENV_PYTHON) -m ruff check --no-cache app

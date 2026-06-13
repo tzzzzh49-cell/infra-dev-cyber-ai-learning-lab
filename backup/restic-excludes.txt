@@ -1,0 +1,25 @@
+# Caches et environnements locaux
+.git
+.runtime
+.venv
+venv
+__pycache__
+.pytest_cache
+.ruff_cache
+
+# Environnements et secrets locaux
+.env
+.env.local
+.env.backup
+.env.backup.local
+*.pem
+*.key
+*.token
+id_rsa
+id_ed25519
+
+# Sorties non revues ou potentiellement sensibles
+outputs/raw
+outputs/rendered
+outputs/backups
+outputs/reports

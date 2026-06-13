@@ -10,6 +10,8 @@ venv/
 # Environnement local
 .env
 .env.local
+.env.backup
+.env.backup.local
 .runtime/
 
 # Logs

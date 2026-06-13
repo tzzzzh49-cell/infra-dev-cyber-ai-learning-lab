@@ -43,6 +43,7 @@ Fonctionnalités disponibles :
 - rapports locaux dans `outputs/reports` ;
 - documentation de reproductibilité Fedora et Ubuntu ;
 - documentation préparatoire VPS et backups pour v0.4.0 ;
+- base Restic local-first pour backups et drill de restauration local ;
 - règles de sécurité en lecture seule.
 
 Fonctionnalités prévues plus tard :
