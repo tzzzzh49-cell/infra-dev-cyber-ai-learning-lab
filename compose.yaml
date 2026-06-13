@@ -9,7 +9,7 @@ services:
     environment:
       APP_ENV: lab
     volumes:
-      - ./outputs:/workspace/outputs
+      - ./outputs:/workspace/outputs:Z
     ports:
       - "${APP_HOST:-127.0.0.1}:${APP_PORT:-8000}:8000"
     healthcheck:
