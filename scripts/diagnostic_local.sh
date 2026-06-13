@@ -52,7 +52,18 @@ check_api_diag() {
     local http_code
 
     err_file="$(mktemp)"
-    http_code="$(curl -sS --max-time 5 -o "$DIAG_JSON_FILE" -w "%{http_code}" "$API_DIAG_URL" 2>"$err_file" || true)"
+    local curl_args=(
+        -sS
+        --max-time 5
+        -o "$DIAG_JSON_FILE"
+        -w "%{http_code}"
+    )
+
+    if [ -n "${DIAG_ACCESS_TOKEN:-}" ]; then
+        curl_args+=(-H "Authorization: Bearer $DIAG_ACCESS_TOKEN")
+    fi
+
+    http_code="$(curl "${curl_args[@]}" "$API_DIAG_URL" 2>"$err_file" || true)"
 
     if [ "$http_code" = "200" ]; then
         API_DIAG_STATUS="OK"

@@ -109,6 +109,25 @@ Recommandation actuelle :
 
 Éviter d’exposer publiquement `/diag` sans authentification.
 
+## Protection des diagnostics HTTP
+
+Les routes suivantes sont sensibles :
+
+```text
+/diag
+/diag/export/json
+/diag/export/markdown
+```
+
+Comportement attendu :
+
+* en local, avec exposition sur `127.0.0.1`, elles restent accessibles pour l'apprentissage ;
+* si `DIAG_ACCESS_TOKEN` est défini, elles exigent un token via `Authorization: Bearer <token>` ou `X-Diag-Token` ;
+* si `APP_ENV=vps` est actif, elles exigent `DIAG_ACCESS_TOKEN` ;
+* si `APP_ENV=vps` est actif sans token configuré, elles refusent l'accès au lieu de s'exposer sans protection.
+
+Ne jamais commiter la valeur réelle de `DIAG_ACCESS_TOKEN`. Les fichiers `.env*.example` doivent garder cette variable vide.
+
 ## Règles pour OpenAI API
 
 L’API OpenAI ne doit pas exécuter de commandes.

@@ -123,12 +123,26 @@ Détail :
 6. `make reports` liste les fichiers présents dans `outputs/reports` sans échouer si le dossier est absent.
 7. `make down` arrête l'application.
 
+## Protection des routes sensibles
+
+En local, sans `DIAG_ACCESS_TOKEN` et hors mode VPS, les commandes `make diag`, `make diag-json` et `make diag-md` restent utilisables sur `127.0.0.1`.
+
+Pour un environnement VPS ou préproduction :
+
+- définir `APP_ENV=vps` ;
+- définir `DIAG_ACCESS_TOKEN` dans un fichier `.env` privé non commité ;
+- appeler les routes sensibles avec `Authorization: Bearer <token>` ou `X-Diag-Token: <token>` ;
+- garder l'API liée à `127.0.0.1` derrière un reverse proxy HTTPS authentifié.
+
+Si `APP_ENV=vps` est actif mais que `DIAG_ACCESS_TOKEN` est vide, `/diag`, `/diag/export/json` et `/diag/export/markdown` renvoient une erreur et ne publient pas le diagnostic.
+
 ## Notes de sécurité
 
 - Le mode reste strictement lecture seule.
 - Les commandes sont exécutées sans `shell=True` côté Python.
 - Les timeouts courts évitent qu'une commande bloque indéfiniment.
 - `/diag` peut exposer des informations locales sensibles et ne doit pas être exposé publiquement sans authentification.
+- Les exports `/diag/export/json` et `/diag/export/markdown` suivent la même règle de protection que `/diag`.
 - Aucun secret réel ne doit être ajouté aux rapports, scripts ou exemples de configuration.
 
 ## Notes de reproductibilité Ubuntu 24.04.4 LTS Desktop

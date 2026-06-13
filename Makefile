@@ -5,6 +5,7 @@ DEFAULT_APP_URL ?= http://127.0.0.1:8000
 APP_URL ?= $(shell test -f "$(APP_URL_FILE)" && cat "$(APP_URL_FILE)" || printf '%s' "$(DEFAULT_APP_URL)")
 COMPOSE ?= ./scripts/compose.sh
 CURL ?= curl -fsS
+DIAG_CURL_AUTH ?= $(if $(DIAG_ACCESS_TOKEN),-H "Authorization: Bearer $(DIAG_ACCESS_TOKEN)",)
 PYTHON ?= python3
 VENV ?= .venv
 VENV_PYTHON := $(VENV)/bin/python
@@ -100,15 +101,15 @@ version:
 	@echo ""
 
 diag:
-	@$(CURL) $(APP_URL)/diag
+	@$(CURL) $(DIAG_CURL_AUTH) $(APP_URL)/diag
 	@echo ""
 
 diag-json:
-	@$(CURL) -X POST $(APP_URL)/diag/export/json
+	@$(CURL) $(DIAG_CURL_AUTH) -X POST $(APP_URL)/diag/export/json
 	@echo ""
 
 diag-md:
-	@$(CURL) -X POST $(APP_URL)/diag/export/markdown
+	@$(CURL) $(DIAG_CURL_AUTH) -X POST $(APP_URL)/diag/export/markdown
 	@echo ""
 
 reports:

@@ -185,6 +185,8 @@ La configuration locale doit rester sûre par défaut :
 - `.env.example` utilise `APP_HOST=127.0.0.1` pour exposer l'API uniquement sur la machine locale ;
 - ne pas utiliser `APP_HOST=0.0.0.0` sans authentification et sans reverse proxy HTTPS sécurisé ;
 - `/diag` peut contenir des informations système et **ne doit pas être exposé publiquement** sans authentification et reverse proxy sécurisé ;
+- en mode `APP_ENV=vps`, `/diag`, `/diag/export/json` et `/diag/export/markdown` exigent `DIAG_ACCESS_TOKEN` ;
+- si `APP_ENV=vps` est actif mais que `DIAG_ACCESS_TOKEN` est vide, les routes de diagnostic refusent l'accès au lieu de s'exposer sans protection ;
 - aucun secret réel ne doit être ajouté dans les fichiers `.env*.example`, la documentation ou les scripts.
 
 ## Tests
