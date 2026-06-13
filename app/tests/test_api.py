@@ -1,13 +1,25 @@
-from app.main import (
-    APP_VERSION,
-    app,
-    diag,
-    export_diag_json,
-    export_diag_markdown,
-    health,
-    root,
-    version,
-)
+import pytest
+from fastapi.testclient import TestClient
+
+from app.main import APP_VERSION, app
+
+
+@pytest.fixture
+def client(monkeypatch):
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.delenv("DIAG_ACCESS_TOKEN", raising=False)
+    return TestClient(app)
+
+
+def sample_report():
+    return {
+        "metadata": {"schema_version": APP_VERSION},
+        "system": {},
+        "network": {},
+        "resources": {},
+        "docker": {},
+        "security": {},
+    }
 
 
 def route_methods(path):
@@ -31,8 +43,11 @@ def test_app_registers_expected_routes():
         assert method in route_methods(path)
 
 
-def test_get_root_returns_available_endpoints():
-    data = root()
+def test_get_root_returns_available_endpoints(client):
+    response = client.get("/")
+
+    assert response.status_code == 200
+    data = response.json()
 
     assert data["message"] == "Mini API locale active"
     assert "/health" in data["endpoints"]
@@ -42,32 +57,30 @@ def test_get_root_returns_available_endpoints():
     assert "/diag/export/markdown" in data["endpoints"]
 
 
-def test_get_health_returns_ok_status():
-    assert health() == {"status": "ok", "service": "lab-api"}
+def test_get_health_returns_ok_status(client):
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "service": "lab-api"}
 
 
-def test_get_version_returns_app_version():
-    assert version() == {
+def test_get_version_returns_app_version(client):
+    response = client.get("/version")
+
+    assert response.status_code == 200
+    assert response.json() == {
         "app": "infra-dev-cyber-ai-learning-lab-api",
         "version": APP_VERSION,
     }
 
 
-def test_get_diag_returns_structured_diagnostic(monkeypatch):
-    monkeypatch.setattr(
-        "app.main.collect_network_diagnostic",
-        lambda: {
-            "metadata": {"schema_version": APP_VERSION},
-            "system": {},
-            "network": {},
-            "resources": {},
-            "docker": {},
-            "security": {},
-        },
-    )
+def test_get_diag_returns_structured_diagnostic(client, monkeypatch):
+    monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
-    data = diag()
+    response = client.get("/diag")
 
+    assert response.status_code == 200
+    data = response.json()
     assert "metadata" in data
     assert "system" in data
     assert "network" in data
@@ -76,16 +89,8 @@ def test_get_diag_returns_structured_diagnostic(monkeypatch):
     assert "security" in data
 
 
-def test_post_diag_export_json_uses_isolated_output(tmp_path, monkeypatch):
-    report = {
-        "metadata": {"schema_version": APP_VERSION},
-        "system": {},
-        "network": {},
-        "resources": {},
-        "docker": {},
-        "security": {},
-    }
-    monkeypatch.setattr("app.main.collect_network_diagnostic", lambda: report)
+def test_post_diag_export_json_uses_isolated_output(client, tmp_path, monkeypatch):
+    monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
     def fake_write_json_report(_report):
         path = tmp_path / "diagnostic.json"
@@ -94,23 +99,17 @@ def test_post_diag_export_json_uses_isolated_output(tmp_path, monkeypatch):
 
     monkeypatch.setattr("app.main.write_json_report", fake_write_json_report)
 
-    data = export_diag_json()
+    response = client.post("/diag/export/json")
 
+    assert response.status_code == 200
+    data = response.json()
     assert data["status"] == "ok"
     assert data["format"] == "json"
     assert data["path"] == str(tmp_path / "diagnostic.json")
 
 
-def test_post_diag_export_markdown_uses_isolated_output(tmp_path, monkeypatch):
-    report = {
-        "metadata": {"schema_version": APP_VERSION},
-        "system": {},
-        "network": {},
-        "resources": {},
-        "docker": {},
-        "security": {},
-    }
-    monkeypatch.setattr("app.main.collect_network_diagnostic", lambda: report)
+def test_post_diag_export_markdown_uses_isolated_output(client, tmp_path, monkeypatch):
+    monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
     def fake_write_markdown_report(_report):
         path = tmp_path / "diagnostic.md"
@@ -119,8 +118,80 @@ def test_post_diag_export_markdown_uses_isolated_output(tmp_path, monkeypatch):
 
     monkeypatch.setattr("app.main.write_markdown_report", fake_write_markdown_report)
 
-    data = export_diag_markdown()
+    response = client.post("/diag/export/markdown")
 
+    assert response.status_code == 200
+    data = response.json()
     assert data["status"] == "ok"
     assert data["format"] == "markdown"
     assert data["path"] == str(tmp_path / "diagnostic.md")
+
+
+def test_diag_is_blocked_in_vps_mode_without_configured_token(client, monkeypatch):
+    monkeypatch.setenv("APP_ENV", "vps")
+
+    response = client.get("/diag")
+
+    assert response.status_code == 503
+
+
+def test_diag_requires_token_when_configured(client, monkeypatch):
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN", "test-token")
+
+    response = client.get("/diag")
+
+    assert response.status_code == 401
+
+
+def test_diag_rejects_invalid_token(client, monkeypatch):
+    monkeypatch.setenv("APP_ENV", "vps")
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN", "test-token")
+
+    response = client.get("/diag", headers={"Authorization": "Bearer wrong-token"})
+
+    assert response.status_code == 401
+
+
+def test_diag_accepts_bearer_token(client, monkeypatch):
+    monkeypatch.setenv("APP_ENV", "vps")
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
+
+    response = client.get("/diag", headers={"Authorization": "Bearer test-token"})
+
+    assert response.status_code == 200
+    assert response.json()["metadata"]["schema_version"] == APP_VERSION
+
+
+def test_diag_export_json_rejects_missing_token(client, monkeypatch):
+    monkeypatch.setenv("APP_ENV", "vps")
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN", "test-token")
+
+    response = client.post("/diag/export/json")
+
+    assert response.status_code == 401
+
+
+def test_diag_export_markdown_accepts_x_diag_token(
+    client,
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setenv("APP_ENV", "vps")
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
+
+    def fake_write_markdown_report(_report):
+        path = tmp_path / "diagnostic.md"
+        path.write_text("# diagnostic\n", encoding="utf-8")
+        return str(path)
+
+    monkeypatch.setattr("app.main.write_markdown_report", fake_write_markdown_report)
+
+    response = client.post(
+        "/diag/export/markdown",
+        headers={"X-Diag-Token": "test-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["path"] == str(tmp_path / "diagnostic.md")

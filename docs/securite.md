@@ -109,14 +109,35 @@ Recommandation actuelle :
 
 Éviter d’exposer publiquement `/diag` sans authentification.
 
+## Protection des diagnostics HTTP
+
+Les routes suivantes sont sensibles :
+
+```text
+/diag
+/diag/export/json
+/diag/export/markdown
+```
+
+Comportement attendu :
+
+* en local, avec exposition sur `127.0.0.1`, elles restent accessibles pour l'apprentissage ;
+* si `DIAG_ACCESS_TOKEN` est défini, elles exigent un token via `Authorization: Bearer <token>` ou `X-Diag-Token` ;
+* si `APP_ENV=vps` est actif, elles exigent `DIAG_ACCESS_TOKEN` ;
+* si `APP_ENV=vps` est actif sans token configuré, elles refusent l'accès au lieu de s'exposer sans protection.
+
+Ne jamais commiter la valeur réelle de `DIAG_ACCESS_TOKEN`. Les fichiers `.env*.example` doivent garder cette variable vide.
+
 ## Règles pour OpenAI API
+
+Il n'existe pas encore d'intégration OpenAI active dans le projet.
 
 L’API OpenAI ne doit pas exécuter de commandes.
 
 Usage autorisé au début :
 
 * résumer un rapport ;
-* expliquer une erreur ;
+* extraire des risques depuis un rapport déjà généré ;
 * proposer une checklist ;
 * classer les risques.
 
@@ -129,16 +150,19 @@ Usage interdit au début :
 
 ## Règles pour OpenClaw
 
-OpenClaw devra être limité par une allowlist.
+Il n'existe pas encore d'intégration OpenClaw active dans le projet.
 
-Au début, OpenClaw pourra seulement :
+OpenClaw devra être limité par une allowlist et par une validation humaine.
+
+Dans une future intégration, OpenClaw pourra seulement aider à :
 
 * lire un rapport ;
-* appeler un script de diagnostic lecture seule ;
+* préparer l'appel d'un runbook lecture seule ;
 * demander un résumé IA.
 
 OpenClaw ne devra pas pouvoir exécuter :
 
+* commandes automatiques sans validation humaine ;
 * commandes `sudo` ;
 * commandes de suppression ;
 * modifications réseau ;

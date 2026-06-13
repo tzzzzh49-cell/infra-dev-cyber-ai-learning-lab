@@ -2,6 +2,8 @@
 
 ## Principe
 
+Statut : proposition documentaire non active.
+
 Par défaut, tout est interdit.
 
 Seules les commandes explicitement listées ici pourront être autorisées plus tard.
@@ -9,6 +11,7 @@ Seules les commandes explicitement listées ici pourront être autorisées plus 
 OpenClaw ne doit pas exécuter de commande shell libre.
 OpenClaw ne doit pas accepter de commande destructive.
 OpenClaw ne doit pas modifier le réseau au début du projet.
+OpenClaw ne doit pas exécuter automatiquement une commande sans validation humaine explicite.
 
 ## Commandes autorisées au départ
 
@@ -18,7 +21,7 @@ Commande utilisateur :
 
 diagnostic lab
 
-Commande système autorisée :
+Commande proposée pour revue humaine :
 
 ./scripts/diagnostic_local.sh
 
@@ -28,7 +31,7 @@ faible
 
 Raison :
 
-lecture d’état uniquement + génération d’un rapport Markdown.
+lecture d’état uniquement + génération d’un rapport Markdown, après validation humaine.
 
 ## Commandes éventuellement autorisées plus tard
 

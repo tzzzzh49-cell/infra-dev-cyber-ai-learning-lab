@@ -1,0 +1,30 @@
+{
+    email <ADMIN_EMAIL>
+}
+
+<LAB_DOMAIN> {
+    encode zstd gzip
+
+    @diagnostics {
+        path /diag /diag/export/json /diag/export/markdown
+    }
+
+    handle @diagnostics {
+        basicauth {
+            <BASIC_AUTH_USER> <CADDY_HASHED_PASSWORD>
+        }
+
+        header {
+            Cache-Control "no-store"
+            X-Content-Type-Options "nosniff"
+        }
+
+        reverse_proxy 127.0.0.1:8000 {
+            header_up X-Diag-Token {env.DIAG_ACCESS_TOKEN}
+        }
+    }
+
+    handle {
+        reverse_proxy 127.0.0.1:8000
+    }
+}

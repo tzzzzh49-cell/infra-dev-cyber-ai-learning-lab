@@ -7,7 +7,8 @@ services:
     image: infra-dev-cyber-ai-learning-lab-api:0.3.0
     container_name: infra-dev-cyber-ai-learning-lab-api
     environment:
-      APP_ENV: lab
+      APP_ENV: ${APP_ENV:-lab}
+      DIAG_ACCESS_TOKEN: ${DIAG_ACCESS_TOKEN:-}
     volumes:
       - ./outputs:/workspace/outputs:Z
     ports:

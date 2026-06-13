@@ -1,5 +1,7 @@
 # Runbook OpenClaw — diagnostic lab
 
+Statut : proposition documentaire non active.
+
 ## Commande utilisateur
 
 diagnostic lab
@@ -12,15 +14,15 @@ Cette commande doit produire un rapport Markdown dans :
 
 outputs/reports/
 
-## Action autorisée
+## Action proposée après validation humaine
 
-Commande locale autorisée :
+Commande locale proposée :
 
 ./scripts/diagnostic_local.sh
 
 ## Réponse attendue
 
-OpenClaw devra répondre avec :
+Un futur assistant contrôlé pourra répondre avec :
 
 - un résumé court ;
 - le chemin du rapport généré ;
@@ -35,7 +37,7 @@ Rapport généré : outputs/reports/diagnostic-YYYY-MM-DD-HHMM.md
 
 Cette commande est read-only.
 
-Elle a le droit de lire :
+Elle ne doit être lancée qu'après validation humaine. Elle a le droit de lire :
 
 - date
 - hostname
@@ -80,7 +82,8 @@ Interdit :
 
 La commande est réussie si :
 
-1. le script scripts/diagnostic_local.sh est lancé ;
-2. un rapport est créé dans outputs/reports/ ;
-3. aucune modification système ou réseau n’est effectuée ;
-4. le chemin du rapport est affiché à l’utilisateur.
+1. la validation humaine est obtenue avant lancement ;
+2. le script scripts/diagnostic_local.sh est lancé ;
+3. un rapport est créé dans outputs/reports/ ;
+4. aucune modification système ou réseau n’est effectuée ;
+5. le chemin du rapport est affiché à l’utilisateur.

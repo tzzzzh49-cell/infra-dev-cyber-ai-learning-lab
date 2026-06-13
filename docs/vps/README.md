@@ -9,7 +9,8 @@ Principes :
 - aucun secret ;
 - exposition applicative locale privilégiée sur `127.0.0.1` ;
 - reverse proxy HTTPS devant l'application avant toute exposition publique ;
-- `/diag` ne doit jamais être public sans authentification.
+- `/diag` et les exports de diagnostic ne doivent jamais être publics sans authentification ;
+- `APP_ENV=vps` doit activer la protection applicative par `DIAG_ACCESS_TOKEN`.
 
 Documents :
 
@@ -18,3 +19,8 @@ Documents :
 3. [Installation Docker](03-install-docker.md)
 4. [Déploiement Compose](04-deploiement-compose.md)
 5. [HTTPS et reverse proxy](05-https-reverse-proxy.md)
+6. [DNS et Cloudflare](06-dns-cloudflare.md)
+
+Exemple de configuration Caddy :
+
+- [Caddyfile.example](Caddyfile.example)

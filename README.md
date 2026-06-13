@@ -43,6 +43,7 @@ Fonctionnalités disponibles :
 - rapports locaux dans `outputs/reports` ;
 - documentation de reproductibilité Fedora et Ubuntu ;
 - documentation préparatoire VPS et backups pour v0.4.0 ;
+- base Restic local-first pour backups et drill de restauration local ;
 - règles de sécurité en lecture seule.
 
 Fonctionnalités prévues plus tard :
@@ -55,8 +56,8 @@ Fonctionnalités prévues plus tard :
 
 | Distribution | Version | Statut |
 |---|---|---|
-| Ubuntu Desktop LTS | 24.04.4 | Cible prioritaire, procédure de validation complétée et validation réelle à finaliser |
-| Fedora Workstation VM | 44 | Cible secondaire validée/à valider |
+| Ubuntu Desktop LTS | 24.04.4 | Cible prioritaire, procédure prête, validation réelle complète à finaliser |
+| Fedora Workstation VM | 44 | Cible secondaire, validation séparée à maintenir |
 
 > Le projet **ne prétend pas** fonctionner sur toutes les distributions Linux à ce stade.
 
@@ -96,6 +97,8 @@ make down
 ```
 
 Documentation détaillée : `docs/reproductibilite-ubuntu-24.04.md`. Journal de validation : `docs/validations/ubuntu-24.04.4-desktop-vm.md`.
+
+La documentation Ubuntu décrit la procédure attendue et la checklist de validation. Elle ne doit être marquée comme réellement validée que lorsque les commandes ont été rejouées sur une VM Ubuntu 24.04.4 LTS Desktop propre et que les résultats sont consignés dans le journal de validation.
 
 ## Bootstrap par distribution
 
@@ -183,6 +186,8 @@ La configuration locale doit rester sûre par défaut :
 - `.env.example` utilise `APP_HOST=127.0.0.1` pour exposer l'API uniquement sur la machine locale ;
 - ne pas utiliser `APP_HOST=0.0.0.0` sans authentification et sans reverse proxy HTTPS sécurisé ;
 - `/diag` peut contenir des informations système et **ne doit pas être exposé publiquement** sans authentification et reverse proxy sécurisé ;
+- en mode `APP_ENV=vps`, `/diag`, `/diag/export/json` et `/diag/export/markdown` exigent `DIAG_ACCESS_TOKEN` ;
+- si `APP_ENV=vps` est actif mais que `DIAG_ACCESS_TOKEN` est vide, les routes de diagnostic refusent l'accès au lieu de s'exposer sans protection ;
 - aucun secret réel ne doit être ajouté dans les fichiers `.env*.example`, la documentation ou les scripts.
 
 ## Tests
@@ -224,6 +229,7 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 - [Validation Ubuntu 24.04.4 Desktop](docs/validations/ubuntu-24.04.4-desktop-vm.md)
 - [Préparation VPS v0.4.0](docs/vps/README.md)
 - [Backups](docs/backups/README.md)
+- [Placeholders OpenAI et OpenClaw](docs/ai/README.md)
 - [Reproductibilité Ubuntu 24.04](docs/reproductibilite-ubuntu-24.04.md)
 - [Diagnostic réseau avancé v0.3.0](docs/diagnostic-reseau-v0.3.md)
 - [Journal d'apprentissage](docs/journal-apprentissage.md)
