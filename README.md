@@ -55,8 +55,8 @@ Fonctionnalités prévues plus tard :
 
 | Distribution | Version | Statut |
 |---|---|---|
-| Ubuntu Desktop LTS | 24.04.4 | Cible prioritaire, procédure de validation complétée et validation réelle à finaliser |
-| Fedora Workstation VM | 44 | Cible secondaire validée/à valider |
+| Ubuntu Desktop LTS | 24.04.4 | Cible prioritaire, procédure prête, validation réelle complète à finaliser |
+| Fedora Workstation VM | 44 | Cible secondaire, validation séparée à maintenir |
 
 > Le projet **ne prétend pas** fonctionner sur toutes les distributions Linux à ce stade.
 
@@ -96,6 +96,8 @@ make down
 ```
 
 Documentation détaillée : `docs/reproductibilite-ubuntu-24.04.md`. Journal de validation : `docs/validations/ubuntu-24.04.4-desktop-vm.md`.
+
+La documentation Ubuntu décrit la procédure attendue et la checklist de validation. Elle ne doit être marquée comme réellement validée que lorsque les commandes ont été rejouées sur une VM Ubuntu 24.04.4 LTS Desktop propre et que les résultats sont consignés dans le journal de validation.
 
 ## Bootstrap par distribution
 

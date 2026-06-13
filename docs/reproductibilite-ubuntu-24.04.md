@@ -1,6 +1,6 @@
 # Reproductibilité sur Ubuntu 24.04.4 LTS
 
-Ce guide décrit un flux reproductible validé sur une VM Ubuntu 24.04.4 LTS Desktop.
+Ce guide décrit le flux reproductible attendu sur une VM Ubuntu 24.04.4 LTS Desktop. La cible Ubuntu reste prioritaire, mais ce document ne suffit pas à prouver une validation réelle : les résultats doivent être rejoués et consignés dans `docs/validations/ubuntu-24.04.4-desktop-vm.md`.
 
 ## Pré-requis Ubuntu
 
@@ -9,13 +9,15 @@ Ce guide décrit un flux reproductible validé sur une VM Ubuntu 24.04.4 LTS Des
 - Accès réseau sortant (GitHub + Docker Hub + dépôt Docker)
 - Git installé (sinon via le script de bootstrap)
 
-## Validation réelle
+## Statut de validation
 
-Une validation réelle a été effectuée sur une VM Ubuntu 24.04.4 LTS Desktop.
+Statut actuel : **validation réelle complète à finaliser**.
 
-Rapport de validation :
+La procédure est documentée et prête à être exécutée. Ne marquer Ubuntu comme **validé** que si la checklist du journal de validation contient les résultats réels des commandes exécutées sur une VM Ubuntu 24.04.4 LTS Desktop propre.
 
-docs/validations/ubuntu-24.04.4-desktop-vm.md
+Journal de validation :
+
+`docs/validations/ubuntu-24.04.4-desktop-vm.md`
 
 ## 1) Cloner le dépôt
 
@@ -93,6 +95,27 @@ Résultats attendus :
 - `make diagnostic-local` crée un rapport Markdown local et sauvegarde la réponse JSON de `/diag` si l'API est disponible ;
 - `make reports` liste les rapports générés sans échouer ;
 - `make down` arrête proprement l'application.
+
+## Checklist de validation Ubuntu
+
+À cocher uniquement après exécution réelle sur une VM Ubuntu 24.04.4 LTS Desktop propre :
+
+- [ ] `make bootstrap-ubuntu` exécuté sans erreur bloquante ;
+- [ ] reconnexion effectuée si l'utilisateur a été ajouté au groupe `docker` ;
+- [ ] `make check` réussi ;
+- [ ] `make test` réussi ;
+- [ ] `make lint` réussi ;
+- [ ] `make compose-config` réussi ;
+- [ ] `make check-full` réussi ou écart documenté ;
+- [ ] `make run` démarre l'API sur `127.0.0.1` ;
+- [ ] `make health` retourne `status=ok` ;
+- [ ] `make version` retourne la version applicative ;
+- [ ] `make diag` retourne un diagnostic structuré en lecture seule ;
+- [ ] `make diag-json` crée un rapport JSON local ;
+- [ ] `make diag-md` crée un rapport Markdown local ;
+- [ ] `make diagnostic-local` génère le rapport local attendu ;
+- [ ] `make reports` liste les rapports ;
+- [ ] `make down` arrête l'application proprement.
 
 ## 8) Arrêt propre
 
