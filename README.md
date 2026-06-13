@@ -229,6 +229,7 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 - [Validation Ubuntu 24.04.4 Desktop](docs/validations/ubuntu-24.04.4-desktop-vm.md)
 - [Préparation VPS v0.4.0](docs/vps/README.md)
 - [Backups](docs/backups/README.md)
+- [Placeholders OpenAI et OpenClaw](docs/ai/README.md)
 - [Reproductibilité Ubuntu 24.04](docs/reproductibilite-ubuntu-24.04.md)
 - [Diagnostic réseau avancé v0.3.0](docs/diagnostic-reseau-v0.3.md)
 - [Journal d'apprentissage](docs/journal-apprentissage.md)

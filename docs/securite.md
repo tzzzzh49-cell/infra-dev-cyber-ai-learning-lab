@@ -130,12 +130,14 @@ Ne jamais commiter la valeur réelle de `DIAG_ACCESS_TOKEN`. Les fichiers `.env*
 
 ## Règles pour OpenAI API
 
+Il n'existe pas encore d'intégration OpenAI active dans le projet.
+
 L’API OpenAI ne doit pas exécuter de commandes.
 
 Usage autorisé au début :
 
 * résumer un rapport ;
-* expliquer une erreur ;
+* extraire des risques depuis un rapport déjà généré ;
 * proposer une checklist ;
 * classer les risques.
 
@@ -148,16 +150,19 @@ Usage interdit au début :
 
 ## Règles pour OpenClaw
 
-OpenClaw devra être limité par une allowlist.
+Il n'existe pas encore d'intégration OpenClaw active dans le projet.
 
-Au début, OpenClaw pourra seulement :
+OpenClaw devra être limité par une allowlist et par une validation humaine.
+
+Dans une future intégration, OpenClaw pourra seulement aider à :
 
 * lire un rapport ;
-* appeler un script de diagnostic lecture seule ;
+* préparer l'appel d'un runbook lecture seule ;
 * demander un résumé IA.
 
 OpenClaw ne devra pas pouvoir exécuter :
 
+* commandes automatiques sans validation humaine ;
 * commandes `sudo` ;
 * commandes de suppression ;
 * modifications réseau ;
