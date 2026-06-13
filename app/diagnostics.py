@@ -140,32 +140,37 @@ def read_resolv_conf(path: str = "/etc/resolv.conf") -> dict[str, Any]:
     return data
 
 
-def collect_resolvectl() -> dict[str, Any]:
+def collect_resolvectl(timeout: int = 3) -> dict[str, Any]:
     """Collect DNS information from resolvectl when available."""
-    dns_result = run_read_only_command(["resolvectl", "dns"])
+    dns_result = run_read_only_command(["resolvectl", "dns"], timeout=timeout)
     if dns_result["available"] and dns_result["returncode"] == 0:
         return dns_result
 
-    status_result = run_read_only_command(["resolvectl", "status"])
+    status_result = run_read_only_command(["resolvectl", "status"], timeout=timeout)
     status_result["fallback_from"] = dns_result
     return status_result
 
 
-def command_with_parsed_json(command: list[str]) -> dict[str, Any]:
+def command_with_parsed_json(command: list[str], timeout: int = 3) -> dict[str, Any]:
     """Run a command and attach parsed JSON output when valid."""
-    result = run_read_only_command(command)
+    result = run_read_only_command(command, timeout=timeout)
     result["parsed"] = parse_json_output(result)
     return result
 
 
-def collect_network_diagnostic() -> dict[str, Any]:
+def collect_network_diagnostic(
+    resolv_conf_path: str = "/etc/resolv.conf",
+    command_timeout: int = 3,
+) -> dict[str, Any]:
     """Collect an advanced read-only system and network diagnostic."""
-    interfaces = command_with_parsed_json(["ip", "-j", "addr"])
-    routes = command_with_parsed_json(["ip", "-j", "route"])
-    ports = run_read_only_command(["ss", "-tulpn"])
-    disk = run_read_only_command(["df", "-h"])
-    memory = run_read_only_command(["free", "-h"])
-    docker = run_read_only_command(["docker", "ps", "--format", "{{json .}}"])
+    interfaces = command_with_parsed_json(["ip", "-j", "addr"], timeout=command_timeout)
+    routes = command_with_parsed_json(["ip", "-j", "route"], timeout=command_timeout)
+    ports = run_read_only_command(["ss", "-tulpn"], timeout=command_timeout)
+    disk = run_read_only_command(["df", "-h"], timeout=command_timeout)
+    memory = run_read_only_command(["free", "-h"], timeout=command_timeout)
+    docker = run_read_only_command(
+        ["docker", "ps", "--format", "{{json .}}"], timeout=command_timeout
+    )
     docker["parsed"] = parse_json_lines(docker)
 
     return {
@@ -179,8 +184,8 @@ def collect_network_diagnostic() -> dict[str, Any]:
             "interfaces": interfaces,
             "routes": routes,
             "dns": {
-                "resolv_conf": read_resolv_conf(),
-                "resolvectl": collect_resolvectl(),
+                "resolv_conf": read_resolv_conf(resolv_conf_path),
+                "resolvectl": collect_resolvectl(timeout=command_timeout),
             },
             "ports": ports,
         },
@@ -196,7 +201,7 @@ def collect_network_diagnostic() -> dict[str, Any]:
     }
 
 
-def ensure_report_dir(output_dir: str) -> Path:
+def ensure_report_dir(output_dir: str | Path) -> Path:
     """Create and return the report directory path."""
     report_dir = Path(output_dir)
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -205,7 +210,7 @@ def ensure_report_dir(output_dir: str) -> Path:
 
 def write_json_report(
     report: dict[str, Any],
-    output_dir: str = DEFAULT_REPORT_DIR,
+    output_dir: str | Path = DEFAULT_REPORT_DIR,
 ) -> str:
     """Write a timestamped JSON diagnostic report and return its path."""
     report_dir = ensure_report_dir(output_dir)
@@ -243,7 +248,7 @@ def command_block(section: dict[str, Any]) -> str:
 
 def write_markdown_report(
     report: dict[str, Any],
-    output_dir: str = DEFAULT_REPORT_DIR,
+    output_dir: str | Path = DEFAULT_REPORT_DIR,
 ) -> str:
     """Write a readable timestamped Markdown diagnostic report and return its path."""
     report_dir = ensure_report_dir(output_dir)

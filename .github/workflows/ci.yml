@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+jobs:
+  check:
+    name: Lint, compose config and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends shellcheck ansible
+          docker --version
+          docker compose version
+
+      - name: Install Python development dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r app/requirements-dev.txt
+
+      - name: Python lint
+        run: make lint-python
+
+      - name: ShellCheck
+        run: make shellcheck
+
+      - name: Docker Compose config
+        run: make compose-config
+
+      - name: Tests
+        run: make test
+
+  # check-full is intentionally not enabled by default because it is heavier
+  # and may require a more complete runner environment. Run locally before merge:
+  # make check-full
