@@ -4,10 +4,12 @@ services:
   api:
     build:
       context: ./app
-    image: infra-dev-cyber-ai-learning-lab-api:0.2.0
+    image: infra-dev-cyber-ai-learning-lab-api:0.3.0
     container_name: infra-dev-cyber-ai-learning-lab-api
     environment:
       APP_ENV: lab
+    volumes:
+      - ./outputs:/workspace/outputs
     ports:
       - "${APP_HOST:-127.0.0.1}:${APP_PORT:-8000}:8000"
     healthcheck:

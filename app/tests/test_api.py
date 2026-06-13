@@ -8,6 +8,8 @@ def test_root_returns_available_endpoints():
     assert "/health" in data["endpoints"]
     assert "/version" in data["endpoints"]
     assert "/diag" in data["endpoints"]
+    assert "/diag/export/json" in data["endpoints"]
+    assert "/diag/export/markdown" in data["endpoints"]
 
 
 def test_health_returns_ok_status():
@@ -21,14 +23,14 @@ def test_version_returns_app_version():
     data = version()
 
     assert data["app"] == "infra-dev-cyber-ai-learning-lab-api"
-    assert data["version"] == "0.2.0"
+    assert data["version"] == "0.3.0"
 
 
-def test_diag_returns_system_information():
+def test_diag_returns_structured_diagnostic():
     data = diag()
 
-    assert "hostname" in data
-    assert "platform" in data
-    assert "platform_version" in data
-    assert "python_version" in data
-    assert "time_utc" in data
+    assert "metadata" in data
+    assert "system" in data
+    assert "network" in data
+    assert "resources" in data
+    assert "security" in data
