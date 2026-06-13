@@ -38,6 +38,10 @@ if [ -x ".venv/bin/python" ]; then
     PYTHON_CMD=".venv/bin/python"
 fi
 
+export ANSIBLE_LOCAL_TEMP="${ANSIBLE_LOCAL_TEMP:-/tmp/ansible-local}"
+export BUILDX_CONFIG="${BUILDX_CONFIG:-/tmp/buildx-config}"
+mkdir -p "$ANSIBLE_LOCAL_TEMP" "$BUILDX_CONFIG"
+
 require_command() {
     local cmd="$1"
 
