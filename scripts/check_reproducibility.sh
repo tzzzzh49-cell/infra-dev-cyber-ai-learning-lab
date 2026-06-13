@@ -38,8 +38,10 @@ if [ -x ".venv/bin/python" ]; then
     PYTHON_CMD=".venv/bin/python"
 fi
 
-export ANSIBLE_LOCAL_TEMP="${ANSIBLE_LOCAL_TEMP:-/tmp/ansible-local}"
-export BUILDX_CONFIG="${BUILDX_CONFIG:-/tmp/buildx-config}"
+VALIDATION_TMP="${VALIDATION_TMP:-/tmp/infra-dev-cyber-ai-learning-lab}"
+export ANSIBLE_LOCAL_TEMP="${ANSIBLE_LOCAL_TEMP:-$VALIDATION_TMP/ansible-local}"
+export BUILDX_CONFIG="${BUILDX_CONFIG:-$VALIDATION_TMP/buildx-config}"
+export PYTHONDONTWRITEBYTECODE="${PYTHONDONTWRITEBYTECODE:-1}"
 mkdir -p "$ANSIBLE_LOCAL_TEMP" "$BUILDX_CONFIG"
 
 require_command() {
@@ -137,7 +139,7 @@ check_paths() {
 check_python() {
     echo
     echo "==> Vérification Python"
-    "$PYTHON_CMD" -m py_compile app/main.py
+    "$PYTHON_CMD" -c 'import ast; from pathlib import Path; path = Path("app/main.py"); ast.parse(path.read_text(encoding="utf-8"), filename=str(path))'
     echo "OK   app/main.py est syntaxiquement valide"
 }
 
@@ -152,7 +154,7 @@ check_ruff() {
         exit 1
     fi
 
-    "$PYTHON_CMD" -m ruff check app
+    "$PYTHON_CMD" -m ruff check --no-cache app
     echo "OK   Ruff validé"
 }
 
@@ -173,7 +175,7 @@ check_pytest() {
         exit 1
     fi
 
-    PYTHONPATH=. "$PYTHON_CMD" -m pytest app/tests -v
+    PYTHONPATH=. "$PYTHON_CMD" -m pytest -p no:cacheprovider app/tests -v
     echo "OK   tests Python validés"
 }
 

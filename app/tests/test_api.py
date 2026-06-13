@@ -1,5 +1,6 @@
 from app.main import (
     APP_VERSION,
+    app,
     diag,
     export_diag_json,
     export_diag_markdown,
@@ -7,6 +8,27 @@ from app.main import (
     root,
     version,
 )
+
+
+def route_methods(path):
+    for route in app.routes:
+        if route.path == path:
+            return route.methods or set()
+    return set()
+
+
+def test_app_registers_expected_routes():
+    expected_routes = {
+        "/": "GET",
+        "/health": "GET",
+        "/version": "GET",
+        "/diag": "GET",
+        "/diag/export/json": "POST",
+        "/diag/export/markdown": "POST",
+    }
+
+    for path, method in expected_routes.items():
+        assert method in route_methods(path)
 
 
 def test_get_root_returns_available_endpoints():
