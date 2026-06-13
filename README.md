@@ -1,5 +1,8 @@
 # Infra Dev Cyber AI Learning Lab
 
+
+[![CI](https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab/actions/workflows/ci.yml)
+
 Projet d'apprentissage reproductible autour de Linux, réseau, Docker, FastAPI, automatisation, diagnostic défensif et bonnes pratiques DevSecOps.
 
 ## Objectif
