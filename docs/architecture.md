@@ -101,8 +101,8 @@ Le script `scripts/diagnostic_local.sh` génère un rapport Markdown local en le
 ## Architecture cible
 
 ```text
-VM Ubuntu 24.04.4 LTS Desktop
-   ↓ développement, tests et validation de reproductibilité
+VM Ubuntu 26.04 LTS Server
+   ↓ développement, tests et validation de reproductibilité prioritaire
 GitHub
    ↓ versionnement puis CI plus tard
 VPS Ubuntu
@@ -120,11 +120,11 @@ Interaction contrôlée via OpenClaw plus tard
 
 ## Évolution prévue
 
-### Étape 1 — Local Ubuntu
+### Étape 1 — Local Ubuntu Server
 
-Le projet fonctionne localement sur une VM Ubuntu 24.04.4 LTS Desktop.
+Le projet cible prioritairement une VM Ubuntu 26.04 LTS Server.
 
-Fedora 44 reste une cible secondaire utile pour vérifier la portabilité, mais la preuve principale de reproductibilité est Ubuntu.
+Fedora 44 reste une cible secondaire utile pour vérifier la portabilité. Ubuntu 24.04.4 LTS Desktop est conservée comme historique validé à 100 %.
 
 ### Étape 2 — Qualité
 

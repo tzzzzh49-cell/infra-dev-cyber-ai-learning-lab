@@ -5,7 +5,8 @@ Ce document clarifie le périmètre de support.
 ## Distributions ciblées
 
 - Fedora 44 Workstation VM
-- Ubuntu 24.04.4 LTS
+- Ubuntu 26.04 LTS Server
+- Ubuntu 24.04.4 LTS Desktop, historique validé à 100 %
 
 Aucune autre distribution Linux n'est déclarée compatible à ce stade.
 
@@ -22,7 +23,7 @@ Aucune autre distribution Linux n'est déclarée compatible à ce stade.
 ## Bootstrap selon distribution
 
 - Fedora 44 Workstation VM : `make bootstrap-fedora`
-- Ubuntu 24.04.4 LTS : `make bootstrap-ubuntu`
+- Ubuntu 26.04 LTS Server : `make bootstrap-ubuntu`
 
 ## Niveaux de validation
 

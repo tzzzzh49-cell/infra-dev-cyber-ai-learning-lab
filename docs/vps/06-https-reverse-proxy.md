@@ -32,5 +32,6 @@ Points de contrôle avant exposition :
 - `DIAG_ACCESS_TOKEN` est défini hors Git ;
 - Caddy applique une authentification sur les routes de diagnostic ;
 - aucun domaine, token DNS, certificat ou mot de passe réel n'est commité.
+- les routes publiques non sensibles ne transmettent pas de token inutilement.
 
 Tout exemple doit utiliser des placeholders comme `<LAB_DOMAIN>` et `<ADMIN_EMAIL>`.

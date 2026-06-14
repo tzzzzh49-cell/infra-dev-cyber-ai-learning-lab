@@ -1,51 +1,75 @@
-# Placeholders OpenAI et OpenClaw
+# OpenAI API read-only
 
-Objectif : préparer les futures étapes IA sans intégrer d'appel API réel, sans secret et sans exécution automatique de commandes.
+Objectif : préparer une future intégration OpenAI API sans appel réel obligatoire, sans secret et sans exécution automatique de commandes.
 
 ## Statut
 
 - Aucun client OpenAI n'est ajouté.
 - Aucune dépendance OpenAI n'est ajoutée.
 - Aucune variable `OPENAI_API_KEY` n'est requise pour utiliser le lab.
-- Aucune intégration OpenClaw active n'est ajoutée.
+- Aucun endpoint applicatif AI actif n'est ajouté.
 - Aucun agent IA ne doit exécuter automatiquement de commande système.
 
-## OpenAI - usage futur autorisé
+## Modèle de sécurité
 
-Les usages futurs devront rester limités à l'analyse de contenus déjà générés :
+Usage autorisé :
 
-- résumé de rapports de diagnostic ;
-- extraction de risques ;
-- génération de checklist ;
-- reformulation d'erreurs ou de constats.
+- résumer un rapport Markdown ou JSON déjà généré ;
+- extraire des risques depuis un rapport ;
+- proposer une checklist de vérification ;
+- reformuler des erreurs observées.
 
-Usages interdits :
+Usage interdit :
 
-- exécution de commandes ;
-- décision autonome de modification système ;
-- modification réseau ;
-- action Docker destructive ;
-- lecture ou stockage de secrets.
+- exécuter des commandes ;
+- modifier le système, Docker, le réseau ou le firewall ;
+- lire volontairement des secrets ;
+- stocker des prompts ou réponses contenant des secrets ;
+- décider seule d'une action corrective.
 
-## OpenClaw - usage futur autorisé
+## Variables préparatoires
 
-OpenClaw devra rester encadré par :
+Le fichier `.env.ai.example` documente les variables attendues sans secret réel.
 
-- une allowlist explicite ;
-- des runbooks lecture seule ;
-- une validation humaine avant toute action ;
-- un refus par défaut de toute commande non listée ;
-- une journalisation des décisions.
+```dotenv
+OPENAI_API_KEY=
+OPENAI_MODEL=
+OPENAI_MAX_INPUT_CHARS=12000
+OPENAI_MAX_OUTPUT_TOKENS=800
+AI_READ_ONLY=true
+```
 
-Les fichiers dans `openclaw/` sont des placeholders documentaires. Ils ne constituent pas une intégration active.
+La clé réelle doit rester uniquement dans une variable d'environnement ou un fichier privé non commité.
 
-## Données et secrets
+## Flux prévu
 
-Ne jamais ajouter au dépôt :
+```text
+Rapport Markdown/JSON
+  -> normalisation du contenu revu
+  -> résumé court
+  -> extraction des risques
+  -> checklist humaine
+  -> aucune commande exécutée automatiquement
+```
 
-- clé API OpenAI réelle ;
-- token OpenClaw ;
-- secret Cloudflare ;
-- mot de passe ;
-- clé privée ;
-- rapport contenant des informations sensibles non revues.
+## Exemple de sortie attendue
+
+Un futur module read-only pourra produire :
+
+- résumé en quelques lignes ;
+- risques classés par gravité ;
+- éléments manquants ou ambigus ;
+- checklist d'actions manuelles à valider humainement.
+
+## Structure préparatoire
+
+- `docs/ai/README.md` : règles et flux attendus ;
+- `app/ai/README.md` : emplacement réservé pour un futur module applicatif read-only ;
+- `.env.ai.example` : variables sans secret.
+
+## Limites
+
+- Pas d'appel OpenAI dans cette étape.
+- Pas de dépendance SDK.
+- Pas d'exécution automatique de commandes.
+- Pas de modification applicative des endpoints existants.

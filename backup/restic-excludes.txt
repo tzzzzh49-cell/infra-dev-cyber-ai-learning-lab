@@ -10,8 +10,12 @@ __pycache__
 # Environnements et secrets locaux
 .env
 .env.local
+.env.vps
+.env.vps.local
 .env.backup
 .env.backup.local
+.env.ai
+.env.ai.local
 *.pem
 *.key
 *.token

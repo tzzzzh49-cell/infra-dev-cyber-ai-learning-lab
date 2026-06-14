@@ -123,7 +123,7 @@ check_paths() {
         ansible/inventory.yml
         ansible/playbooks/diagnostic.yml
         scripts/bootstrap_fedora44_vm.sh
-        scripts/bootstrap_ubuntu2404.sh
+        scripts/bootstrap_ubuntu2604_server.sh
         scripts/compose.sh
         scripts/diagnostic_local.sh
         scripts/run_lab.sh
@@ -134,6 +134,15 @@ check_paths() {
         .env.example
         .env.vps.example
         .env.backup.example
+        .env.ai.example
+        docs/reproductibilite-ubuntu-26.04-server.md
+        docs/validations/ubuntu-26.04-server-vm.md
+        docs/vps/compose.vps.example.yaml
+        docs/backups/restic-s3-compatible.md
+        docs/ai/README.md
+        app/ai/README.md
+        openclaw/security-model.md
+        openclaw/runbooks/summarize-report.md
     )
 
     for path in "${required_paths[@]}"; do

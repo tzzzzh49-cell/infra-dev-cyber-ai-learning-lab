@@ -4,7 +4,7 @@
 
 `infra-dev-cyber-ai-learning-lab` est un laboratoire local d'apprentissage DevOps, Linux, Docker, FastAPI, diagnostic défensif et bonnes pratiques DevSecOps. Le projet doit rester reproductible, auditable et sûr par défaut.
 
-La cible prioritaire est **Ubuntu 24.04.4 LTS Desktop**. Fedora Workstation 44 reste une cible secondaire.
+La cible prioritaire est **Ubuntu 26.04 LTS Server**. Fedora Workstation 44 reste une cible secondaire. Ubuntu 24.04.4 LTS Desktop est conservée comme cible historique validée.
 
 ## Règles de sécurité absolues
 

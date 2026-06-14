@@ -22,7 +22,7 @@ help:
 	@echo "  make check-full        Vérification complète avec build Docker et Ansible"
 	@echo "  make bootstrap         Alias de make bootstrap-fedora"
 	@echo "  make bootstrap-fedora  Prépare l'environnement Fedora 44"
-	@echo "  make bootstrap-ubuntu  Prépare l'environnement Ubuntu 24.04.4 LTS"
+	@echo "  make bootstrap-ubuntu  Prépare l'environnement Ubuntu 26.04 LTS Server"
 	@echo "  make compose-config    Valide compose.yaml"
 	@echo "  make shellcheck        Vérifie les scripts Bash"
 	@echo "  make lint-python       Vérifie le code Python avec ruff"
@@ -62,7 +62,7 @@ bootstrap-fedora:
 	./scripts/bootstrap_fedora44_vm.sh
 
 bootstrap-ubuntu:
-	./scripts/bootstrap_ubuntu2404.sh
+	./scripts/bootstrap_ubuntu2604_server.sh
 
 compose-config:
 	$(COMPOSE) config >/dev/null
