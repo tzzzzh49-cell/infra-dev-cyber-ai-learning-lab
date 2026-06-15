@@ -145,6 +145,6 @@ Si `APP_ENV=vps` est actif mais que `DIAG_ACCESS_TOKEN` est vide, `/diag`, `/dia
 - Les exports `/diag/export/json` et `/diag/export/markdown` suivent la même règle de protection que `/diag`.
 - Aucun secret réel ne doit être ajouté aux rapports, scripts ou exemples de configuration.
 
-## Notes de reproductibilité Ubuntu 24.04.4 LTS Desktop
+## Notes de reproductibilité Ubuntu 26.04 LTS Server
 
-Ubuntu 24.04.4 LTS Desktop est la cible prioritaire. Les commandes `ip`, `ss`, `df`, `free`, `docker`, `curl` et `resolvectl` sont courantes sur cette cible après bootstrap du lab. Si une commande est absente, le diagnostic ne doit pas échouer brutalement : la section correspondante indique l'indisponibilité et conserve une structure JSON exploitable.
+Ubuntu 26.04 LTS Server est la cible prioritaire. Les commandes `ip`, `ss`, `df`, `free`, `docker`, `curl` et `resolvectl` sont attendues sur cette cible après bootstrap du lab. Si une commande est absente, le diagnostic ne doit pas échouer brutalement : la section correspondante indique l'indisponibilité et conserve une structure JSON exploitable.

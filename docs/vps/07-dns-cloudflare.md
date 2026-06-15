@@ -1,4 +1,4 @@
-# 06 - DNS et Cloudflare
+# 07 - DNS et Cloudflare
 
 Objectif : préparer la configuration DNS d'un futur VPS sans domaine réel, sans IP réelle et sans token Cloudflare.
 

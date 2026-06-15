@@ -12,6 +12,7 @@ OpenClaw ne doit pas exécuter de commande shell libre.
 OpenClaw ne doit pas accepter de commande destructive.
 OpenClaw ne doit pas modifier le réseau au début du projet.
 OpenClaw ne doit pas exécuter automatiquement une commande sans validation humaine explicite.
+OpenClaw ne doit pas être activé par cette documentation.
 
 ## Commandes autorisées au départ
 
@@ -78,11 +79,14 @@ chown -R
 ip link set
 ip route add
 ip route del
+ip addr add
+ip addr del
 iptables
 nft
 firewall-cmd
 docker stop
 docker rm
+docker compose down
 docker system prune
 terraform apply
 terraform destroy

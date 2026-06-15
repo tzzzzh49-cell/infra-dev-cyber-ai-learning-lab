@@ -8,9 +8,12 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
   check:
-    name: Lint, compose config and tests
+    name: Lint, compose config, tests and Bandit
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -46,6 +49,47 @@ jobs:
 
       - name: Tests
         run: make test
+
+      - name: Python security scan with Bandit
+        run: |
+          python -m pip install bandit
+          bandit -q -r app -x app/tests --severity-level medium
+
+  hadolint:
+    name: Hadolint Dockerfile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Hadolint
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          dockerfile: app/Dockerfile
+
+  trivy:
+    name: Trivy image scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image for scan
+        run: docker build -t infra-dev-cyber-ai-learning-lab-api:ci ./app
+
+      # Advisory first pass: keep CI stable while surfacing upstream base-image CVE drift.
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: infra-dev-cyber-ai-learning-lab-api:ci
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
 
   # check-full is intentionally not enabled by default because it is heavier
   # and may require a more complete runner environment. Run locally before merge:

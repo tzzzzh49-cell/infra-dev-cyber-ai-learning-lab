@@ -51,6 +51,7 @@ Exemple de séquence locale, après avoir exporté les variables privées :
 ```bash
 backup/init-local.sh
 backup/backup-local.sh
+restic check
 backup/restore-test-local.sh
 ```
 
@@ -58,6 +59,7 @@ Résultat attendu :
 
 - le dépôt Restic local est initialisé dans `outputs/backups/restic-local` ;
 - un snapshot est créé avec la sélection prudente du dépôt ;
+- `restic check` vérifie l'intégrité du dépôt avec les variables privées exportées ;
 - le dernier snapshot est restauré dans un dossier `/tmp/infra-dev-cyber-ai-learning-lab-restic-restore-test-*` ;
 - les fichiers restaurés sont inspectables sans écraser le dépôt courant.
 

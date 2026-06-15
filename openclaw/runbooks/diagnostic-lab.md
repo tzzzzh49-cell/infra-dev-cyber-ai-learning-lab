@@ -8,7 +8,7 @@ diagnostic lab
 
 ## Objectif
 
-Lancer un diagnostic local en lecture seule sur le lab.
+Préparer un diagnostic local en lecture seule sur le lab. Le lancement réel reste soumis à validation humaine.
 
 Cette commande doit produire un rapport Markdown dans :
 
@@ -16,7 +16,7 @@ outputs/reports/
 
 ## Action proposée après validation humaine
 
-Commande locale proposée :
+Commande locale proposée après validation humaine :
 
 ./scripts/diagnostic_local.sh
 
@@ -72,6 +72,11 @@ Interdit :
 - ip route del
 - docker stop
 - docker rm
+- docker stop
+- docker compose down
+- ip route add
+- ip route del
+- modification firewall
 - terraform apply
 - terraform destroy
 - kubectl delete

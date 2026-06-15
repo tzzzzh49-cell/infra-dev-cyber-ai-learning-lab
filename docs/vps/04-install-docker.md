@@ -9,5 +9,6 @@ Points de contrôle :
 - vérifier `docker compose version` ;
 - limiter l'accès au groupe `docker` aux utilisateurs de confiance ;
 - documenter toute étape manuelle hors dépôt.
+- ne pas lancer de conteneur public tant que Caddy, HTTPS et les variables privées ne sont pas prêts.
 
 Aucun secret n'est requis pour cette étape.

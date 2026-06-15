@@ -141,6 +141,14 @@ Usage autorisé au début :
 * proposer une checklist ;
 * classer les risques.
 
+Le flux préparatoire autorisé est :
+
+```text
+rapport Markdown/JSON -> résumé -> risques -> checklist humaine
+```
+
+La clé doit rester hors Git via variable d'environnement. `.env.ai.example` ne doit contenir aucune valeur réelle.
+
 Usage interdit au début :
 
 * décider seule d’une action ;
@@ -169,6 +177,8 @@ OpenClaw ne devra pas pouvoir exécuter :
 * actions Docker destructives ;
 * playbooks Ansible hors mode contrôle.
 
+La structure `openclaw/` reste documentaire et non active. Toute future activation devra respecter `openclaw/security-model.md`, `openclaw/allowlists/read-only.md` et les runbooks relus.
+
 ## Gestion des secrets
 
 Ne jamais commiter :
@@ -185,6 +195,16 @@ Utiliser plutôt :
 * `.env.example`
 * variables d’environnement
 * GitHub Secrets plus tard
+
+## Contrôles CI sécurité
+
+La CI contient des contrôles non secrets :
+
+* Bandit sur le code Python, avec seuil medium pour éviter les faux positifs low liés aux commandes read-only encadrées ;
+* Hadolint sur `app/Dockerfile` ;
+* Trivy sur l'image Docker construite en CI.
+
+Trivy est configuré en mode rapport non bloquant pour cette première intégration, afin de garder la CI fiable malgré les variations du flux CVE des images de base. Une future étape pourra rendre ce contrôle bloquant quand la politique d'exception sera documentée.
 
 ## Objectif sécurité à long terme
 

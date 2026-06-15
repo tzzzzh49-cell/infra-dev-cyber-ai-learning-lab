@@ -11,16 +11,25 @@ Principes :
 - reverse proxy HTTPS devant l'application avant toute exposition publique ;
 - `/diag` et les exports de diagnostic ne doivent jamais être publics sans authentification ;
 - `APP_ENV=vps` doit activer la protection applicative par `DIAG_ACCESS_TOKEN`.
+- toute action système réelle doit être relue et validée manuellement hors dépôt.
 
 Documents :
 
 1. [Première connexion](01-premiere-connexion.md)
 2. [Sécurisation SSH](02-securisation-ssh.md)
-3. [Installation Docker](03-install-docker.md)
-4. [Déploiement Compose](04-deploiement-compose.md)
-5. [HTTPS et reverse proxy](05-https-reverse-proxy.md)
-6. [DNS et Cloudflare](06-dns-cloudflare.md)
+3. [Firewall](03-firewall.md)
+4. [Installation Docker](04-install-docker.md)
+5. [Déploiement Compose](05-deploiement-compose.md)
+6. [HTTPS et reverse proxy](06-https-reverse-proxy.md)
+7. [DNS et Cloudflare](07-dns-cloudflare.md)
 
-Exemple de configuration Caddy :
+Exemples de configuration :
 
 - [Caddyfile.example](Caddyfile.example)
+- [compose.vps.example.yaml](compose.vps.example.yaml)
+
+Variables préparatoires :
+
+- `.env.vps.example` documente les variables attendues sans secret réel ;
+- le fichier privé réel doit rester hors Git ;
+- `DIAG_ACCESS_TOKEN` doit être défini hors dépôt avant toute exposition de `/diag`.

@@ -16,7 +16,7 @@ Projet d'apprentissage reproductible autour de Linux, réseau, Docker, FastAPI, 
 5. générer un diagnostic local en lecture seule ;
 6. arrêter proprement le projet.
 
-Le projet doit rester **reproductible en priorité sur Ubuntu 24.04.4 LTS Desktop** et conserver un mode sécurité **lecture seule** : aucune commande destructive, aucun secret et aucune exposition publique non protégée de `/diag`.
+Le projet doit rester **reproductible en priorité sur Ubuntu 26.04 LTS Server** et conserver un mode sécurité **lecture seule** : aucune commande destructive, aucun secret et aucune exposition publique non protégée de `/diag`.
 
 ## Statut du projet
 
@@ -42,8 +42,11 @@ Fonctionnalités disponibles :
 - export Markdown du diagnostic ;
 - rapports locaux dans `outputs/reports` ;
 - documentation de reproductibilité Fedora et Ubuntu ;
-- documentation préparatoire VPS et backups pour v0.4.0 ;
+- documentation préparatoire VPS, backups et Ubuntu Server pour v0.4.0 ;
 - base Restic local-first pour backups et drill de restauration local ;
+- préparation Restic distante S3-compatible avec placeholders uniquement ;
+- placeholders OpenAI API read-only sans appel réel obligatoire ;
+- runbooks OpenClaw documentaires non actifs ;
 - règles de sécurité en lecture seule.
 
 Fonctionnalités prévues plus tard :
@@ -56,8 +59,9 @@ Fonctionnalités prévues plus tard :
 
 | Distribution | Version | Statut |
 |---|---|---|
-| Ubuntu Desktop LTS | 24.04.4 | Cible prioritaire, procédure prête, validation réelle complète à finaliser |
+| Ubuntu Server LTS | 26.04 | Cible prioritaire, procédure et checklist Server préparées |
 | Fedora Workstation VM | 44 | Cible secondaire, validation séparée à maintenir |
+| Ubuntu Desktop LTS | 24.04.4 | Historique, reproductibilité validée à 100 % |
 
 > Le projet **ne prétend pas** fonctionner sur toutes les distributions Linux à ce stade.
 
@@ -75,7 +79,7 @@ Fonctionnalités prévues plus tard :
 
 Les prérequis sont installés automatiquement via les scripts de bootstrap ci-dessous. Les dépendances Python de développement sont listées dans `app/requirements-dev.txt`.
 
-## Reproduction locale Ubuntu 24.04.4 LTS Desktop
+## Reproduction locale Ubuntu 26.04 LTS Server
 
 ```bash
 git clone https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab.git
@@ -84,6 +88,7 @@ cd infra-dev-cyber-ai-learning-lab
 make bootstrap-ubuntu
 # se déconnecter / reconnecter après l'ajout au groupe docker
 
+make check
 make check-full
 make run
 make health
@@ -93,12 +98,15 @@ make diag-json
 make diag-md
 make diagnostic-local
 make reports
+backup/init-local.sh
+backup/backup-local.sh
+backup/restore-test-local.sh
 make down
 ```
 
-Documentation détaillée : `docs/reproductibilite-ubuntu-24.04.md`. Journal de validation : `docs/validations/ubuntu-24.04.4-desktop-vm.md`.
+Documentation détaillée : `docs/reproductibilite-ubuntu-26.04-server.md`. Journal de validation : `docs/validations/ubuntu-26.04-server-vm.md`.
 
-La documentation Ubuntu décrit la procédure attendue et la checklist de validation. Elle ne doit être marquée comme réellement validée que lorsque les commandes ont été rejouées sur une VM Ubuntu 24.04.4 LTS Desktop propre et que les résultats sont consignés dans le journal de validation.
+La documentation Ubuntu Server décrit la procédure attendue et la checklist de validation. Elle ne doit être marquée comme réellement validée que lorsque les commandes ont été rejouées sur une VM Ubuntu 26.04 LTS Server propre et que les résultats sont consignés dans le journal de validation.
 
 ## Bootstrap par distribution
 
@@ -110,13 +118,13 @@ make bootstrap-fedora
 
 Documentation détaillée : `docs/reproductibilite-fedora-44-vm.md`.
 
-### Ubuntu 24.04.4 LTS Desktop
+### Ubuntu 26.04 LTS Server
 
 ```bash
 make bootstrap-ubuntu
 ```
 
-Documentation détaillée : `docs/reproductibilite-ubuntu-24.04.md`.
+Documentation détaillée : `docs/reproductibilite-ubuntu-26.04-server.md`.
 
 ## Démarrage rapide local
 
@@ -158,7 +166,7 @@ make check-full
 | `make check-full` | Lance la validation complète avec build Docker et Ansible |
 | `make bootstrap` | Alias de `make bootstrap-fedora` |
 | `make bootstrap-fedora` | Installe les prérequis sur Fedora 44 VM |
-| `make bootstrap-ubuntu` | Installe les prérequis sur Ubuntu 24.04.4 LTS Desktop |
+| `make bootstrap-ubuntu` | Installe les prérequis sur Ubuntu 26.04 LTS Server |
 | `make compose-config` | Valide `compose.yaml` |
 | `make shellcheck` | Vérifie les scripts Bash |
 | `make lint-python` | Vérifie le code Python avec Ruff |
@@ -226,14 +234,14 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 - [Workflow Git et GitHub](docs/workflow-git.md)
 - [Reproductibilité Linux générique](docs/reproductibilite-linux-generique.md)
 - [Reproductibilité Fedora 44](docs/reproductibilite-fedora-44-vm.md)
-- [Validation Ubuntu 24.04.4 Desktop](docs/validations/ubuntu-24.04.4-desktop-vm.md)
+- [Validation Ubuntu 26.04 Server](docs/validations/ubuntu-26.04-server-vm.md)
 - [Préparation VPS v0.4.0](docs/vps/README.md)
 - [Backups](docs/backups/README.md)
-- [Placeholders OpenAI et OpenClaw](docs/ai/README.md)
-- [Reproductibilité Ubuntu 24.04](docs/reproductibilite-ubuntu-24.04.md)
+- [OpenAI API read-only](docs/ai/README.md)
+- [Modèle OpenClaw contrôlé](openclaw/security-model.md)
+- [Reproductibilité Ubuntu 26.04 Server](docs/reproductibilite-ubuntu-26.04-server.md)
 - [Diagnostic réseau avancé v0.3.0](docs/diagnostic-reseau-v0.3.md)
 - [Journal d'apprentissage](docs/journal-apprentissage.md)
 - [ADR-001 - Mode lecture seule](docs/decisions/ADR-001-mode-read-only.md)
-- [Validation Ubuntu 24.04.4 Desktop VM](docs/validations/ubuntu-24.04.4-desktop-vm.md)
 
 Le projet est documenté progressivement afin de montrer les choix techniques, les règles de sécurité et les apprentissages réalisés.

@@ -4,8 +4,8 @@ set -euo pipefail
 # shellcheck disable=SC1091
 . /etc/os-release
 
-if [ "${ID:-}" != "ubuntu" ] || [ "${VERSION_ID:-}" != "24.04" ]; then
-    echo "Erreur : ce script cible Ubuntu 24.04.x LTS uniquement." >&2
+if [ "${ID:-}" != "ubuntu" ] || [ "${VERSION_ID:-}" != "26.04" ]; then
+    echo "Erreur : ce script cible Ubuntu 26.04 LTS Server uniquement." >&2
     echo "Distribution détectée : ${PRETTY_NAME:-inconnue}" >&2
     exit 1
 fi

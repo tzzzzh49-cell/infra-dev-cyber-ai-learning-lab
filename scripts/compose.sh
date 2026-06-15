@@ -35,7 +35,7 @@ find_compose_cmd() {
 
     echo "Erreur : Docker Compose est introuvable." >&2
     echo "Sur Fedora 44, lance : ./scripts/bootstrap_fedora44_vm.sh" >&2
-    echo "Sur Ubuntu 24.04, lance : ./scripts/bootstrap_ubuntu2404.sh" >&2
+    echo "Sur Ubuntu 26.04 Server, lance : ./scripts/bootstrap_ubuntu2604_server.sh" >&2
     exit 1
 }
 
