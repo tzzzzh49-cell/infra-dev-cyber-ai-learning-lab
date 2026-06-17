@@ -114,18 +114,22 @@ check_paths() {
 
     local required_paths=(
         README.md
+        README.en.md
         ROADMAP.md
         AGENTS.md
+        .github/dependabot.yml
         compose.yaml
         app/Dockerfile
         app/main.py
         app/requirements.txt
+        ansible/group_vars/all.yml
         ansible/inventory.yml
         ansible/playbooks/diagnostic.yml
         scripts/bootstrap_fedora44_vm.sh
         scripts/bootstrap_ubuntu2604_server.sh
         scripts/compose.sh
         scripts/diagnostic_local.sh
+        scripts/generate_diag_token.py
         scripts/run_lab.sh
         backup/init-local.sh
         backup/backup-local.sh
@@ -138,6 +142,7 @@ check_paths() {
         docs/reproductibilite-ubuntu-26.04-server.md
         docs/validations/ubuntu-26.04-server-vm.md
         docs/vps/compose.vps.example.yaml
+        docs/vps/nginx.reverse-proxy.example.conf
         docs/backups/restic-s3-compatible.md
         docs/ai/README.md
         app/ai/README.md

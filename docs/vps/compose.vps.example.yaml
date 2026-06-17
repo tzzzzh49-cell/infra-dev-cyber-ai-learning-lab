@@ -11,7 +11,10 @@ services:
     image: infra-dev-cyber-ai-learning-lab-api:v0.4.0-placeholder
     environment:
       APP_ENV: vps
-      DIAG_ACCESS_TOKEN: ${DIAG_ACCESS_TOKEN:?set DIAG_ACCESS_TOKEN in a private .env.vps file}
+      APP_LOG_FILE: /workspace/outputs/logs/app.log
+      DIAG_ACCESS_TOKEN_HASH: ${DIAG_ACCESS_TOKEN_HASH:?set DIAG_ACCESS_TOKEN_HASH from a secrets manager}
+      DIAG_ACCESS_TOKEN_HASH_FILE: ${DIAG_ACCESS_TOKEN_HASH_FILE:-}
+      DIAG_PROTECTION_DISABLED: "false"
     volumes:
       - ../../outputs:/workspace/outputs:Z
     ports:

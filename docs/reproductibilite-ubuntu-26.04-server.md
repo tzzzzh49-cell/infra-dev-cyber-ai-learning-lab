@@ -174,4 +174,4 @@ make down
 - Le diagnostic reste strictement en lecture seule.
 - Aucun secret réel ne doit être ajouté aux exemples, scripts, rapports ou commits.
 - `/diag`, `/diag/export/json` et `/diag/export/markdown` ne doivent pas être exposés publiquement sans authentification et reverse proxy HTTPS.
-- En mode `APP_ENV=vps`, `DIAG_ACCESS_TOKEN` est obligatoire ; s'il est vide, les routes de diagnostic refusent l'accès.
+- `/diag` est protégé par défaut ; `DIAG_ACCESS_TOKEN_HASH` ou `DIAG_ACCESS_TOKEN_HASH_FILE` doit être fourni hors Git pour autoriser l'accès.
