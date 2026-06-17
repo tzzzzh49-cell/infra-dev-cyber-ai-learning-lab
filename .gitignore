@@ -9,10 +9,42 @@ venv/
 
 # Environnement local
 .env
+.env.*
 .env.local
 .env.backup
 .env.backup.local
+!.env.example
+!.env.*.example
 .runtime/
+
+# Secrets et identifiants locaux
+secrets/
+.secrets/
+.ssh/
+.aws/
+.azure/
+.gcloud/
+.kube/
+.netrc
+*.secret
+*.secrets
+*.token
+*.passphrase
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.csr
+id_rsa
+id_ecdsa
+id_ed25519
+id_dsa
+kubeconfig
+*.kubeconfig
+restic-password
+.restic-password
 
 # Logs
 *.log
