@@ -23,10 +23,11 @@ def sample_report():
 
 
 def route_methods(path):
+    methods = set()
     for route in app.routes:
         if route.path == path:
-            return route.methods or set()
-    return set()
+            methods.update(route.methods or set())
+    return methods
 
 
 def test_app_registers_expected_routes():
@@ -41,6 +42,10 @@ def test_app_registers_expected_routes():
 
     for path, method in expected_routes.items():
         assert method in route_methods(path)
+
+
+def test_root_registers_head_for_curl_i():
+    assert "HEAD" in route_methods("/")
 
 
 def test_get_root_returns_available_endpoints(client):
