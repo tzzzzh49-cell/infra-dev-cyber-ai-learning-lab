@@ -7,7 +7,8 @@ Recommandations :
 - cloner le dépôt sur le VPS avec une branche/tag validé ;
 - garder `APP_HOST=127.0.0.1` pour ne pas exposer l'API directement ;
 - définir `APP_ENV=vps` dans un fichier `.env` privé ;
-- définir `DIAG_ACCESS_TOKEN` dans ce même fichier privé avant toute exposition via reverse proxy ;
+- définir `DIAG_ACCESS_TOKEN_SHA256` dans ce même fichier privé avant toute exposition via reverse proxy ;
+- garder `DIAG_ACCESS_TOKEN` seulement si le reverse proxy doit injecter `X-Diag-Token` vers l'API locale ;
 - monter `outputs/` pour conserver les rapports ;
 - vérifier `make compose-config` avant démarrage ;
 - lancer l'application seulement après revue de la configuration.
@@ -19,7 +20,8 @@ Configuration attendue côté application :
 APP_ENV=vps
 APP_HOST=127.0.0.1
 APP_PORT=8000
-DIAG_ACCESS_TOKEN=<TOKEN_PRIVE_HORS_GIT>
+DIAG_ACCESS_TOKEN_SHA256=<HASH_SHA256_DU_TOKEN_PRIVE_HORS_GIT>
+DIAG_COMMAND_TIMEOUT=3
 LAB_DOMAIN=<LAB_DOMAIN>
 ADMIN_EMAIL=<ADMIN_EMAIL>
 ```

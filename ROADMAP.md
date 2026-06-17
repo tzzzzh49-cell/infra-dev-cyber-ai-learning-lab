@@ -69,6 +69,31 @@ Limites :
 - pas d'intégration OpenAI API ;
 - pas d'intégration OpenClaw.
 
+## v0.3.2 - Durcissement Docker, diagnostics configurables et documentation
+
+Objectif : corriger la construction d'image, réduire l'exposition dans les
+couches Docker et clarifier les choix de sécurité avant v0.4.0.
+
+Inclus / livré :
+- build Docker multi-étapes avec dépendances runtime issues uniquement de `app/requirements.txt` ;
+- runtime non-root explicite `10001:10001` ;
+- contexte Compose corrigé pour copier `app/requirements.txt` sans contournement ;
+- copies Docker séparées pour l'application et les exemples de configuration ;
+- `.dockerignore` pour exclure sorties, environnements locaux, tests et secrets ;
+- timeout de diagnostic configurable via `DIAG_COMMAND_TIMEOUT`, par défaut `3` secondes ;
+- tentatives bornées via `DIAG_COMMAND_RETRIES`, désactivées par défaut ;
+- protection des diagnostics par hash `DIAG_ACCESS_TOKEN_SHA256` avec compatibilité `DIAG_ACCESS_TOKEN` ;
+- script `scripts/generate_diag_token.py` et tests associés ;
+- documentation bilingue initiale pour architecture, sécurité et reproductibilité Ubuntu Server ;
+- sommaire principal `docs/README.md` ;
+- exemples `curl` protégés dans `docs/api-examples.md`.
+
+Limites :
+- Postgres reste préparatoire via le profil Compose `future-persistence`, non lancé par défaut ;
+- aucune migration n'est active tant qu'une dépendance et un outil comme Alembic ne sont pas validés ;
+- aucun middleware CORS n'est activé tant qu'il n'existe pas de consommateur front ou IA séparé ;
+- OpenAI API et OpenClaw restent documentaires et non actifs.
+
 ## v0.4.0 - Ubuntu Server, VPS et backups
 
 Objectif : préparer la cible prioritaire Ubuntu 26.04 LTS Server, le futur VPS sécurisé et la stratégie de sauvegarde sans déploiement réel.
@@ -81,12 +106,14 @@ Prévu / en préparation :
 - exemples sûrs `docs/vps/Caddyfile.example` et `docs/vps/compose.vps.example.yaml` ;
 - stratégie Restic local-first étendue vers S3-compatible avec placeholders uniquement ;
 - documentation init, backup, check et restore drill ;
-- contrôles CI sécurité non secrets : Bandit, Hadolint et Trivy.
+- politique mensuelle de mise à jour des dépendances ;
+- contrôles sécurité locaux et CI non secrets : Bandit, Hadolint et Trivy ;
+- préparation Postgres, migrations et stockage de rapports IA revus, sans activation automatique.
 
 Limites :
 - pas de déploiement VPS réel ;
 - pas d'adresse IP, domaine, token, clé privée ou mot de passe réel ;
-- `/diag` reste protégé en mode `APP_ENV=vps` par `DIAG_ACCESS_TOKEN` et reverse proxy authentifié.
+- `/diag` reste protégé en mode `APP_ENV=vps` par `DIAG_ACCESS_TOKEN_SHA256` ou token privé et reverse proxy authentifié.
 
 ## v0.5.0 - OpenAI API read-only
 

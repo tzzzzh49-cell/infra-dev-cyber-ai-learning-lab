@@ -19,6 +19,32 @@ AWS_DEFAULT_REGION=<REGION_PLACEHOLDER>
 
 Ne jamais commiter le fichier privé réel ni le fichier de passphrase.
 
+## Exemple complet S3-compatible
+
+Cet exemple reste volontairement générique. Remplacer les placeholders seulement
+dans un fichier privé hors Git :
+
+```bash
+export RESTIC_REPOSITORY="s3:https://<S3_ENDPOINT>/<S3_BUCKET>/<S3_PREFIX>"
+export RESTIC_PASSWORD_FILE="<CHEMIN_ABSOLU_VERS_UN_FICHIER_PRIVE>"
+export RESTIC_EXCLUDE_FILE="backup/restic-excludes.txt"
+export AWS_ACCESS_KEY_ID="<ACCESS_KEY_HORS_GIT>"
+export AWS_SECRET_ACCESS_KEY="<SECRET_KEY_HORS_GIT>"
+export AWS_DEFAULT_REGION="<REGION_PLACEHOLDER>"
+
+restic init
+restic backup --exclude-file "$RESTIC_EXCLUDE_FILE" \
+  README.md ROADMAP.md AGENTS.md Makefile compose.yaml \
+  ansible app backup docs openclaw scripts
+restic snapshots
+restic check
+RESTIC_RESTORE_TARGET=/tmp/infra-dev-cyber-ai-learning-lab-restic-s3-restore-drill
+restic restore latest --target "$RESTIC_RESTORE_TARGET" --include README.md
+```
+
+Ce flux vérifie l'initialisation, la création d'un snapshot, l'intégrité du
+dépôt et une restauration partielle sans écraser le dépôt courant.
+
 ## Ce qui est sauvegardé
 
 Par défaut, les scripts locaux sélectionnent une base prudente :
@@ -67,11 +93,13 @@ Adapter la liste hors dépôt si certains chemins n'existent pas ou si des rappo
 Vérifier l'intégrité du dépôt :
 
 ```bash
+restic snapshots
 restic check
 ```
 
 Résultat attendu :
 
+- snapshots listés pour confirmer qu'un point de restauration existe ;
 - index et snapshots vérifiés ;
 - aucune sortie contenant de secret n'est copiée dans le dépôt.
 
@@ -89,6 +117,12 @@ Points de contrôle :
 - fichiers attendus présents dans le dossier de test ;
 - absence de secrets restaurés depuis les chemins exclus ;
 - procédure de restauration documentée hors dépôt après revue.
+
+Pour une restauration partielle, ajouter `--include <CHEMIN>` :
+
+```bash
+restic restore latest --target "$RESTIC_RESTORE_TARGET" --include docs/README.md
+```
 
 ## Limites
 

@@ -1,5 +1,16 @@
 # Reproductibilité sur Ubuntu 26.04 LTS Server
 
+> Langues : Français | [English](reproducibility-ubuntu-26.04-server.en.md)
+
+## Sommaire
+
+- [Pré-requis Ubuntu Server](#pre-requis-ubuntu-server)
+- [Statut de validation](#statut-de-validation)
+- [Flux de validation](#1-cloner-le-depot)
+- [Backups locaux Restic](#8-backups-locaux-restic)
+- [Checklist Server](#checklist-server)
+- [Notes de sécurité](#notes-de-securite)
+
 Ce guide décrit le flux reproductible attendu sur une VM Ubuntu 26.04 LTS Server. La cible Ubuntu Server devient prioritaire à partir de v0.4.0.
 
 La validation Ubuntu 24.04.4 LTS Desktop est conservée comme historique validé à 100 %. Elle ne constitue plus la cible active.
@@ -174,4 +185,7 @@ make down
 - Le diagnostic reste strictement en lecture seule.
 - Aucun secret réel ne doit être ajouté aux exemples, scripts, rapports ou commits.
 - `/diag`, `/diag/export/json` et `/diag/export/markdown` ne doivent pas être exposés publiquement sans authentification et reverse proxy HTTPS.
-- En mode `APP_ENV=vps`, `DIAG_ACCESS_TOKEN` est obligatoire ; s'il est vide, les routes de diagnostic refusent l'accès.
+- En mode `APP_ENV=vps`, un token clair privé ou `DIAG_ACCESS_TOKEN_SHA256` est obligatoire ; sans configuration, les routes de diagnostic refusent l'accès.
+- Préférer `DIAG_ACCESS_TOKEN_SHA256` pour éviter de stocker le token clair côté application.
+- `DIAG_COMMAND_TIMEOUT` vaut `3` secondes par défaut ; augmenter seulement si la VM est lente et documenter l'écart.
+- Les exemples d'appels protégés sont dans `docs/api-examples.md`.

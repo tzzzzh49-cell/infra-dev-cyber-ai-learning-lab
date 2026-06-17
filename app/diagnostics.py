@@ -1,6 +1,7 @@
 """Read-only diagnostic helpers for the local learning lab."""
 
 import json
+import os
 import platform
 import socket
 import subprocess
@@ -10,6 +11,12 @@ from typing import Any
 
 SCHEMA_VERSION = "0.3.0"
 DEFAULT_REPORT_DIR = "outputs/reports"
+DEFAULT_COMMAND_TIMEOUT = 3.0
+MAX_COMMAND_TIMEOUT = 30.0
+DIAG_COMMAND_TIMEOUT_ENV = "DIAG_COMMAND_TIMEOUT"
+DIAG_COMMAND_RETRIES_ENV = "DIAG_COMMAND_RETRIES"
+DEFAULT_COMMAND_RETRIES = 0
+MAX_COMMAND_RETRIES = 2
 
 
 def utc_timestamp() -> str:
@@ -22,8 +29,69 @@ def filename_timestamp() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%d-%H%M%S-%f")
 
 
-def run_read_only_command(command: list[str], timeout: int = 3) -> dict[str, Any]:
+def parse_positive_float(value: str, default: float, maximum: float) -> float:
+    """Parse a bounded positive float from an environment value."""
+    try:
+        parsed = float(value)
+    except ValueError:
+        return default
+
+    if parsed <= 0:
+        return default
+    return min(parsed, maximum)
+
+
+def parse_bounded_int(value: str, default: int, maximum: int) -> int:
+    """Parse a bounded non-negative integer from an environment value."""
+    try:
+        parsed = int(value)
+    except ValueError:
+        return default
+
+    if parsed < 0:
+        return default
+    return min(parsed, maximum)
+
+
+def get_default_command_timeout() -> float:
+    """Return the diagnostic command timeout from the environment."""
+    configured = os.environ.get(DIAG_COMMAND_TIMEOUT_ENV, "").strip()
+    if not configured:
+        return DEFAULT_COMMAND_TIMEOUT
+    return parse_positive_float(
+        configured,
+        default=DEFAULT_COMMAND_TIMEOUT,
+        maximum=MAX_COMMAND_TIMEOUT,
+    )
+
+
+def resolve_command_timeout(timeout: float | None) -> float:
+    """Return an explicit timeout or the environment-backed default."""
+    if timeout is not None:
+        return timeout
+    return get_default_command_timeout()
+
+
+def get_default_command_retries() -> int:
+    """Return the bounded diagnostic retry count from the environment."""
+    configured = os.environ.get(DIAG_COMMAND_RETRIES_ENV, "").strip()
+    if not configured:
+        return DEFAULT_COMMAND_RETRIES
+    return parse_bounded_int(
+        configured,
+        default=DEFAULT_COMMAND_RETRIES,
+        maximum=MAX_COMMAND_RETRIES,
+    )
+
+
+def run_read_only_command(
+    command: list[str],
+    timeout: float | None = None,
+    retries: int | None = None,
+) -> dict[str, Any]:
     """Run a short read-only command without a shell and return a stable result."""
+    command_timeout = timeout if timeout is not None else get_default_command_timeout()
+    command_retries = retries if retries is not None else get_default_command_retries()
     result: dict[str, Any] = {
         "command": command,
         "available": False,
@@ -31,30 +99,40 @@ def run_read_only_command(command: list[str], timeout: int = 3) -> dict[str, Any
         "stdout": "",
         "stderr": "",
         "timed_out": False,
+        "attempts": 0,
     }
 
-    try:
-        completed = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=timeout,
-        )
-    except FileNotFoundError as exc:
-        result["stderr"] = str(exc)
-        return result
-    except subprocess.TimeoutExpired as exc:
-        result["available"] = True
-        result["timed_out"] = True
-        result["stdout"] = exc.stdout or ""
-        result["stderr"] = exc.stderr or f"Command timed out after {timeout}s"
-        return result
+    for attempt in range(command_retries + 1):
+        result["attempts"] = attempt + 1
+        try:
+            completed = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=command_timeout,
+            )
+        except FileNotFoundError as exc:
+            result["stderr"] = str(exc)
+            return result
+        except subprocess.TimeoutExpired as exc:
+            result["available"] = True
+            result["timed_out"] = True
+            result["stdout"] = exc.stdout or ""
+            result["stderr"] = exc.stderr or (
+                f"Command timed out after {command_timeout:g}s"
+            )
+            if attempt < command_retries:
+                continue
+            return result
+        else:
+            break
 
     result["available"] = True
     result["returncode"] = completed.returncode
     result["stdout"] = completed.stdout
     result["stderr"] = completed.stderr
+    result["timed_out"] = False
     return result
 
 
@@ -140,36 +218,49 @@ def read_resolv_conf(path: str = "/etc/resolv.conf") -> dict[str, Any]:
     return data
 
 
-def collect_resolvectl(timeout: int = 3) -> dict[str, Any]:
+def collect_resolvectl(timeout: float | None = None) -> dict[str, Any]:
     """Collect DNS information from resolvectl when available."""
-    dns_result = run_read_only_command(["resolvectl", "dns"], timeout=timeout)
+    effective_timeout = resolve_command_timeout(timeout)
+    dns_result = run_read_only_command(["resolvectl", "dns"], timeout=effective_timeout)
     if dns_result["available"] and dns_result["returncode"] == 0:
         return dns_result
 
-    status_result = run_read_only_command(["resolvectl", "status"], timeout=timeout)
+    status_result = run_read_only_command(
+        ["resolvectl", "status"],
+        timeout=effective_timeout,
+    )
     status_result["fallback_from"] = dns_result
     return status_result
 
 
-def command_with_parsed_json(command: list[str], timeout: int = 3) -> dict[str, Any]:
+def command_with_parsed_json(
+    command: list[str],
+    timeout: float | None = None,
+) -> dict[str, Any]:
     """Run a command and attach parsed JSON output when valid."""
-    result = run_read_only_command(command, timeout=timeout)
+    effective_timeout = resolve_command_timeout(timeout)
+    result = run_read_only_command(command, timeout=effective_timeout)
     result["parsed"] = parse_json_output(result)
     return result
 
 
 def collect_network_diagnostic(
     resolv_conf_path: str = "/etc/resolv.conf",
-    command_timeout: int = 3,
+    command_timeout: float | None = None,
 ) -> dict[str, Any]:
     """Collect an advanced read-only system and network diagnostic."""
-    interfaces = command_with_parsed_json(["ip", "-j", "addr"], timeout=command_timeout)
-    routes = command_with_parsed_json(["ip", "-j", "route"], timeout=command_timeout)
-    ports = run_read_only_command(["ss", "-tulpn"], timeout=command_timeout)
-    disk = run_read_only_command(["df", "-h"], timeout=command_timeout)
-    memory = run_read_only_command(["free", "-h"], timeout=command_timeout)
+    effective_timeout = resolve_command_timeout(command_timeout)
+    interfaces = command_with_parsed_json(
+        ["ip", "-j", "addr"],
+        timeout=effective_timeout,
+    )
+    routes = command_with_parsed_json(["ip", "-j", "route"], timeout=effective_timeout)
+    ports = run_read_only_command(["ss", "-tulpn"], timeout=effective_timeout)
+    disk = run_read_only_command(["df", "-h"], timeout=effective_timeout)
+    memory = run_read_only_command(["free", "-h"], timeout=effective_timeout)
     docker = run_read_only_command(
-        ["docker", "ps", "--format", "{{json .}}"], timeout=command_timeout
+        ["docker", "ps", "--format", "{{json .}}"],
+        timeout=effective_timeout,
     )
     docker["parsed"] = parse_json_lines(docker)
 
@@ -178,6 +269,7 @@ def collect_network_diagnostic(
             "schema_version": SCHEMA_VERSION,
             "generated_at_utc": utc_timestamp(),
             "mode": "read-only",
+            "command_timeout_seconds": effective_timeout,
         },
         "system": collect_system_info(),
         "network": {
@@ -185,7 +277,7 @@ def collect_network_diagnostic(
             "routes": routes,
             "dns": {
                 "resolv_conf": read_resolv_conf(resolv_conf_path),
-                "resolvectl": collect_resolvectl(timeout=command_timeout),
+                "resolvectl": collect_resolvectl(timeout=effective_timeout),
             },
             "ports": ports,
         },

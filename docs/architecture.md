@@ -1,5 +1,17 @@
 # Architecture du projet
 
+> Langues : Français | [English](architecture.en.md)
+
+## Sommaire
+
+- [Objectif](#objectif)
+- [Architecture actuelle](#architecture-actuelle)
+- [Composants](#composants)
+- [Choix Docker et Compose](#choix-docker-et-compose)
+- [Persistance préparatoire](#persistance-preparatoire)
+- [Évolutions prévues](#evolution-prevue)
+- [Principes d'architecture](#principes-darchitecture)
+
 ## Objectif
 
 Ce projet est un lab d’apprentissage autour de Linux, des réseaux, de Docker, de FastAPI, de l’automatisation et de la cybersécurité défensive.
@@ -73,6 +85,58 @@ Objectifs :
 * éviter les différences entre machines ;
 * simplifier le lancement ;
 * préparer le futur déploiement VPS.
+
+## Choix Docker et Compose
+
+L'image applicative utilise un build multi-étapes :
+
+* l'étape `builder` installe uniquement les dépendances runtime depuis
+  `app/requirements.txt` dans un environnement virtuel ;
+* l'étape `runtime` copie cet environnement, le code applicatif et quelques
+  fichiers de configuration dans des chemins séparés ;
+* le conteneur s'exécute avec l'utilisateur non-root `10001:10001`.
+
+Le non-root limite l'impact d'une faille applicative : même si l'API est
+compromise, le processus ne doit pas disposer de privilèges root dans le
+conteneur. Compose répète ce choix avec `user: "10001:10001"` pour rendre le
+contrat visible pendant la revue.
+
+Les montages sont limités à `./outputs:/workspace/outputs:Z`, car les rapports
+sont la seule sortie mutable attendue. Le dépôt complet, les fichiers `.env` et
+les secrets locaux ne doivent pas être montés dans le conteneur.
+
+`restart: unless-stopped` est utilisé pour simuler un comportement VPS réaliste :
+le service revient après un redémarrage Docker, mais un arrêt explicite par
+`make down` ou `docker compose down` reste respecté.
+
+Les logs applicatifs restent dirigés vers stdout/stderr. Docker ou le futur VPS
+peuvent ensuite les collecter avec le driver de logs standard, un sidecar ou un
+agent externe. Le projet ne doit pas écrire de fichiers de logs applicatifs
+persistants contenant des données sensibles.
+
+## Persistance préparatoire
+
+La persistance n'est pas active dans l'application v0.3.x. Compose prépare
+toutefois un profil `future-persistence` avec un service Postgres et le volume
+`postgres_data`. Ce profil est inactif par défaut.
+
+Avant activation réelle, il faudra ajouter :
+
+* une dépendance applicative PostgreSQL explicitement revue ;
+* une gestion de migrations, par exemple Alembic ;
+* une politique de rétention des rapports ;
+* un stockage dédié ou externe pour les rapports IA revus.
+
+Le volume `ai_reports` est réservé comme point de préparation. Aucun rapport IA
+n'est généré automatiquement dans l'état actuel.
+
+## CORS futur
+
+Aucun middleware CORS n'est activé aujourd'hui, car l'API est consommée
+localement et ne sert pas encore de backend public pour un front. Si un front
+local ou un service IA séparé consomme l'API, les origines devront être listées
+explicitement via une variable du type `CORS_ALLOWED_ORIGINS`, sans wildcard en
+mode VPS.
 
 ### Makefile
 

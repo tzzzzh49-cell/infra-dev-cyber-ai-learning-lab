@@ -20,7 +20,7 @@ Le projet doit rester **reproductible en priorité sur Ubuntu 26.04 LTS Server**
 
 ## Statut du projet
 
-Version actuelle : v0.3.1 (stabilisation qualité/CI/documentation, API v0.3.0)
+Version actuelle : v0.3.2 (durcissement Docker, timeout configurable, jetons hashés et documentation). Schéma de diagnostic : v0.3.0.
 
 Fonctionnalités disponibles :
 
@@ -45,6 +45,11 @@ Fonctionnalités disponibles :
 - documentation préparatoire VPS, backups et Ubuntu Server pour v0.4.0 ;
 - base Restic local-first pour backups et drill de restauration local ;
 - préparation Restic distante S3-compatible avec placeholders uniquement ;
+- image Docker multi-étapes avec runtime non-root ;
+- timeout de diagnostic configurable via `DIAG_COMMAND_TIMEOUT` ;
+- protection `/diag` par token clair privé ou hash `DIAG_ACCESS_TOKEN_SHA256` ;
+- génération locale de jeton avec `scripts/generate_diag_token.py` ;
+- profil Compose préparatoire `future-persistence` pour Postgres, inactif par défaut ;
 - placeholders OpenAI API read-only sans appel réel obligatoire ;
 - runbooks OpenClaw documentaires non actifs ;
 - règles de sécurité en lecture seule.
@@ -194,9 +199,12 @@ La configuration locale doit rester sûre par défaut :
 - `.env.example` utilise `APP_HOST=127.0.0.1` pour exposer l'API uniquement sur la machine locale ;
 - ne pas utiliser `APP_HOST=0.0.0.0` sans authentification et sans reverse proxy HTTPS sécurisé ;
 - `/diag` peut contenir des informations système et **ne doit pas être exposé publiquement** sans authentification et reverse proxy sécurisé ;
-- en mode `APP_ENV=vps`, `/diag`, `/diag/export/json` et `/diag/export/markdown` exigent `DIAG_ACCESS_TOKEN` ;
-- si `APP_ENV=vps` est actif mais que `DIAG_ACCESS_TOKEN` est vide, les routes de diagnostic refusent l'accès au lieu de s'exposer sans protection ;
+- en mode `APP_ENV=vps`, `/diag`, `/diag/export/json` et `/diag/export/markdown` exigent un token clair privé ou `DIAG_ACCESS_TOKEN_SHA256` ;
+- si `APP_ENV=vps` est actif mais qu'aucun token ni hash n'est configuré, les routes de diagnostic refusent l'accès au lieu de s'exposer sans protection ;
+- `DIAG_COMMAND_TIMEOUT` vaut `3` secondes par défaut et peut être ajusté raisonnablement selon l'environnement ;
 - aucun secret réel ne doit être ajouté dans les fichiers `.env*.example`, la documentation ou les scripts.
+
+Exemples d'appels protégés : [docs/api-examples.md](docs/api-examples.md).
 
 ## Tests
 
@@ -229,8 +237,11 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 
 ## Documentation
 
+- [Sommaire documentation](docs/README.md)
 - [Architecture](docs/architecture.md)
+- [Architecture EN](docs/architecture.en.md)
 - [Sécurité](docs/securite.md)
+- [Security EN](docs/security.en.md)
 - [Workflow Git et GitHub](docs/workflow-git.md)
 - [Reproductibilité Linux générique](docs/reproductibilite-linux-generique.md)
 - [Reproductibilité Fedora 44](docs/reproductibilite-fedora-44-vm.md)
@@ -240,7 +251,9 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 - [OpenAI API read-only](docs/ai/README.md)
 - [Modèle OpenClaw contrôlé](openclaw/security-model.md)
 - [Reproductibilité Ubuntu 26.04 Server](docs/reproductibilite-ubuntu-26.04-server.md)
+- [Ubuntu 26.04 Server EN](docs/reproducibility-ubuntu-26.04-server.en.md)
 - [Diagnostic réseau avancé v0.3.0](docs/diagnostic-reseau-v0.3.md)
+- [Exemples d'appels API protégés](docs/api-examples.md)
 - [Journal d'apprentissage](docs/journal-apprentissage.md)
 - [ADR-001 - Mode lecture seule](docs/decisions/ADR-001-mode-read-only.md)
 

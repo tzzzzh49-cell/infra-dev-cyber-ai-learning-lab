@@ -47,11 +47,54 @@ def test_run_read_only_command_handles_timeout(monkeypatch):
     assert "timed out" in data["stderr"]
 
 
-def test_collect_network_diagnostic_sections_exist():
+def test_run_read_only_command_retries_timeout(monkeypatch):
+    calls = []
+
+    def fake_run(*_args, **_kwargs):
+        calls.append("run")
+        if len(calls) == 1:
+            raise subprocess.TimeoutExpired(cmd=["transient"], timeout=1)
+        return subprocess.CompletedProcess(
+            args=["transient"],
+            returncode=0,
+            stdout="ok\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(diagnostics.subprocess, "run", fake_run)
+
+    data = diagnostics.run_read_only_command(["transient"], timeout=1, retries=1)
+
+    assert data["available"] is True
+    assert data["returncode"] == 0
+    assert data["stdout"] == "ok\n"
+    assert data["timed_out"] is False
+    assert data["attempts"] == 2
+
+
+def test_default_command_timeout_uses_environment(monkeypatch):
+    monkeypatch.setenv("DIAG_COMMAND_TIMEOUT", "7.5")
+
+    assert diagnostics.get_default_command_timeout() == 7.5
+
+
+def test_default_command_timeout_rejects_invalid_values(monkeypatch):
+    monkeypatch.setenv("DIAG_COMMAND_TIMEOUT", "-1")
+
+    assert (
+        diagnostics.get_default_command_timeout()
+        == diagnostics.DEFAULT_COMMAND_TIMEOUT
+    )
+
+
+def test_collect_network_diagnostic_sections_exist(monkeypatch):
+    monkeypatch.delenv("DIAG_COMMAND_TIMEOUT", raising=False)
+
     data = diagnostics.collect_network_diagnostic()
 
     assert data["metadata"]["schema_version"] == "0.3.0"
     assert data["metadata"]["mode"] == "read-only"
+    assert data["metadata"]["command_timeout_seconds"] == 3.0
     assert "system" in data
     assert "network" in data
     assert "interfaces" in data["network"]

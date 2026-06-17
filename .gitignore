@@ -29,6 +29,7 @@ secrets/
 *.secret
 *.secrets
 *.token
+.diag-token*
 *.passphrase
 *.pem
 *.key

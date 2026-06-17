@@ -1,3 +1,7 @@
+# Exemple générique uniquement.
+# Copier ce fichier hors dépôt avant usage réel, remplacer tous les placeholders
+# et ne jamais commiter le Caddyfile final contenant domaine, email ou secrets.
+
 {
     email <ADMIN_EMAIL>
 }
@@ -20,6 +24,8 @@
         }
 
         reverse_proxy 127.0.0.1:8000 {
+            # Caddy peut injecter le jeton clair depuis son environnement privé.
+            # L'application peut stocker seulement DIAG_ACCESS_TOKEN_SHA256.
             header_up X-Diag-Token {env.DIAG_ACCESS_TOKEN}
         }
     }

@@ -126,6 +126,7 @@ check_paths() {
         scripts/bootstrap_ubuntu2604_server.sh
         scripts/compose.sh
         scripts/diagnostic_local.sh
+        scripts/generate_diag_token.py
         scripts/run_lab.sh
         backup/init-local.sh
         backup/backup-local.sh
@@ -135,6 +136,11 @@ check_paths() {
         .env.vps.example
         .env.backup.example
         .env.ai.example
+        docs/README.md
+        docs/api-examples.md
+        docs/architecture.en.md
+        docs/security.en.md
+        docs/reproducibility-ubuntu-26.04-server.en.md
         docs/reproductibilite-ubuntu-26.04-server.md
         docs/validations/ubuntu-26.04-server-vm.md
         docs/vps/compose.vps.example.yaml

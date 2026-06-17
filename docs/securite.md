@@ -1,5 +1,18 @@
 # Sécurité du projet
 
+> Langues : Français | [English](security.en.md)
+
+## Sommaire
+
+- [Objectif](#objectif)
+- [Principe principal](#principe-principal)
+- [Diagnostic réseau avancé v0.3.0](#diagnostic-reseau-avance-v030)
+- [Protection des diagnostics HTTP](#protection-des-diagnostics-http)
+- [Timeouts et tentatives](#timeouts-et-tentatives)
+- [Logs](#logs)
+- [Mise à jour des dépendances](#mise-a-jour-des-dependances)
+- [Gestion des secrets](#gestion-des-secrets)
+
 ## Objectif
 
 Ce projet manipule des commandes systèmes et réseaux.  
@@ -122,11 +135,46 @@ Les routes suivantes sont sensibles :
 Comportement attendu :
 
 * en local, avec exposition sur `127.0.0.1`, elles restent accessibles pour l'apprentissage ;
-* si `DIAG_ACCESS_TOKEN` est défini, elles exigent un token via `Authorization: Bearer <token>` ou `X-Diag-Token` ;
-* si `APP_ENV=vps` est actif, elles exigent `DIAG_ACCESS_TOKEN` ;
-* si `APP_ENV=vps` est actif sans token configuré, elles refusent l'accès au lieu de s'exposer sans protection.
+* si `DIAG_ACCESS_TOKEN_SHA256` est défini, elles comparent le hash SHA-256 du token reçu via `Authorization: Bearer <token>` ou `X-Diag-Token` ;
+* `DIAG_ACCESS_TOKEN` reste accepté pour compatibilité locale ou injection par reverse proxy, mais il doit rester dans un fichier privé non commité ;
+* si `APP_ENV=vps` est actif, elles exigent un token clair privé ou un hash configuré ;
+* si `APP_ENV=vps` est actif sans token ni hash configuré, elles refusent l'accès au lieu de s'exposer sans protection.
 
-Ne jamais commiter la valeur réelle de `DIAG_ACCESS_TOKEN`. Les fichiers `.env*.example` doivent garder cette variable vide.
+Ne jamais commiter la valeur réelle de `DIAG_ACCESS_TOKEN`, ni un token client
+réel. Les fichiers `.env*.example` doivent garder les secrets vides. Préférer
+`scripts/generate_diag_token.py` pour produire un token temporaire et exporter
+uniquement `DIAG_ACCESS_TOKEN_SHA256` côté application.
+
+## Timeouts et tentatives
+
+Les commandes de diagnostic utilisent `DIAG_COMMAND_TIMEOUT`, avec une valeur
+par défaut de `3` secondes. Le code plafonne cette valeur pour éviter qu'un
+diagnostic bloqué immobilise l'API.
+
+`DIAG_COMMAND_RETRIES` existe pour des environnements lents ou transitoires,
+mais vaut `0` par défaut et reste plafonné. Les tentatives supplémentaires ne
+doivent concerner que des commandes d'observation idempotentes.
+
+## Logs
+
+Les logs applicatifs doivent aller vers stdout/stderr. En mode VPS, la collecte
+doit être faite par Docker, un sidecar ou un agent externe. Ne pas écrire de
+fichiers de logs applicatifs persistants dans le dépôt, car ils peuvent contenir
+des informations de diagnostic sensibles.
+
+## Mise à jour des dépendances
+
+Politique proposée :
+
+* revue mensuelle des dépendances Python et de l'image de base Docker ;
+* réaction rapide aux alertes critiques ou exploitées publiquement ;
+* exécution locale de Bandit et Trivy avant merge lorsque ces outils sont
+  disponibles ;
+* aucune mise à jour automatique sans lecture du changelog et validation des
+  tests.
+
+Bandit et Trivy peuvent dépendre de bases de vulnérabilités locales ou distantes.
+Si l'exécution locale n'est pas possible, noter la raison dans la Pull Request.
 
 ## Règles pour OpenAI API
 

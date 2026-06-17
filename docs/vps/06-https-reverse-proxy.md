@@ -23,13 +23,15 @@ Placeholders à remplacer hors dépôt :
 - `<ADMIN_EMAIL>` : email utilisé pour ACME ;
 - `<BASIC_AUTH_USER>` : utilisateur de l'authentification reverse proxy ;
 - `<CADDY_HASHED_PASSWORD>` : hash Caddy généré hors dépôt ;
-- `DIAG_ACCESS_TOKEN` : variable d'environnement privée partagée avec l'application.
+- `DIAG_ACCESS_TOKEN` : token clair privé dans l'environnement Caddy si le proxy injecte `X-Diag-Token` ;
+- `DIAG_ACCESS_TOKEN_SHA256` : hash configuré côté application lorsque le token clair ne doit pas être stocké par l'API.
 
 Points de contrôle avant exposition :
 
 - `APP_HOST=127.0.0.1` reste actif côté Compose ;
 - `APP_ENV=vps` est actif côté application ;
-- `DIAG_ACCESS_TOKEN` est défini hors Git ;
+- `DIAG_ACCESS_TOKEN_SHA256` est défini hors Git côté application ;
+- `DIAG_ACCESS_TOKEN` reste hors Git si Caddy doit injecter le token clair ;
 - Caddy applique une authentification sur les routes de diagnostic ;
 - aucun domaine, token DNS, certificat ou mot de passe réel n'est commité.
 - les routes publiques non sensibles ne transmettent pas de token inutilement.

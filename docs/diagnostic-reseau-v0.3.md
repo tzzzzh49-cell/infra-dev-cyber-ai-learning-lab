@@ -65,7 +65,8 @@ La structure reste stable autour des sections principales suivantes :
   "metadata": {
     "schema_version": "0.3.0",
     "generated_at_utc": "...",
-    "mode": "read-only"
+    "mode": "read-only",
+    "command_timeout_seconds": 3.0
   },
   "system": {
     "hostname": "...",
@@ -91,7 +92,7 @@ La structure reste stable autour des sections principales suivantes :
 }
 ```
 
-Chaque résultat de commande inclut la commande exécutée, la disponibilité, le code retour, `stdout`, `stderr` et l'information de timeout.
+Chaque résultat de commande inclut la commande exécutée, la disponibilité, le code retour, `stdout`, `stderr`, l'information de timeout et le nombre de tentatives.
 
 ## Formats d'export
 
@@ -125,16 +126,26 @@ Détail :
 
 ## Protection des routes sensibles
 
-En local, sans `DIAG_ACCESS_TOKEN` et hors mode VPS, les commandes `make diag`, `make diag-json` et `make diag-md` restent utilisables sur `127.0.0.1`.
+En local, sans `DIAG_ACCESS_TOKEN`, sans `DIAG_ACCESS_TOKEN_SHA256` et hors mode VPS, les commandes `make diag`, `make diag-json` et `make diag-md` restent utilisables sur `127.0.0.1`.
 
 Pour un environnement VPS ou préproduction :
 
 - définir `APP_ENV=vps` ;
-- définir `DIAG_ACCESS_TOKEN` dans un fichier `.env` privé non commité ;
+- définir de préférence `DIAG_ACCESS_TOKEN_SHA256` dans un fichier `.env` privé non commité ;
+- garder le token client clair seulement dans la session opérateur ou dans l'environnement privé du reverse proxy ;
 - appeler les routes sensibles avec `Authorization: Bearer <token>` ou `X-Diag-Token: <token>` ;
 - garder l'API liée à `127.0.0.1` derrière un reverse proxy HTTPS authentifié.
 
-Si `APP_ENV=vps` est actif mais que `DIAG_ACCESS_TOKEN` est vide, `/diag`, `/diag/export/json` et `/diag/export/markdown` renvoient une erreur et ne publient pas le diagnostic.
+Si `APP_ENV=vps` est actif mais qu'aucun token ni hash n'est configuré, `/diag`, `/diag/export/json` et `/diag/export/markdown` renvoient une erreur et ne publient pas le diagnostic.
+
+Exemples complets : `docs/api-examples.md`.
+
+## Timeout configurable
+
+`DIAG_COMMAND_TIMEOUT` vaut `3` secondes par défaut. Il peut être augmenté pour
+une VM lente, mais reste plafonné par le code applicatif. `DIAG_COMMAND_RETRIES`
+vaut `0` par défaut et doit rester réservé à des commandes d'observation
+idempotentes.
 
 ## Notes de sécurité
 

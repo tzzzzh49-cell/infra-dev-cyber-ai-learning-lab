@@ -3,15 +3,25 @@ name: infra-dev-cyber-ai-learning-lab
 services:
   api:
     build:
-      context: ./app
-    image: infra-dev-cyber-ai-learning-lab-api:0.3.0
+      context: .
+      dockerfile: app/Dockerfile
+    image: infra-dev-cyber-ai-learning-lab-api:0.3.2
     container_name: infra-dev-cyber-ai-learning-lab-api
+    # The image already switches to UID/GID 10001. Keeping the user here makes
+    # the non-root runtime contract visible at Compose review time.
+    user: "10001:10001"
     environment:
       APP_ENV: ${APP_ENV:-lab}
       DIAG_ACCESS_TOKEN: ${DIAG_ACCESS_TOKEN:-}
+      DIAG_ACCESS_TOKEN_SHA256: ${DIAG_ACCESS_TOKEN_SHA256:-}
+      DIAG_COMMAND_TIMEOUT: ${DIAG_COMMAND_TIMEOUT:-3}
     volumes:
+      # Reports are the only mutable application output. Keep this bind mount
+      # narrow so source code and local secrets are not exposed to the container.
       - ./outputs:/workspace/outputs:Z
     ports:
+      # Local-first exposure. Use a protected reverse proxy before publishing
+      # diagnostic routes outside 127.0.0.1.
       - "${APP_HOST:-127.0.0.1}:${APP_PORT:-8000}:8000"
     healthcheck:
       test:
@@ -23,4 +33,31 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    # Keep the lab available across Docker restarts, but still allow explicit
+    # operator shutdown with `make down` / `docker compose down`.
     restart: unless-stopped
+
+  db:
+    profiles:
+      - future-persistence
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lab_reports}
+      POSTGRES_USER: ${POSTGRES_USER:-lab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-placeholder-not-for-production}
+    volumes:
+      # Prepared for a future reports/index database. Migrations are not active
+      # yet; introduce Alembic or an equivalent reviewed tool before use.
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  ai_reports:

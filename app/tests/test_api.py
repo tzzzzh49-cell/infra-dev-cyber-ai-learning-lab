@@ -1,19 +1,42 @@
-import pytest
-from fastapi.testclient import TestClient
+import asyncio
 
+import httpx
+import pytest
+
+from app.diagnostics import SCHEMA_VERSION
 from app.main import APP_VERSION, app
+
+
+class ASGITestClient:
+    def request(self, method, path, **kwargs):
+        async def call_app():
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(
+                transport=transport,
+                base_url="http://testserver",
+            ) as client:
+                return await client.request(method, path, **kwargs)
+
+        return asyncio.run(call_app())
+
+    def get(self, path, **kwargs):
+        return self.request("GET", path, **kwargs)
+
+    def post(self, path, **kwargs):
+        return self.request("POST", path, **kwargs)
 
 
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.delenv("APP_ENV", raising=False)
     monkeypatch.delenv("DIAG_ACCESS_TOKEN", raising=False)
-    return TestClient(app)
+    monkeypatch.delenv("DIAG_ACCESS_TOKEN_SHA256", raising=False)
+    return ASGITestClient()
 
 
 def sample_report():
     return {
-        "metadata": {"schema_version": APP_VERSION},
+        "metadata": {"schema_version": SCHEMA_VERSION},
         "system": {},
         "network": {},
         "resources": {},
@@ -160,7 +183,21 @@ def test_diag_accepts_bearer_token(client, monkeypatch):
     response = client.get("/diag", headers={"Authorization": "Bearer test-token"})
 
     assert response.status_code == 200
-    assert response.json()["metadata"]["schema_version"] == APP_VERSION
+    assert response.json()["metadata"]["schema_version"] == SCHEMA_VERSION
+
+
+def test_diag_accepts_hashed_token(client, monkeypatch):
+    monkeypatch.setenv("APP_ENV", "vps")
+    monkeypatch.setenv(
+        "DIAG_ACCESS_TOKEN_SHA256",
+        "4c5dc9b7708905f77f5e5d16316b5dfb425e68cb326dcd55a860e90a7707031e",
+    )
+    monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
+
+    response = client.get("/diag", headers={"Authorization": "Bearer test-token"})
+
+    assert response.status_code == 200
+    assert response.json()["metadata"]["schema_version"] == SCHEMA_VERSION
 
 
 def test_diag_export_json_rejects_missing_token(client, monkeypatch):
