@@ -4,12 +4,36 @@ import json
 import platform
 import socket
 import subprocess
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from app.logging_config import configure_logging
+
 SCHEMA_VERSION = "0.3.0"
 DEFAULT_REPORT_DIR = "outputs/reports"
+DEFAULT_COMMAND_TIMEOUT = 3
+ALLOWED_DIAGNOSTIC_COMMANDS: tuple[tuple[str, ...], ...] = (
+    ("ip", "-j", "addr"),
+    ("ip", "-j", "route"),
+    ("resolvectl", "dns"),
+    ("resolvectl", "status"),
+    ("systemd-resolve", "--status"),
+    ("nmcli", "dev", "show"),
+    ("ss", "-tulpn"),
+    ("df", "-h"),
+    ("free", "-h"),
+    ("docker", "ps", "--format", "{{json .}}"),
+)
+DNS_RESOLVER_COMMANDS: tuple[tuple[str, ...], ...] = (
+    ("resolvectl", "dns"),
+    ("resolvectl", "status"),
+    ("systemd-resolve", "--status"),
+    ("nmcli", "dev", "show"),
+)
+
+logger = configure_logging(__name__)
 
 
 def utc_timestamp() -> str:
@@ -22,19 +46,57 @@ def filename_timestamp() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%d-%H%M%S-%f")
 
 
-def run_read_only_command(command: list[str], timeout: int = 3) -> dict[str, Any]:
-    """Run a short read-only command without a shell and return a stable result."""
-    result: dict[str, Any] = {
+def normalize_command_output(value: str | bytes | None) -> str:
+    """Return command output as text regardless of subprocess exception details."""
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
+def base_command_result(command: list[str], timeout: int) -> dict[str, Any]:
+    """Create the stable command result structure used by diagnostics."""
+    return {
         "command": command,
         "available": False,
         "returncode": None,
         "stdout": "",
         "stderr": "",
         "timed_out": False,
+        "timeout_seconds": timeout,
+        "duration_seconds": 0.0,
+        "error_type": "",
     }
 
+
+def finish_command_result(
+    result: dict[str, Any],
+    started_at: float,
+) -> dict[str, Any]:
+    """Record command duration before returning a command result."""
+    result["duration_seconds"] = round(time.monotonic() - started_at, 6)
+    return result
+
+
+def run_read_only_command(
+    command: list[str],
+    timeout: int = DEFAULT_COMMAND_TIMEOUT,
+) -> dict[str, Any]:
+    """Run a short read-only command without a shell and return a stable result."""
+    started_at = time.monotonic()
+    result = base_command_result(command, timeout)
+
+    if not command:
+        result["error_type"] = "empty_command"
+        result["stderr"] = "No command provided."
+        logger.error("Refusing to run an empty diagnostic command.")
+        return finish_command_result(result, started_at)
+
+    logger.info("Running read-only diagnostic command: %s", " ".join(command))
+
     try:
-        completed = subprocess.run(
+        completed = subprocess.run(  # nosec B603: command list comes from an allowlist.
             command,
             capture_output=True,
             text=True,
@@ -42,20 +104,62 @@ def run_read_only_command(command: list[str], timeout: int = 3) -> dict[str, Any
             timeout=timeout,
         )
     except FileNotFoundError as exc:
+        result["error_type"] = "command_not_found"
         result["stderr"] = str(exc)
-        return result
+        logger.warning("Diagnostic command not found: %s", command[0])
+        return finish_command_result(result, started_at)
     except subprocess.TimeoutExpired as exc:
         result["available"] = True
         result["timed_out"] = True
-        result["stdout"] = exc.stdout or ""
-        result["stderr"] = exc.stderr or f"Command timed out after {timeout}s"
-        return result
+        result["error_type"] = "timeout"
+        result["stdout"] = normalize_command_output(exc.stdout)
+        result["stderr"] = normalize_command_output(exc.stderr) or (
+            f"Command timed out after {timeout}s"
+        )
+        logger.error("Diagnostic command timed out after %ss: %s", timeout, command)
+        return finish_command_result(result, started_at)
+    except OSError as exc:
+        result["error_type"] = "os_error"
+        result["stderr"] = str(exc)
+        logger.error("Diagnostic command failed before execution: %s", exc)
+        return finish_command_result(result, started_at)
 
     result["available"] = True
     result["returncode"] = completed.returncode
     result["stdout"] = completed.stdout
     result["stderr"] = completed.stderr
-    return result
+    if completed.returncode != 0:
+        result["error_type"] = "non_zero_exit"
+        logger.warning(
+            "Diagnostic command returned %s: %s",
+            completed.returncode,
+            command,
+        )
+    else:
+        logger.info("Diagnostic command completed: %s", command)
+    return finish_command_result(result, started_at)
+
+
+def allowed_diagnostic_command(command: list[str]) -> bool:
+    """Return true when a command belongs to the diagnostic allowlist."""
+    return tuple(command) in ALLOWED_DIAGNOSTIC_COMMANDS
+
+
+def run_diagnostic_command(
+    command: list[str],
+    timeout: int = DEFAULT_COMMAND_TIMEOUT,
+) -> dict[str, Any]:
+    """Run an allowlisted read-only diagnostic command."""
+    result: dict[str, Any] = {
+        **base_command_result(command, timeout),
+    }
+
+    if not allowed_diagnostic_command(command):
+        result["error_type"] = "command_not_allowed"
+        result["stderr"] = "Command is not in the diagnostic allowlist."
+        logger.error("Blocked non-allowlisted diagnostic command: %s", command)
+        return result
+    return run_read_only_command(command, timeout=timeout)
 
 
 def collect_system_info() -> dict[str, str]:
@@ -140,44 +244,59 @@ def read_resolv_conf(path: str = "/etc/resolv.conf") -> dict[str, Any]:
     return data
 
 
-def collect_resolvectl(timeout: int = 3) -> dict[str, Any]:
-    """Collect DNS information from resolvectl when available."""
-    dns_result = run_read_only_command(["resolvectl", "dns"], timeout=timeout)
-    if dns_result["available"] and dns_result["returncode"] == 0:
-        return dns_result
+def collect_dns_resolver_commands(
+    timeout: int = DEFAULT_COMMAND_TIMEOUT,
+) -> dict[str, Any]:
+    """Collect DNS resolver details using resolvectl and portable fallbacks."""
+    attempts: list[dict[str, Any]] = []
+    selected: dict[str, Any] | None = None
 
-    status_result = run_read_only_command(["resolvectl", "status"], timeout=timeout)
-    status_result["fallback_from"] = dns_result
-    return status_result
+    for command in DNS_RESOLVER_COMMANDS:
+        result = run_diagnostic_command(list(command), timeout=timeout)
+        attempts.append(result)
+        if selected is None and result["available"] and result["returncode"] == 0:
+            selected = result
+            break
+
+    return {
+        "selected": selected,
+        "attempts": attempts,
+        "fallbacks": [list(command) for command in DNS_RESOLVER_COMMANDS[1:]],
+    }
 
 
-def command_with_parsed_json(command: list[str], timeout: int = 3) -> dict[str, Any]:
+def command_with_parsed_json(
+    command: list[str],
+    timeout: int = DEFAULT_COMMAND_TIMEOUT,
+) -> dict[str, Any]:
     """Run a command and attach parsed JSON output when valid."""
-    result = run_read_only_command(command, timeout=timeout)
+    result = run_diagnostic_command(command, timeout=timeout)
     result["parsed"] = parse_json_output(result)
     return result
 
 
 def collect_network_diagnostic(
     resolv_conf_path: str = "/etc/resolv.conf",
-    command_timeout: int = 3,
+    command_timeout: int = DEFAULT_COMMAND_TIMEOUT,
 ) -> dict[str, Any]:
     """Collect an advanced read-only system and network diagnostic."""
     interfaces = command_with_parsed_json(["ip", "-j", "addr"], timeout=command_timeout)
     routes = command_with_parsed_json(["ip", "-j", "route"], timeout=command_timeout)
-    ports = run_read_only_command(["ss", "-tulpn"], timeout=command_timeout)
-    disk = run_read_only_command(["df", "-h"], timeout=command_timeout)
-    memory = run_read_only_command(["free", "-h"], timeout=command_timeout)
-    docker = run_read_only_command(
+    ports = run_diagnostic_command(["ss", "-tulpn"], timeout=command_timeout)
+    disk = run_diagnostic_command(["df", "-h"], timeout=command_timeout)
+    memory = run_diagnostic_command(["free", "-h"], timeout=command_timeout)
+    docker = run_diagnostic_command(
         ["docker", "ps", "--format", "{{json .}}"], timeout=command_timeout
     )
     docker["parsed"] = parse_json_lines(docker)
+    resolver_commands = collect_dns_resolver_commands(timeout=command_timeout)
 
     return {
         "metadata": {
             "schema_version": SCHEMA_VERSION,
             "generated_at_utc": utc_timestamp(),
             "mode": "read-only",
+            "command_timeout_seconds": command_timeout,
         },
         "system": collect_system_info(),
         "network": {
@@ -185,7 +304,7 @@ def collect_network_diagnostic(
             "routes": routes,
             "dns": {
                 "resolv_conf": read_resolv_conf(resolv_conf_path),
-                "resolvectl": collect_resolvectl(timeout=command_timeout),
+                "resolver_commands": resolver_commands,
             },
             "ports": ports,
         },
@@ -197,6 +316,9 @@ def collect_network_diagnostic(
         "security": {
             "read_only": True,
             "destructive_commands_used": False,
+            "allowed_commands": [
+                list(command) for command in ALLOWED_DIAGNOSTIC_COMMANDS
+            ],
         },
     }
 
@@ -205,6 +327,7 @@ def ensure_report_dir(output_dir: str | Path) -> Path:
     """Create and return the report directory path."""
     report_dir = Path(output_dir)
     report_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("Diagnostic report directory ready: %s", report_dir)
     return report_dir
 
 
@@ -219,6 +342,7 @@ def write_json_report(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    logger.info("Wrote JSON diagnostic report: %s", report_path)
     return str(report_path)
 
 
@@ -246,6 +370,33 @@ def command_block(section: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def resolver_commands_block(section: dict[str, Any]) -> str:
+    """Render DNS resolver command attempts as Markdown."""
+    selected = section.get("selected")
+    attempts = section.get("attempts", [])
+    lines = [
+        "Commandes candidates :",
+        "",
+    ]
+
+    for attempt in attempts:
+        command = " ".join(attempt.get("command", []))
+        available = attempt.get("available")
+        returncode = attempt.get("returncode")
+        error_type = attempt.get("error_type") or "aucune"
+        lines.append(
+            f"- `{command}` : disponible=`{available}`, "
+            f"code=`{returncode}`, erreur=`{error_type}`"
+        )
+
+    lines.extend(["", "Commande retenue :", ""])
+    if selected:
+        lines.append(command_block(selected))
+    else:
+        lines.append("Aucune commande DNS alternative n'a répondu correctement.")
+    return "\n".join(lines)
+
+
 def write_markdown_report(
     report: dict[str, Any],
     output_dir: str | Path = DEFAULT_REPORT_DIR,
@@ -261,6 +412,7 @@ def write_markdown_report(
     docker = report["docker"]
     security = report["security"]
     resolv_conf = network["dns"]["resolv_conf"]
+    resolver_commands = network["dns"]["resolver_commands"]
 
     content = f"""# Diagnostic réseau avancé v0.3.0
 
@@ -295,9 +447,9 @@ def write_markdown_report(
 {resolv_conf["content"].strip() or "(aucun contenu)"}
 ```
 
-### resolvectl
+### Commandes de résolution DNS
 
-{command_block(network["dns"]["resolvectl"])}
+{resolver_commands_block(resolver_commands)}
 
 ## Ports ouverts
 
@@ -319,8 +471,10 @@ def write_markdown_report(
 
 - Diagnostic en lecture seule : `{security["read_only"]}`
 - Commandes destructives utilisées : `{security["destructive_commands_used"]}`
+- Commandes autorisées : `{len(security["allowed_commands"])}`
 - Les données ci-dessus sont destinées au diagnostic local défensif.
 - Ne pas exposer `/diag` publiquement sans authentification.
 """
     report_path.write_text(content, encoding="utf-8")
+    logger.info("Wrote Markdown diagnostic report: %s", report_path)
     return str(report_path)

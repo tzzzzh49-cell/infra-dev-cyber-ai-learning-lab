@@ -7,7 +7,8 @@ Recommandations :
 - cloner le dépôt sur le VPS avec une branche/tag validé ;
 - garder `APP_HOST=127.0.0.1` pour ne pas exposer l'API directement ;
 - définir `APP_ENV=vps` dans un fichier `.env` privé ;
-- définir `DIAG_ACCESS_TOKEN` dans ce même fichier privé avant toute exposition via reverse proxy ;
+- définir `DIAG_ACCESS_TOKEN_HASH` via un gestionnaire de secrets, Vault Agent, AWS Secrets Manager ou un fichier monté privé ;
+- garder le token clair hors de l'application ; il sert seulement au client ou au reverse proxy de confiance ;
 - monter `outputs/` pour conserver les rapports ;
 - vérifier `make compose-config` avant démarrage ;
 - lancer l'application seulement après revue de la configuration.
@@ -19,7 +20,9 @@ Configuration attendue côté application :
 APP_ENV=vps
 APP_HOST=127.0.0.1
 APP_PORT=8000
-DIAG_ACCESS_TOKEN=<TOKEN_PRIVE_HORS_GIT>
+DIAG_ACCESS_TOKEN_HASH=<HASH_DEPUIS_GESTIONNAIRE_DE_SECRETS>
+DIAG_ACCESS_TOKEN_HASH_FILE=
+DIAG_PROTECTION_DISABLED=false
 LAB_DOMAIN=<LAB_DOMAIN>
 ADMIN_EMAIL=<ADMIN_EMAIL>
 ```

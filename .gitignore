@@ -61,12 +61,14 @@ outputs/raw/*
 outputs/rendered/*
 outputs/backups/*
 outputs/reports/*
+outputs/logs/*
 
 # Garder les dossiers vides dans Git
 !outputs/raw/.gitkeep
 !outputs/rendered/.gitkeep
 !outputs/backups/.gitkeep
 !outputs/reports/.gitkeep
+!outputs/logs/.gitkeep
 
 # IDE
 .vscode/

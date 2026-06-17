@@ -2,48 +2,68 @@
 - name: Diagnostic local read-only
   hosts: localhost
   gather_facts: true
-  vars:
-    project_root: "{{ playbook_dir | dirname | dirname }}"
-    report_dir: "{{ project_root }}/outputs/reports"
-    report_file: "{{ report_dir }}/ansible-diagnostic-local.md"
 
   tasks:
     - name: Créer le dossier de rapports
       ansible.builtin.file:
-        path: "{{ report_dir }}"
+        path: "{{ diagnostic_report_dir }}"
         state: directory
         mode: "0755"
+      tags:
+        - diagnostic
+        - report
 
     - name: Récupérer le nom de la machine
-      ansible.builtin.command: hostname
+      ansible.builtin.command:
+        argv:
+          - hostname
       register: hostname_result
       changed_when: false
+      tags:
+        - diagnostic
+        - system
 
     - name: Récupérer les routes réseau
-      ansible.builtin.command: ip route
+      ansible.builtin.command:
+        argv:
+          - ip
+          - route
       register: routes_result
       changed_when: false
       failed_when: false
+      tags:
+        - diagnostic
+        - network
 
     - name: Récupérer les ports ouverts
-      ansible.builtin.command: ss -tulpn
+      ansible.builtin.command:
+        argv:
+          - ss
+          - -tulpn
       register: ports_result
       changed_when: false
       failed_when: false
+      tags:
+        - diagnostic
+        - network
 
     - name: Tester l'API locale /health
       ansible.builtin.uri:
-        url: http://127.0.0.1:8000/health
+        url: "{{ diagnostic_api_health_url }}"
         method: GET
         return_content: true
         status_code: 200
+        timeout: 5
       register: api_health
       failed_when: false
       changed_when: false
+      tags:
+        - diagnostic
+        - api
 
     - name: Écrire un rapport Ansible simple
       ansible.builtin.copy:
-        dest: "{{ report_file }}"
+        dest: "{{ diagnostic_report_file }}"
         mode: "0644"
         content: |
           # Rapport Ansible local
@@ -79,4 +99,8 @@
 
           Rapport généré ici :
 
-          {{ report_file }}
+          {{ diagnostic_report_file }}
+      changed_when: false
+      tags:
+        - diagnostic
+        - report

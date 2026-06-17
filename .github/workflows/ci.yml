@@ -13,18 +13,24 @@ permissions:
 
 jobs:
   check:
-    name: Lint, compose config, tests and Bandit
+    name: Python ${{ matrix.python-version }} lint, compose config, tests and Bandit
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.12'
+          - '3.13'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
 
       - name: Install system dependencies
         run: |
@@ -51,9 +57,7 @@ jobs:
         run: make test
 
       - name: Python security scan with Bandit
-        run: |
-          python -m pip install bandit
-          bandit -q -r app -x app/tests --severity-level medium
+        run: python -m bandit -q -r app -x app/tests --severity-level medium --confidence-level medium
 
   hadolint:
     name: Hadolint Dockerfile
@@ -81,15 +85,14 @@ jobs:
       - name: Build image for scan
         run: docker build -t infra-dev-cyber-ai-learning-lab-api:ci ./app
 
-      # Advisory first pass: keep CI stable while surfacing upstream base-image CVE drift.
       - name: Trivy image scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: infra-dev-cyber-ai-learning-lab-api:ci
           format: table
-          severity: HIGH,CRITICAL
+          severity: CRITICAL
           ignore-unfixed: true
-          exit-code: '0'
+          exit-code: '1'
 
   # check-full is intentionally not enabled by default because it is heavier
   # and may require a more complete runner environment. Run locally before merge:

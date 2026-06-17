@@ -20,7 +20,8 @@
         }
 
         reverse_proxy 127.0.0.1:8000 {
-            header_up X-Diag-Token {env.DIAG_ACCESS_TOKEN}
+            # DIAG_UPSTREAM_TOKEN doit venir d'un secret runtime du proxy.
+            header_up X-Diag-Token {env.DIAG_UPSTREAM_TOKEN}
         }
     }
 

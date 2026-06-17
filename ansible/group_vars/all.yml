@@ -1,0 +1,5 @@
+---
+diagnostic_project_root: "{{ playbook_dir | dirname | dirname }}"
+diagnostic_report_dir: "{{ diagnostic_project_root }}/outputs/reports"
+diagnostic_report_file: "{{ diagnostic_report_dir }}/ansible-diagnostic-local.md"
+diagnostic_api_health_url: "http://127.0.0.1:8000/health"
