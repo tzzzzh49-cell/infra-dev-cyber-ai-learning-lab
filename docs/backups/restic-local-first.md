@@ -51,6 +51,7 @@ Exemple de séquence locale, après avoir exporté les variables privées :
 ```bash
 backup/init-local.sh
 backup/backup-local.sh
+restic snapshots
 restic check
 backup/restore-test-local.sh
 ```
@@ -59,9 +60,26 @@ Résultat attendu :
 
 - le dépôt Restic local est initialisé dans `outputs/backups/restic-local` ;
 - un snapshot est créé avec la sélection prudente du dépôt ;
+- `restic snapshots` liste les points de restauration disponibles sans afficher de secret ;
 - `restic check` vérifie l'intégrité du dépôt avec les variables privées exportées ;
 - le dernier snapshot est restauré dans un dossier `/tmp/infra-dev-cyber-ai-learning-lab-restic-restore-test-*` ;
 - les fichiers restaurés sont inspectables sans écraser le dépôt courant.
+
+## Restauration partielle
+
+Restaurer un seul chemin dans `/tmp` permet de vérifier un fichier sans écraser
+le dépôt courant :
+
+```bash
+RESTIC_RESTORE_TARGET=/tmp/infra-dev-cyber-ai-learning-lab-restic-partial
+restic restore latest --target "$RESTIC_RESTORE_TARGET" --include README.md
+```
+
+Points de contrôle :
+
+- le fichier restauré se trouve sous `$RESTIC_RESTORE_TARGET` ;
+- aucun fichier local du dépôt courant n'est remplacé ;
+- les secrets restent exclus par `backup/restic-excludes.txt`.
 
 ## Limites
 

@@ -32,4 +32,10 @@ Scripts préparatoires :
 
 Ces scripts n'utilisent aucun backend S3 et exigent une passphrase hors dépôt via `RESTIC_PASSWORD_FILE`.
 
+Contrôles à intégrer aux drills :
+
+- `restic snapshots` pour vérifier les points de restauration disponibles ;
+- `restic check` pour vérifier l'intégrité du dépôt ;
+- restauration complète ou partielle dans `/tmp`, jamais directement sur le dépôt courant.
+
 La préparation distante S3-compatible reste documentaire : aucun backend réel, aucune clé et aucun mot de passe ne doivent être ajoutés au dépôt.

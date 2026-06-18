@@ -20,7 +20,7 @@ Le projet doit rester **reproductible en priorité sur Ubuntu 26.04 LTS Server**
 
 ## Statut du projet
 
-Version actuelle : v0.3.1 (stabilisation qualité/CI/documentation, API v0.3.0)
+Version actuelle : v0.3.2 (durcissement Docker, diagnostics protégés, timeouts configurables et documentation). Schéma de diagnostic : v0.3.0.
 
 Fonctionnalités disponibles :
 
@@ -49,6 +49,9 @@ Fonctionnalités disponibles :
 - documentation préparatoire VPS, backups et Ubuntu Server pour v0.4.0 ;
 - base Restic local-first pour backups et drill de restauration local ;
 - préparation Restic distante S3-compatible avec placeholders uniquement ;
+- image Docker multi-étapes avec runtime non-root ;
+- timeout et tentatives de diagnostic configurables via `DIAG_COMMAND_TIMEOUT` et `DIAG_COMMAND_RETRIES` ;
+- profil Compose préparatoire `future-persistence` pour Postgres, inactif par défaut ;
 - placeholders OpenAI API read-only sans appel réel obligatoire ;
 - runbooks OpenClaw documentaires non actifs ;
 - règles de sécurité en lecture seule.
@@ -210,6 +213,7 @@ La configuration locale doit rester sûre par défaut :
 - l'application attend `DIAG_ACCESS_TOKEN_HASH`, au format `sha256:<hash>` ou `bcrypt:<hash>`, idéalement injecté depuis Vault, AWS Secrets Manager, un secret Docker ou un fichier monté via `DIAG_ACCESS_TOKEN_HASH_FILE` ;
 - `DIAG_ACCESS_TOKEN` reste uniquement une variable client pratique pour `make diag`, `make diag-json` et `make diag-md` ; elle ne doit pas être transmise au serveur ;
 - `DIAG_PROTECTION_DISABLED=true` est réservé au développement local explicite (`APP_ENV=local`, `lab`, `dev`, `development` ou `test`) ;
+- `DIAG_COMMAND_TIMEOUT` vaut `3` secondes par défaut et peut être ajusté raisonnablement selon l'environnement ;
 - aucun secret réel ne doit être ajouté dans les fichiers `.env*.example`, la documentation ou les scripts.
 
 Générer un jeton :
@@ -221,6 +225,8 @@ python3 scripts/generate_diag_token.py --format bcrypt
 ```
 
 Stocker seulement le hash côté application. Le jeton clair doit rester dans un gestionnaire de mots de passe, un secret de reverse proxy ou une variable de shell temporaire côté client.
+
+Exemples d'appels protégés : [docs/api-examples.md](docs/api-examples.md).
 
 ## Journaux
 
@@ -262,8 +268,11 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 ## Documentation
 
 - [English README](README.en.md)
+- [Sommaire documentation](docs/README.md)
 - [Architecture](docs/architecture.md)
+- [Architecture EN](docs/architecture.en.md)
 - [Sécurité](docs/securite.md)
+- [Security EN](docs/security.en.md)
 - [Workflow Git et GitHub](docs/workflow-git.md)
 - [Reproductibilité Linux générique](docs/reproductibilite-linux-generique.md)
 - [Reproductibilité Fedora 44](docs/reproductibilite-fedora-44-vm.md)
@@ -273,7 +282,9 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 - [OpenAI API read-only](docs/ai/README.md)
 - [Modèle OpenClaw contrôlé](openclaw/security-model.md)
 - [Reproductibilité Ubuntu 26.04 Server](docs/reproductibilite-ubuntu-26.04-server.md)
+- [Ubuntu 26.04 Server EN](docs/reproducibility-ubuntu-26.04-server.en.md)
 - [Diagnostic réseau avancé v0.3.0](docs/diagnostic-reseau-v0.3.md)
+- [Exemples d'appels API protégés](docs/api-examples.md)
 - [Journal d'apprentissage](docs/journal-apprentissage.md)
 - [ADR-001 - Mode lecture seule](docs/decisions/ADR-001-mode-read-only.md)
 

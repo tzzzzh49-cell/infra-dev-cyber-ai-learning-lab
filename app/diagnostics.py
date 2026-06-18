@@ -1,6 +1,7 @@
 """Read-only diagnostic helpers for the local learning lab."""
 
 import json
+import os
 import platform
 import socket
 import subprocess
@@ -14,6 +15,11 @@ from app.logging_config import configure_logging
 SCHEMA_VERSION = "0.3.0"
 DEFAULT_REPORT_DIR = "outputs/reports"
 DEFAULT_COMMAND_TIMEOUT = 3
+MAX_COMMAND_TIMEOUT = 30.0
+DIAG_COMMAND_TIMEOUT_ENV = "DIAG_COMMAND_TIMEOUT"
+DIAG_COMMAND_RETRIES_ENV = "DIAG_COMMAND_RETRIES"
+DEFAULT_COMMAND_RETRIES = 0
+MAX_COMMAND_RETRIES = 2
 ALLOWED_DIAGNOSTIC_COMMANDS: tuple[tuple[str, ...], ...] = (
     ("ip", "-j", "addr"),
     ("ip", "-j", "route"),
@@ -55,7 +61,69 @@ def normalize_command_output(value: str | bytes | None) -> str:
     return value
 
 
-def base_command_result(command: list[str], timeout: int) -> dict[str, Any]:
+def parse_positive_float(value: str, default: float, maximum: float) -> float:
+    """Parse a bounded positive float from an environment value."""
+    try:
+        parsed = float(value)
+    except ValueError:
+        return default
+
+    if parsed <= 0:
+        return default
+    return min(parsed, maximum)
+
+
+def parse_bounded_int(value: str, default: int, maximum: int) -> int:
+    """Parse a bounded non-negative integer from an environment value."""
+    try:
+        parsed = int(value)
+    except ValueError:
+        return default
+
+    if parsed < 0:
+        return default
+    return min(parsed, maximum)
+
+
+def get_default_command_timeout() -> float:
+    """Return the diagnostic command timeout from the environment."""
+    configured = os.environ.get(DIAG_COMMAND_TIMEOUT_ENV, "").strip()
+    if not configured:
+        return DEFAULT_COMMAND_TIMEOUT
+    return parse_positive_float(
+        configured,
+        default=DEFAULT_COMMAND_TIMEOUT,
+        maximum=MAX_COMMAND_TIMEOUT,
+    )
+
+
+def resolve_command_timeout(timeout: float | None) -> float:
+    """Return an explicit timeout or the environment-backed default."""
+    if timeout is not None:
+        return timeout
+    return get_default_command_timeout()
+
+
+def get_default_command_retries() -> int:
+    """Return the bounded diagnostic retry count from the environment."""
+    configured = os.environ.get(DIAG_COMMAND_RETRIES_ENV, "").strip()
+    if not configured:
+        return DEFAULT_COMMAND_RETRIES
+    return parse_bounded_int(
+        configured,
+        default=DEFAULT_COMMAND_RETRIES,
+        maximum=MAX_COMMAND_RETRIES,
+    )
+
+
+def resolve_command_retries(retries: int | None) -> int:
+    """Return an explicit retry count or the environment-backed default."""
+    if retries is not None:
+        return max(0, min(retries, MAX_COMMAND_RETRIES))
+    return get_default_command_retries()
+
+
+def base_command_result(command: list[str], timeout: float) -> dict[str, Any]:
     """Create the stable command result structure used by diagnostics."""
     return {
         "command": command,
@@ -67,6 +135,7 @@ def base_command_result(command: list[str], timeout: int) -> dict[str, Any]:
         "timeout_seconds": timeout,
         "duration_seconds": 0.0,
         "error_type": "",
+        "attempts": 0,
     }
 
 
@@ -81,11 +150,14 @@ def finish_command_result(
 
 def run_read_only_command(
     command: list[str],
-    timeout: int = DEFAULT_COMMAND_TIMEOUT,
+    timeout: float | None = None,
+    retries: int | None = None,
 ) -> dict[str, Any]:
     """Run a short read-only command without a shell and return a stable result."""
     started_at = time.monotonic()
-    result = base_command_result(command, timeout)
+    command_timeout = resolve_command_timeout(timeout)
+    command_retries = resolve_command_retries(retries)
+    result = base_command_result(command, command_timeout)
 
     if not command:
         result["error_type"] = "empty_command"
@@ -95,39 +167,51 @@ def run_read_only_command(
 
     logger.info("Running read-only diagnostic command: %s", " ".join(command))
 
-    try:
-        completed = subprocess.run(  # nosec B603: command list comes from an allowlist.
-            command,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=timeout,
-        )
-    except FileNotFoundError as exc:
-        result["error_type"] = "command_not_found"
-        result["stderr"] = str(exc)
-        logger.warning("Diagnostic command not found: %s", command[0])
-        return finish_command_result(result, started_at)
-    except subprocess.TimeoutExpired as exc:
-        result["available"] = True
-        result["timed_out"] = True
-        result["error_type"] = "timeout"
-        result["stdout"] = normalize_command_output(exc.stdout)
-        result["stderr"] = normalize_command_output(exc.stderr) or (
-            f"Command timed out after {timeout}s"
-        )
-        logger.error("Diagnostic command timed out after %ss: %s", timeout, command)
-        return finish_command_result(result, started_at)
-    except OSError as exc:
-        result["error_type"] = "os_error"
-        result["stderr"] = str(exc)
-        logger.error("Diagnostic command failed before execution: %s", exc)
-        return finish_command_result(result, started_at)
+    completed: subprocess.CompletedProcess[str] | None = None
+    for attempt in range(command_retries + 1):
+        result["attempts"] = attempt + 1
+        try:
+            completed = subprocess.run(  # nosec B603: command list comes from an allowlist.
+                command,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=command_timeout,
+            )
+        except FileNotFoundError as exc:
+            result["error_type"] = "command_not_found"
+            result["stderr"] = str(exc)
+            logger.warning("Diagnostic command not found: %s", command[0])
+            return finish_command_result(result, started_at)
+        except subprocess.TimeoutExpired as exc:
+            result["available"] = True
+            result["timed_out"] = True
+            result["error_type"] = "timeout"
+            result["stdout"] = normalize_command_output(exc.stdout)
+            result["stderr"] = normalize_command_output(exc.stderr) or (
+                f"Command timed out after {command_timeout:g}s"
+            )
+            logger.error(
+                "Diagnostic command timed out after %ss: %s",
+                command_timeout,
+                command,
+            )
+            if attempt < command_retries:
+                continue
+            return finish_command_result(result, started_at)
+        except OSError as exc:
+            result["error_type"] = "os_error"
+            result["stderr"] = str(exc)
+            logger.error("Diagnostic command failed before execution: %s", exc)
+            return finish_command_result(result, started_at)
+        else:
+            break
 
     result["available"] = True
-    result["returncode"] = completed.returncode
-    result["stdout"] = completed.stdout
-    result["stderr"] = completed.stderr
+    result["returncode"] = completed.returncode if completed else None
+    result["stdout"] = completed.stdout if completed else ""
+    result["stderr"] = completed.stderr if completed else ""
+    result["timed_out"] = False
     if completed.returncode != 0:
         result["error_type"] = "non_zero_exit"
         logger.warning(
@@ -147,11 +231,13 @@ def allowed_diagnostic_command(command: list[str]) -> bool:
 
 def run_diagnostic_command(
     command: list[str],
-    timeout: int = DEFAULT_COMMAND_TIMEOUT,
+    timeout: float | None = None,
+    retries: int | None = None,
 ) -> dict[str, Any]:
     """Run an allowlisted read-only diagnostic command."""
+    command_timeout = resolve_command_timeout(timeout)
     result: dict[str, Any] = {
-        **base_command_result(command, timeout),
+        **base_command_result(command, command_timeout),
     }
 
     if not allowed_diagnostic_command(command):
@@ -159,7 +245,7 @@ def run_diagnostic_command(
         result["stderr"] = "Command is not in the diagnostic allowlist."
         logger.error("Blocked non-allowlisted diagnostic command: %s", command)
         return result
-    return run_read_only_command(command, timeout=timeout)
+    return run_read_only_command(command, timeout=command_timeout, retries=retries)
 
 
 def collect_system_info() -> dict[str, str]:
@@ -245,14 +331,15 @@ def read_resolv_conf(path: str = "/etc/resolv.conf") -> dict[str, Any]:
 
 
 def collect_dns_resolver_commands(
-    timeout: int = DEFAULT_COMMAND_TIMEOUT,
+    timeout: float | None = None,
 ) -> dict[str, Any]:
     """Collect DNS resolver details using resolvectl and portable fallbacks."""
+    command_timeout = resolve_command_timeout(timeout)
     attempts: list[dict[str, Any]] = []
     selected: dict[str, Any] | None = None
 
     for command in DNS_RESOLVER_COMMANDS:
-        result = run_diagnostic_command(list(command), timeout=timeout)
+        result = run_diagnostic_command(list(command), timeout=command_timeout)
         attempts.append(result)
         if selected is None and result["available"] and result["returncode"] == 0:
             selected = result
@@ -267,7 +354,7 @@ def collect_dns_resolver_commands(
 
 def command_with_parsed_json(
     command: list[str],
-    timeout: int = DEFAULT_COMMAND_TIMEOUT,
+    timeout: float | None = None,
 ) -> dict[str, Any]:
     """Run a command and attach parsed JSON output when valid."""
     result = run_diagnostic_command(command, timeout=timeout)
@@ -277,26 +364,30 @@ def command_with_parsed_json(
 
 def collect_network_diagnostic(
     resolv_conf_path: str = "/etc/resolv.conf",
-    command_timeout: int = DEFAULT_COMMAND_TIMEOUT,
+    command_timeout: float | None = None,
 ) -> dict[str, Any]:
     """Collect an advanced read-only system and network diagnostic."""
-    interfaces = command_with_parsed_json(["ip", "-j", "addr"], timeout=command_timeout)
-    routes = command_with_parsed_json(["ip", "-j", "route"], timeout=command_timeout)
-    ports = run_diagnostic_command(["ss", "-tulpn"], timeout=command_timeout)
-    disk = run_diagnostic_command(["df", "-h"], timeout=command_timeout)
-    memory = run_diagnostic_command(["free", "-h"], timeout=command_timeout)
+    effective_timeout = resolve_command_timeout(command_timeout)
+    interfaces = command_with_parsed_json(
+        ["ip", "-j", "addr"],
+        timeout=effective_timeout,
+    )
+    routes = command_with_parsed_json(["ip", "-j", "route"], timeout=effective_timeout)
+    ports = run_diagnostic_command(["ss", "-tulpn"], timeout=effective_timeout)
+    disk = run_diagnostic_command(["df", "-h"], timeout=effective_timeout)
+    memory = run_diagnostic_command(["free", "-h"], timeout=effective_timeout)
     docker = run_diagnostic_command(
-        ["docker", "ps", "--format", "{{json .}}"], timeout=command_timeout
+        ["docker", "ps", "--format", "{{json .}}"], timeout=effective_timeout
     )
     docker["parsed"] = parse_json_lines(docker)
-    resolver_commands = collect_dns_resolver_commands(timeout=command_timeout)
+    resolver_commands = collect_dns_resolver_commands(timeout=effective_timeout)
 
     return {
         "metadata": {
             "schema_version": SCHEMA_VERSION,
             "generated_at_utc": utc_timestamp(),
             "mode": "read-only",
-            "command_timeout_seconds": command_timeout,
+            "command_timeout_seconds": effective_timeout,
         },
         "system": collect_system_info(),
         "network": {

@@ -17,7 +17,7 @@ from app.diagnostics import (
 )
 from app.logging_config import configure_logging
 
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.3.2"
 DIAG_TOKEN_HASH_ENV = "DIAG_ACCESS_TOKEN_HASH"
 DIAG_TOKEN_HASH_FILE_ENV = "DIAG_ACCESS_TOKEN_HASH_FILE"
 DIAG_PROTECTION_DISABLED_ENV = "DIAG_PROTECTION_DISABLED"

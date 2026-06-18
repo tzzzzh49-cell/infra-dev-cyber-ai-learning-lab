@@ -139,6 +139,11 @@ check_paths() {
         .env.vps.example
         .env.backup.example
         .env.ai.example
+        docs/README.md
+        docs/api-examples.md
+        docs/architecture.en.md
+        docs/security.en.md
+        docs/reproducibility-ubuntu-26.04-server.en.md
         docs/reproductibilite-ubuntu-26.04-server.md
         docs/validations/ubuntu-26.04-server-vm.md
         docs/vps/compose.vps.example.yaml

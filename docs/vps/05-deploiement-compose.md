@@ -23,9 +23,15 @@ APP_PORT=8000
 DIAG_ACCESS_TOKEN_HASH=<HASH_DEPUIS_GESTIONNAIRE_DE_SECRETS>
 DIAG_ACCESS_TOKEN_HASH_FILE=
 DIAG_PROTECTION_DISABLED=false
+DIAG_COMMAND_TIMEOUT=3
+DIAG_COMMAND_RETRIES=0
 LAB_DOMAIN=<LAB_DOMAIN>
 ADMIN_EMAIL=<ADMIN_EMAIL>
 ```
+
+Le profil Compose `future-persistence` prépare un service Postgres inactif par
+défaut. Ne pas l'activer en production sans migrations relues, mot de passe réel
+hors Git et sauvegardes validées.
 
 `/diag`, `/diag/export/json` et `/diag/export/markdown` peuvent contenir des informations système : ne jamais les exposer publiquement sans authentification, reverse proxy HTTPS et token applicatif.
 

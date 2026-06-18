@@ -18,7 +18,7 @@ Ne passer le statut Ubuntu 26.04 Server à **validé** que si les commandes ci-d
 | Distribution | Ubuntu 26.04 LTS Server |
 | Architecture | x86_64 |
 | Branche testée | `<branche-de-validation>` |
-| Version du projet | v0.4.0 de préparation Server, VPS, backups et IA contrôlée |
+| Version du projet | v0.3.2 de durcissement, préparation v0.4.0 Server/VPS/backups |
 | Mode de sécurité | Lecture seule pour les diagnostics |
 | Exposition API | Locale uniquement, `127.0.0.1:8000` |
 | Secrets requis | Aucun secret réel dans le dépôt |

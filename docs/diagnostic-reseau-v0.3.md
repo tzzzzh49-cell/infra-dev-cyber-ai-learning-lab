@@ -93,7 +93,7 @@ La structure reste stable autour des sections principales suivantes :
 }
 ```
 
-Chaque résultat de commande inclut la commande exécutée, la disponibilité, le code retour, `stdout`, `stderr`, le timeout configuré, la durée d'exécution et un type d'erreur stable.
+Chaque résultat de commande inclut la commande exécutée, la disponibilité, le code retour, `stdout`, `stderr`, le timeout configuré, la durée d'exécution, le nombre de tentatives et un type d'erreur stable.
 
 ## Formats d'export
 
@@ -145,6 +145,8 @@ Si aucun hash n'est configuré, les routes de diagnostic renvoient une erreur et
 - Le mode reste strictement lecture seule.
 - Les commandes sont exécutées sans `shell=True` côté Python.
 - Les timeouts courts évitent qu'une commande bloque indéfiniment.
+- `DIAG_COMMAND_TIMEOUT` vaut `3` secondes par défaut et reste plafonné.
+- `DIAG_COMMAND_RETRIES` vaut `0` par défaut et reste réservé aux commandes d'observation idempotentes.
 - `/diag` peut exposer des informations locales sensibles et ne doit pas être exposé publiquement sans authentification.
 - Les exports `/diag/export/json` et `/diag/export/markdown` suivent la même règle de protection que `/diag`.
 - Aucun secret réel ne doit être ajouté aux rapports, scripts ou exemples de configuration.

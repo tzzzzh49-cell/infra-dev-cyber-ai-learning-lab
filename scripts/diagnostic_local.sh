@@ -59,8 +59,9 @@ check_api_diag() {
         -w "%{http_code}"
     )
 
-    if [ -n "${DIAG_ACCESS_TOKEN:-}" ]; then
-        curl_args+=(-H "Authorization: Bearer $DIAG_ACCESS_TOKEN")
+    local diag_client_token="${DIAG_CLIENT_TOKEN:-${DIAG_ACCESS_TOKEN:-}}"
+    if [ -n "$diag_client_token" ]; then
+        curl_args+=(-H "Authorization: Bearer $diag_client_token")
     fi
 
     http_code="$(curl "${curl_args[@]}" "$API_DIAG_URL" 2>"$err_file" || true)"

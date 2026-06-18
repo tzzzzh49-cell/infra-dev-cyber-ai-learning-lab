@@ -143,6 +143,16 @@ python3 scripts/generate_diag_token.py --format bcrypt
 
 Côté proxy, un secret runtime distinct peut être utilisé pour injecter `X-Diag-Token` après authentification basique ou OAuth. Dans ce cas, le proxy conserve le token clair dans son propre gestionnaire de secrets, tandis que l'application ne reçoit que `DIAG_ACCESS_TOKEN_HASH`.
 
+## Timeouts et tentatives
+
+Les commandes de diagnostic utilisent `DIAG_COMMAND_TIMEOUT`, avec une valeur
+par défaut de `3` secondes. Le code plafonne cette valeur pour éviter qu'un
+diagnostic bloqué immobilise l'API.
+
+`DIAG_COMMAND_RETRIES` existe pour des environnements lents ou transitoires,
+mais vaut `0` par défaut et reste plafonné. Les tentatives supplémentaires ne
+doivent concerner que des commandes d'observation idempotentes.
+
 ## Règles pour OpenAI API
 
 Il n'existe pas encore d'intégration OpenAI active dans le projet.
