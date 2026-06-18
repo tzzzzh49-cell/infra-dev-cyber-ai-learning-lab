@@ -7,20 +7,16 @@ name: infra-dev-cyber-ai-learning-lab-vps
 services:
   api:
     build:
-      context: ../..
-      dockerfile: app/Dockerfile
-    image: infra-dev-cyber-ai-learning-lab-api:0.3.2
-    user: "10001:10001"
+      context: ../../app
+    image: infra-dev-cyber-ai-learning-lab-api:v0.4.0-placeholder
     environment:
       APP_ENV: vps
-      DIAG_ACCESS_TOKEN: ${DIAG_ACCESS_TOKEN:-}
-      DIAG_ACCESS_TOKEN_SHA256: ${DIAG_ACCESS_TOKEN_SHA256:?set DIAG_ACCESS_TOKEN_SHA256 in a private .env.vps file}
-      DIAG_COMMAND_TIMEOUT: ${DIAG_COMMAND_TIMEOUT:-3}
+      APP_LOG_FILE: /workspace/outputs/logs/app.log
+      DIAG_ACCESS_TOKEN_HASH: ${DIAG_ACCESS_TOKEN_HASH:?set DIAG_ACCESS_TOKEN_HASH from a secrets manager}
+      DIAG_ACCESS_TOKEN_HASH_FILE: ${DIAG_ACCESS_TOKEN_HASH_FILE:-}
+      DIAG_PROTECTION_DISABLED: "false"
     volumes:
-      # Seuls les rapports sont montés en écriture ; le code et les secrets
-      # locaux ne doivent pas être exposés au conteneur.
       - ../../outputs:/workspace/outputs:Z
     ports:
       - "127.0.0.1:${APP_PORT:-8000}:8000"
-    # Redémarrage automatique après reboot VPS, arrêt explicite via compose down.
     restart: unless-stopped

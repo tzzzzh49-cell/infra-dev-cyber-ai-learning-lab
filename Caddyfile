@@ -1,0 +1,19 @@
+api.infra-lab-thom.fr {
+    encode zstd gzip
+
+    @diagnostics {
+        path /diag /diag/export/json /diag/export/markdown
+    }
+
+    handle @diagnostics {
+        header {
+            Cache-Control "no-store"
+            X-Content-Type-Options "nosniff"
+        }
+        respond "Diagnostic endpoints are not exposed publicly." 404
+    }
+
+    handle {
+        reverse_proxy api:8000
+    }
+}

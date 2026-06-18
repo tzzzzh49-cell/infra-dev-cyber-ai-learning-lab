@@ -1,18 +1,5 @@
 # Sécurité du projet
 
-> Langues : Français | [English](security.en.md)
-
-## Sommaire
-
-- [Objectif](#objectif)
-- [Principe principal](#principe-principal)
-- [Diagnostic réseau avancé v0.3.0](#diagnostic-reseau-avance-v030)
-- [Protection des diagnostics HTTP](#protection-des-diagnostics-http)
-- [Timeouts et tentatives](#timeouts-et-tentatives)
-- [Logs](#logs)
-- [Mise à jour des dépendances](#mise-a-jour-des-dependances)
-- [Gestion des secrets](#gestion-des-secrets)
-
 ## Objectif
 
 Ce projet manipule des commandes systèmes et réseaux.  
@@ -82,13 +69,17 @@ ip -j addr
 ip -j route
 resolvectl dns
 resolvectl status
+systemd-resolve --status
+nmcli dev show
 ss -tulpn
 df -h
 free -h
 docker ps --format '{{json .}}'
 ```
 
-Le diagnostic lit aussi `/etc/resolv.conf` sans le modifier. Ces commandes observent l'état local et ne changent ni la configuration réseau, ni les conteneurs Docker, ni le disque.
+Le diagnostic lit aussi `/etc/resolv.conf` sans le modifier. Ces commandes observent l'état local et ne changent ni la configuration réseau, ni les conteneurs Docker, ni le disque. Chaque commande passe par une allowlist, sans `shell=True`, avec timeout court, durée mesurée et type d'erreur explicite (`command_not_found`, `timeout`, `non_zero_exit`, etc.).
+
+`resolvectl` peut être absent selon la distribution ou le conteneur. Dans ce cas, le diagnostic tente des alternatives de lecture (`systemd-resolve --status`, puis `nmcli dev show`) et conserve une structure JSON exploitable si aucune commande n'est disponible.
 
 Rappels obligatoires :
 
@@ -134,16 +125,23 @@ Les routes suivantes sont sensibles :
 
 Comportement attendu :
 
-* en local, avec exposition sur `127.0.0.1`, elles restent accessibles pour l'apprentissage ;
-* si `DIAG_ACCESS_TOKEN_SHA256` est défini, elles comparent le hash SHA-256 du token reçu via `Authorization: Bearer <token>` ou `X-Diag-Token` ;
-* `DIAG_ACCESS_TOKEN` reste accepté pour compatibilité locale ou injection par reverse proxy, mais il doit rester dans un fichier privé non commité ;
-* si `APP_ENV=vps` est actif, elles exigent un token clair privé ou un hash configuré ;
-* si `APP_ENV=vps` est actif sans token ni hash configuré, elles refusent l'accès au lieu de s'exposer sans protection.
+* elles exigent un token dans tous les environnements par défaut ;
+* le serveur ne stocke pas de token clair : il attend `DIAG_ACCESS_TOKEN_HASH` ou `DIAG_ACCESS_TOKEN_HASH_FILE` ;
+* les formats acceptés sont `sha256:<hash>` et `bcrypt:<hash>` ;
+* le token fourni via `Authorization: Bearer <token>` ou `X-Diag-Token` est hashé puis comparé ;
+* `DIAG_PROTECTION_DISABLED=true` désactive la protection uniquement en développement local explicite (`APP_ENV=local`, `lab`, `dev`, `development` ou `test`) ;
+* si aucun hash n'est configuré, les routes de diagnostic refusent l'accès au lieu de s'exposer sans protection.
 
-Ne jamais commiter la valeur réelle de `DIAG_ACCESS_TOKEN`, ni un token client
-réel. Les fichiers `.env*.example` doivent garder les secrets vides. Préférer
-`scripts/generate_diag_token.py` pour produire un token temporaire et exporter
-uniquement `DIAG_ACCESS_TOKEN_SHA256` côté application.
+Ne jamais commiter le token clair, le hash réel, un fichier de secret ou une configuration de reverse proxy contenant un secret. Les hashes doivent venir d'un gestionnaire de secrets comme Vault, AWS Secrets Manager, un secret Docker ou un fichier monté hors dépôt.
+
+Génération :
+
+```bash
+python3 scripts/generate_diag_token.py --format sha256
+python3 scripts/generate_diag_token.py --format bcrypt
+```
+
+Côté proxy, un secret runtime distinct peut être utilisé pour injecter `X-Diag-Token` après authentification basique ou OAuth. Dans ce cas, le proxy conserve le token clair dans son propre gestionnaire de secrets, tandis que l'application ne reçoit que `DIAG_ACCESS_TOKEN_HASH`.
 
 ## Timeouts et tentatives
 
@@ -154,27 +152,6 @@ diagnostic bloqué immobilise l'API.
 `DIAG_COMMAND_RETRIES` existe pour des environnements lents ou transitoires,
 mais vaut `0` par défaut et reste plafonné. Les tentatives supplémentaires ne
 doivent concerner que des commandes d'observation idempotentes.
-
-## Logs
-
-Les logs applicatifs doivent aller vers stdout/stderr. En mode VPS, la collecte
-doit être faite par Docker, un sidecar ou un agent externe. Ne pas écrire de
-fichiers de logs applicatifs persistants dans le dépôt, car ils peuvent contenir
-des informations de diagnostic sensibles.
-
-## Mise à jour des dépendances
-
-Politique proposée :
-
-* revue mensuelle des dépendances Python et de l'image de base Docker ;
-* réaction rapide aux alertes critiques ou exploitées publiquement ;
-* exécution locale de Bandit et Trivy avant merge lorsque ces outils sont
-  disponibles ;
-* aucune mise à jour automatique sans lecture du changelog et validation des
-  tests.
-
-Bandit et Trivy peuvent dépendre de bases de vulnérabilités locales ou distantes.
-Si l'exécution locale n'est pas possible, noter la raison dans la Pull Request.
 
 ## Règles pour OpenAI API
 
@@ -248,11 +225,12 @@ Utiliser plutôt :
 
 La CI contient des contrôles non secrets :
 
-* Bandit sur le code Python, avec seuil medium pour éviter les faux positifs low liés aux commandes read-only encadrées ;
+* Bandit sur le code Python, avec seuil medium et confidence medium pour bloquer les failles applicatives significatives ;
 * Hadolint sur `app/Dockerfile` ;
-* Trivy sur l'image Docker construite en CI.
+* Trivy sur l'image Docker construite en CI, bloquant sur les vulnérabilités critiques corrigibles ;
+* Dependabot pour ouvrir des Pull Requests de mise à jour.
 
-Trivy est configuré en mode rapport non bloquant pour cette première intégration, afin de garder la CI fiable malgré les variations du flux CVE des images de base. Une future étape pourra rendre ce contrôle bloquant quand la politique d'exception sera documentée.
+Les mainteneurs doivent surveiller les CVE des dépendances applicatives, de l'image de base et des GitHub Actions. Toute exception CVE doit être documentée avant merge.
 
 ## Objectif sécurité à long terme
 

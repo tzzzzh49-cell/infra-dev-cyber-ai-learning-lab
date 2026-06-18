@@ -20,7 +20,7 @@ Le projet doit rester **reproductible en priorité sur Ubuntu 26.04 LTS Server**
 
 ## Statut du projet
 
-Version actuelle : v0.3.2 (durcissement Docker, timeout configurable, jetons hashés et documentation). Schéma de diagnostic : v0.3.0.
+Version actuelle : v0.3.2 (durcissement Docker, diagnostics protégés, timeouts configurables et documentation). Schéma de diagnostic : v0.3.0.
 
 Fonctionnalités disponibles :
 
@@ -35,20 +35,22 @@ Fonctionnalités disponibles :
 - validation rapide du dépôt avec `make check` / `make check-fast` ;
 - validation complète de reproductibilité avec `make check-full` ;
 - CI GitHub Actions minimale sur `push` et `pull_request` vers `master` ;
+- CI renforcée avec tests Python multi-version, Bandit bloquant et Trivy bloquant sur les CVE critiques ;
+- Dependabot pour suivre les mises à jour Python, GitHub Actions et Docker ;
 - `AGENTS.md` documenté pour les agents IA ;
-- tests FastAPI renforcés avec `TestClient` ;
+- tests FastAPI centrés sur les routes, dépendances de sécurité et fonctions de diagnostic ;
 - diagnostic réseau avancé en lecture seule ;
+- protection `/diag` activée par défaut avec hash SHA-256 ou bcrypt ;
 - export JSON du diagnostic ;
 - export Markdown du diagnostic ;
 - rapports locaux dans `outputs/reports` ;
+- logs applicatifs dans `outputs/logs/app.log`, hors dépôt ;
 - documentation de reproductibilité Fedora et Ubuntu ;
 - documentation préparatoire VPS, backups et Ubuntu Server pour v0.4.0 ;
 - base Restic local-first pour backups et drill de restauration local ;
 - préparation Restic distante S3-compatible avec placeholders uniquement ;
 - image Docker multi-étapes avec runtime non-root ;
-- timeout de diagnostic configurable via `DIAG_COMMAND_TIMEOUT` ;
-- protection `/diag` par token clair privé ou hash `DIAG_ACCESS_TOKEN_SHA256` ;
-- génération locale de jeton avec `scripts/generate_diag_token.py` ;
+- timeout et tentatives de diagnostic configurables via `DIAG_COMMAND_TIMEOUT` et `DIAG_COMMAND_RETRIES` ;
 - profil Compose préparatoire `future-persistence` pour Postgres, inactif par défaut ;
 - placeholders OpenAI API read-only sans appel réel obligatoire ;
 - runbooks OpenClaw documentaires non actifs ;
@@ -67,6 +69,8 @@ Fonctionnalités prévues plus tard :
 | Ubuntu Server LTS | 26.04 | Cible prioritaire, procédure et checklist Server préparées |
 | Fedora Workstation VM | 44 | Cible secondaire, validation séparée à maintenir |
 | Ubuntu Desktop LTS | 24.04.4 | Historique, reproductibilité validée à 100 % |
+| Conteneur Python slim | 3.12 | Cible Compose principale pour l'API |
+| Autres distributions Linux | variable | Support non officiel : les commandes absentes doivent être signalées sans casser le diagnostic |
 
 > Le projet **ne prétend pas** fonctionner sur toutes les distributions Linux à ce stade.
 
@@ -137,6 +141,9 @@ Documentation détaillée : `docs/reproductibilite-ubuntu-26.04-server.md`.
 git clone https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab.git
 cd infra-dev-cyber-ai-learning-lab
 make check
+python3 scripts/generate_diag_token.py --format sha256
+export DIAG_ACCESS_TOKEN='<JETON_AFFICHE_PAR_LE_SCRIPT>'
+export DIAG_ACCESS_TOKEN_HASH='<HASH_AFFICHE_PAR_LE_SCRIPT>'
 make build
 make up
 curl -fsS http://127.0.0.1:8000/
@@ -160,6 +167,10 @@ Pour lancer la validation lourde avant une Pull Request :
 ```bash
 make check-full
 ```
+
+Pour un essai de développement strictement local sans jeton, définir explicitement
+`APP_ENV=local` et `DIAG_PROTECTION_DISABLED=true`. Cette désactivation est ignorée
+hors environnements locaux.
 
 ## Commandes Makefile principales
 
@@ -198,17 +209,36 @@ La configuration locale doit rester sûre par défaut :
 
 - `.env.example` utilise `APP_HOST=127.0.0.1` pour exposer l'API uniquement sur la machine locale ;
 - ne pas utiliser `APP_HOST=0.0.0.0` sans authentification et sans reverse proxy HTTPS sécurisé ;
-- `/diag` peut contenir des informations système et **ne doit pas être exposé publiquement** sans authentification et reverse proxy sécurisé ;
-- en mode `APP_ENV=vps`, `/diag`, `/diag/export/json` et `/diag/export/markdown` exigent un token clair privé ou `DIAG_ACCESS_TOKEN_SHA256` ;
-- si `APP_ENV=vps` est actif mais qu'aucun token ni hash n'est configuré, les routes de diagnostic refusent l'accès au lieu de s'exposer sans protection ;
+- `/diag` peut contenir des informations système et exige un jeton par défaut dans tous les environnements ;
+- l'application attend `DIAG_ACCESS_TOKEN_HASH`, au format `sha256:<hash>` ou `bcrypt:<hash>`, idéalement injecté depuis Vault, AWS Secrets Manager, un secret Docker ou un fichier monté via `DIAG_ACCESS_TOKEN_HASH_FILE` ;
+- `DIAG_ACCESS_TOKEN` reste uniquement une variable client pratique pour `make diag`, `make diag-json` et `make diag-md` ; elle ne doit pas être transmise au serveur ;
+- `DIAG_PROTECTION_DISABLED=true` est réservé au développement local explicite (`APP_ENV=local`, `lab`, `dev`, `development` ou `test`) ;
 - `DIAG_COMMAND_TIMEOUT` vaut `3` secondes par défaut et peut être ajusté raisonnablement selon l'environnement ;
 - aucun secret réel ne doit être ajouté dans les fichiers `.env*.example`, la documentation ou les scripts.
 
+Générer un jeton :
+
+```bash
+python3 scripts/generate_diag_token.py --format sha256
+# ou, avec bcrypt si la dépendance est installée :
+python3 scripts/generate_diag_token.py --format bcrypt
+```
+
+Stocker seulement le hash côté application. Le jeton clair doit rester dans un gestionnaire de mots de passe, un secret de reverse proxy ou une variable de shell temporaire côté client.
+
 Exemples d'appels protégés : [docs/api-examples.md](docs/api-examples.md).
+
+## Journaux
+
+L'application utilise la bibliothèque Python `logging` avec sortie console et fichier rotatif. Par défaut, le fichier est `outputs/logs/app.log`, ignoré par Git. La variable `APP_LOG_FILE` permet d'utiliser un autre chemin ou un collecteur monté dans le conteneur.
+
+## Dépendances et CVE
+
+Dependabot ouvre des Pull Requests pour les dépendances Python, GitHub Actions et Docker. Les mainteneurs doivent surveiller les CVE, relire les changelogs des dépendances critiques et lancer au minimum `make check`, `make test`, `make lint` et `make compose-config` avant merge.
 
 ## Tests
 
-Les tests automatisés couvrent les endpoints FastAPI avec `TestClient` et les fonctions de diagnostic isolées lorsque des fichiers sont écrits.
+Les tests automatisés couvrent les routes FastAPI, la dépendance d'authentification diagnostic et les fonctions de diagnostic isolées lorsque des fichiers sont écrits.
 
 ```bash
 python3 -m pip install -r app/requirements-dev.txt
@@ -237,6 +267,7 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 
 ## Documentation
 
+- [English README](README.en.md)
 - [Sommaire documentation](docs/README.md)
 - [Architecture](docs/architecture.md)
 - [Architecture EN](docs/architecture.en.md)

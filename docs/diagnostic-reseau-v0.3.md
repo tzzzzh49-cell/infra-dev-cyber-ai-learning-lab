@@ -11,7 +11,7 @@ Le rapport collecte uniquement des informations observables localement :
 - informations système : hostname, plateforme, version plateforme, version Python ;
 - interfaces réseau ;
 - routes réseau ;
-- DNS depuis `/etc/resolv.conf` et `resolvectl` si disponible ;
+- DNS depuis `/etc/resolv.conf`, `resolvectl` si disponible et des alternatives read-only selon la distribution ;
 - ports ouverts ;
 - espace disque ;
 - mémoire ;
@@ -27,13 +27,15 @@ ip -j addr
 ip -j route
 resolvectl dns
 resolvectl status
+systemd-resolve --status
+nmcli dev show
 ss -tulpn
 df -h
 free -h
 docker ps --format '{{json .}}'
 ```
 
-Le fichier `/etc/resolv.conf` est lu sans modification.
+Le fichier `/etc/resolv.conf` est lu sans modification. Toutes les commandes sont exécutées sans shell, avec timeout court, durée mesurée et type d'erreur explicite. Les commandes DNS alternatives sont tentées seulement si la commande précédente ne répond pas correctement.
 
 ## Commandes interdites
 
@@ -65,8 +67,7 @@ La structure reste stable autour des sections principales suivantes :
   "metadata": {
     "schema_version": "0.3.0",
     "generated_at_utc": "...",
-    "mode": "read-only",
-    "command_timeout_seconds": 3.0
+    "mode": "read-only"
   },
   "system": {
     "hostname": "...",
@@ -77,7 +78,7 @@ La structure reste stable autour des sections principales suivantes :
   "network": {
     "interfaces": {"command": ["ip", "-j", "addr"], "available": true, "parsed": []},
     "routes": {"command": ["ip", "-j", "route"], "available": true, "parsed": []},
-    "dns": {"resolv_conf": {}, "resolvectl": {}},
+    "dns": {"resolv_conf": {}, "resolver_commands": {}},
     "ports": {}
   },
   "resources": {
@@ -92,7 +93,7 @@ La structure reste stable autour des sections principales suivantes :
 }
 ```
 
-Chaque résultat de commande inclut la commande exécutée, la disponibilité, le code retour, `stdout`, `stderr`, l'information de timeout et le nombre de tentatives.
+Chaque résultat de commande inclut la commande exécutée, la disponibilité, le code retour, `stdout`, `stderr`, le timeout configuré, la durée d'exécution, le nombre de tentatives et un type d'erreur stable.
 
 ## Formats d'export
 
@@ -126,36 +127,30 @@ Détail :
 
 ## Protection des routes sensibles
 
-En local, sans `DIAG_ACCESS_TOKEN`, sans `DIAG_ACCESS_TOKEN_SHA256` et hors mode VPS, les commandes `make diag`, `make diag-json` et `make diag-md` restent utilisables sur `127.0.0.1`.
+`/diag`, `/diag/export/json` et `/diag/export/markdown` exigent un jeton par défaut dans tous les environnements.
 
-Pour un environnement VPS ou préproduction :
+Configuration attendue :
 
-- définir `APP_ENV=vps` ;
-- définir de préférence `DIAG_ACCESS_TOKEN_SHA256` dans un fichier `.env` privé non commité ;
-- garder le token client clair seulement dans la session opérateur ou dans l'environnement privé du reverse proxy ;
+- générer un jeton avec `python3 scripts/generate_diag_token.py --format sha256` ou `--format bcrypt` ;
+- stocker `DIAG_ACCESS_TOKEN_HASH` dans un gestionnaire de secrets ou monter un fichier via `DIAG_ACCESS_TOKEN_HASH_FILE` ;
 - appeler les routes sensibles avec `Authorization: Bearer <token>` ou `X-Diag-Token: <token>` ;
 - garder l'API liée à `127.0.0.1` derrière un reverse proxy HTTPS authentifié.
 
-Si `APP_ENV=vps` est actif mais qu'aucun token ni hash n'est configuré, `/diag`, `/diag/export/json` et `/diag/export/markdown` renvoient une erreur et ne publient pas le diagnostic.
+Pour un développement strictement local, `DIAG_PROTECTION_DISABLED=true` peut désactiver la protection seulement si `APP_ENV` vaut `local`, `lab`, `dev`, `development` ou `test`. Cette variable est ignorée en VPS/production.
 
-Exemples complets : `docs/api-examples.md`.
-
-## Timeout configurable
-
-`DIAG_COMMAND_TIMEOUT` vaut `3` secondes par défaut. Il peut être augmenté pour
-une VM lente, mais reste plafonné par le code applicatif. `DIAG_COMMAND_RETRIES`
-vaut `0` par défaut et doit rester réservé à des commandes d'observation
-idempotentes.
+Si aucun hash n'est configuré, les routes de diagnostic renvoient une erreur et ne publient pas le diagnostic.
 
 ## Notes de sécurité
 
 - Le mode reste strictement lecture seule.
 - Les commandes sont exécutées sans `shell=True` côté Python.
 - Les timeouts courts évitent qu'une commande bloque indéfiniment.
+- `DIAG_COMMAND_TIMEOUT` vaut `3` secondes par défaut et reste plafonné.
+- `DIAG_COMMAND_RETRIES` vaut `0` par défaut et reste réservé aux commandes d'observation idempotentes.
 - `/diag` peut exposer des informations locales sensibles et ne doit pas être exposé publiquement sans authentification.
 - Les exports `/diag/export/json` et `/diag/export/markdown` suivent la même règle de protection que `/diag`.
 - Aucun secret réel ne doit être ajouté aux rapports, scripts ou exemples de configuration.
 
 ## Notes de reproductibilité Ubuntu 26.04 LTS Server
 
-Ubuntu 26.04 LTS Server est la cible prioritaire. Les commandes `ip`, `ss`, `df`, `free`, `docker`, `curl` et `resolvectl` sont attendues sur cette cible après bootstrap du lab. Si une commande est absente, le diagnostic ne doit pas échouer brutalement : la section correspondante indique l'indisponibilité et conserve une structure JSON exploitable.
+Ubuntu 26.04 LTS Server est la cible prioritaire. Les commandes `ip`, `ss`, `df`, `free`, `docker`, `curl` et `resolvectl` sont attendues sur cette cible après bootstrap du lab, avec `systemd-resolve` ou `nmcli` comme alternatives DNS possibles. Si une commande est absente, le diagnostic ne doit pas échouer brutalement : la section correspondante indique l'indisponibilité et conserve une structure JSON exploitable.

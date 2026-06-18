@@ -1,6 +1,5 @@
 import hashlib
 import importlib.util
-import io
 from pathlib import Path
 
 SCRIPT_PATH = (
@@ -13,37 +12,28 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(generate_diag_token)
 
 
-def test_hash_token_returns_sha256_hex_digest():
-    assert generate_diag_token.hash_token("test-token") == hashlib.sha256(
-        b"test-token"
-    ).hexdigest()
+def test_sha256_hash_returns_prefixed_digest():
+    digest = hashlib.sha256(b"test-token").hexdigest()
+
+    assert generate_diag_token.sha256_hash("test-token") == f"sha256:{digest}"
 
 
-def test_cli_hash_stdin_does_not_echo_clear_token():
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-
-    exit_code = generate_diag_token.main(
-        ["--stdin", "--hash-only"],
-        stdin=io.StringIO("secret-client-token"),
-        stdout=stdout,
-        stderr=stderr,
-    )
-
-    assert exit_code == 0
-    assert "secret-client-token" not in stdout.getvalue()
-    assert stdout.getvalue().strip() == hashlib.sha256(
-        b"secret-client-token"
-    ).hexdigest()
-    assert stderr.getvalue() == ""
+def test_generate_token_rejects_weak_byte_count():
+    try:
+        generate_diag_token.generate_token(8)
+    except ValueError as exc:
+        assert "at least 16" in str(exc)
+    else:
+        raise AssertionError("generate_token accepted an unsafe byte count")
 
 
-def test_cli_token_only_prints_generated_token_without_files(tmp_path, monkeypatch):
+def test_cli_hashes_existing_token_without_files(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    stdout = io.StringIO()
 
-    exit_code = generate_diag_token.main(["--token-only"], stdout=stdout)
+    exit_code = generate_diag_token.main(["--token", "secret-client-token"])
 
     assert exit_code == 0
-    assert len(stdout.getvalue().strip()) >= 22
+    output = capsys.readouterr().out
+    assert "DIAG_ACCESS_TOKEN_HASH" in output
+    assert "sha256:" in output
     assert list(tmp_path.iterdir()) == []

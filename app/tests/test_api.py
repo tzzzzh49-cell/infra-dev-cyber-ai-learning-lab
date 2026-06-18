@@ -1,42 +1,33 @@
-import asyncio
+import hashlib
 
-import httpx
 import pytest
+from fastapi import HTTPException
 
-from app.diagnostics import SCHEMA_VERSION
-from app.main import APP_VERSION, app
-
-
-class ASGITestClient:
-    def request(self, method, path, **kwargs):
-        async def call_app():
-            transport = httpx.ASGITransport(app=app)
-            async with httpx.AsyncClient(
-                transport=transport,
-                base_url="http://testserver",
-            ) as client:
-                return await client.request(method, path, **kwargs)
-
-        return asyncio.run(call_app())
-
-    def get(self, path, **kwargs):
-        return self.request("GET", path, **kwargs)
-
-    def post(self, path, **kwargs):
-        return self.request("POST", path, **kwargs)
+from app.main import (
+    APP_VERSION,
+    app,
+    diag,
+    export_diag_json,
+    export_diag_markdown,
+    health,
+    require_diag_access,
+    root,
+    version,
+)
 
 
-@pytest.fixture
-def client(monkeypatch):
+@pytest.fixture(autouse=True)
+def clear_diag_environment(monkeypatch):
     monkeypatch.delenv("APP_ENV", raising=False)
     monkeypatch.delenv("DIAG_ACCESS_TOKEN", raising=False)
-    monkeypatch.delenv("DIAG_ACCESS_TOKEN_SHA256", raising=False)
-    return ASGITestClient()
+    monkeypatch.delenv("DIAG_ACCESS_TOKEN_HASH", raising=False)
+    monkeypatch.delenv("DIAG_ACCESS_TOKEN_HASH_FILE", raising=False)
+    monkeypatch.delenv("DIAG_PROTECTION_DISABLED", raising=False)
 
 
 def sample_report():
     return {
-        "metadata": {"schema_version": SCHEMA_VERSION},
+        "metadata": {"schema_version": APP_VERSION},
         "system": {},
         "network": {},
         "resources": {},
@@ -46,10 +37,30 @@ def sample_report():
 
 
 def route_methods(path):
+    methods = set()
     for route in app.routes:
         if route.path == path:
-            return route.methods or set()
-    return set()
+            methods.update(route.methods or set())
+    return methods
+
+
+def route_dependencies(path):
+    for route in app.routes:
+        if route.path == path:
+            return [
+                dependency.dependency
+                for dependency in getattr(route, "dependencies", [])
+            ]
+    return []
+
+
+def sha256_token(token):
+    return f"sha256:{hashlib.sha256(token.encode('utf-8')).hexdigest()}"
+
+
+def disable_diag_protection_for_local_dev(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "local")
+    monkeypatch.setenv("DIAG_PROTECTION_DISABLED", "true")
 
 
 def test_app_registers_expected_routes():
@@ -66,11 +77,23 @@ def test_app_registers_expected_routes():
         assert method in route_methods(path)
 
 
-def test_get_root_returns_available_endpoints(client):
-    response = client.get("/")
+def test_diag_routes_require_access_dependency():
+    sensitive_routes = (
+        "/diag",
+        "/diag/export/json",
+        "/diag/export/markdown",
+    )
 
-    assert response.status_code == 200
-    data = response.json()
+    for path in sensitive_routes:
+        assert require_diag_access in route_dependencies(path)
+
+
+def test_root_registers_head_for_curl_i():
+    assert "HEAD" in route_methods("/")
+
+
+def test_get_root_returns_available_endpoints():
+    data = root()
 
     assert data["message"] == "Mini API locale active"
     assert "/health" in data["endpoints"]
@@ -80,30 +103,24 @@ def test_get_root_returns_available_endpoints(client):
     assert "/diag/export/markdown" in data["endpoints"]
 
 
-def test_get_health_returns_ok_status(client):
-    response = client.get("/health")
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok", "service": "lab-api"}
+def test_get_health_returns_ok_status():
+    assert health() == {"status": "ok", "service": "lab-api"}
 
 
-def test_get_version_returns_app_version(client):
-    response = client.get("/version")
-
-    assert response.status_code == 200
-    assert response.json() == {
+def test_get_version_returns_app_version():
+    assert version() == {
         "app": "infra-dev-cyber-ai-learning-lab-api",
         "version": APP_VERSION,
     }
 
 
-def test_get_diag_returns_structured_diagnostic(client, monkeypatch):
+def test_get_diag_returns_structured_diagnostic(monkeypatch):
+    disable_diag_protection_for_local_dev(monkeypatch)
     monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
-    response = client.get("/diag")
+    require_diag_access()
+    data = diag()
 
-    assert response.status_code == 200
-    data = response.json()
     assert "metadata" in data
     assert "system" in data
     assert "network" in data
@@ -112,7 +129,8 @@ def test_get_diag_returns_structured_diagnostic(client, monkeypatch):
     assert "security" in data
 
 
-def test_post_diag_export_json_uses_isolated_output(client, tmp_path, monkeypatch):
+def test_post_diag_export_json_uses_isolated_output(tmp_path, monkeypatch):
+    disable_diag_protection_for_local_dev(monkeypatch)
     monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
     def fake_write_json_report(_report):
@@ -122,16 +140,16 @@ def test_post_diag_export_json_uses_isolated_output(client, tmp_path, monkeypatc
 
     monkeypatch.setattr("app.main.write_json_report", fake_write_json_report)
 
-    response = client.post("/diag/export/json")
+    require_diag_access()
+    data = export_diag_json()
 
-    assert response.status_code == 200
-    data = response.json()
     assert data["status"] == "ok"
     assert data["format"] == "json"
     assert data["path"] == str(tmp_path / "diagnostic.json")
 
 
-def test_post_diag_export_markdown_uses_isolated_output(client, tmp_path, monkeypatch):
+def test_post_diag_export_markdown_uses_isolated_output(tmp_path, monkeypatch):
+    disable_diag_protection_for_local_dev(monkeypatch)
     monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
     def fake_write_markdown_report(_report):
@@ -141,81 +159,116 @@ def test_post_diag_export_markdown_uses_isolated_output(client, tmp_path, monkey
 
     monkeypatch.setattr("app.main.write_markdown_report", fake_write_markdown_report)
 
-    response = client.post("/diag/export/markdown")
+    require_diag_access()
+    data = export_diag_markdown()
 
-    assert response.status_code == 200
-    data = response.json()
     assert data["status"] == "ok"
     assert data["format"] == "markdown"
     assert data["path"] == str(tmp_path / "diagnostic.md")
 
 
-def test_diag_is_blocked_in_vps_mode_without_configured_token(client, monkeypatch):
-    monkeypatch.setenv("APP_ENV", "vps")
+def test_diag_requires_hash_by_default():
+    with pytest.raises(HTTPException) as exc:
+        require_diag_access()
 
-    response = client.get("/diag")
-
-    assert response.status_code == 503
+    assert exc.value.status_code == 503
 
 
-def test_diag_requires_token_when_configured(client, monkeypatch):
+def test_diag_requires_hash_in_local_unless_explicitly_disabled(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "local")
+
+    with pytest.raises(HTTPException) as exc:
+        require_diag_access()
+
+    assert exc.value.status_code == 503
+
+
+def test_diag_ignores_legacy_plaintext_token_configuration(monkeypatch):
     monkeypatch.setenv("DIAG_ACCESS_TOKEN", "test-token")
 
-    response = client.get("/diag")
+    with pytest.raises(HTTPException) as exc:
+        require_diag_access()
 
-    assert response.status_code == 401
-
-
-def test_diag_rejects_invalid_token(client, monkeypatch):
-    monkeypatch.setenv("APP_ENV", "vps")
-    monkeypatch.setenv("DIAG_ACCESS_TOKEN", "test-token")
-
-    response = client.get("/diag", headers={"Authorization": "Bearer wrong-token"})
-
-    assert response.status_code == 401
+    assert exc.value.status_code == 503
 
 
-def test_diag_accepts_bearer_token(client, monkeypatch):
-    monkeypatch.setenv("APP_ENV", "vps")
-    monkeypatch.setenv("DIAG_ACCESS_TOKEN", "test-token")
+def test_diag_allows_explicit_local_development_disable(monkeypatch):
+    disable_diag_protection_for_local_dev(monkeypatch)
     monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
-    response = client.get("/diag", headers={"Authorization": "Bearer test-token"})
-
-    assert response.status_code == 200
-    assert response.json()["metadata"]["schema_version"] == SCHEMA_VERSION
+    require_diag_access()
 
 
-def test_diag_accepts_hashed_token(client, monkeypatch):
+def test_diag_disable_is_ignored_in_vps(monkeypatch):
     monkeypatch.setenv("APP_ENV", "vps")
-    monkeypatch.setenv(
-        "DIAG_ACCESS_TOKEN_SHA256",
-        "4c5dc9b7708905f77f5e5d16316b5dfb425e68cb326dcd55a860e90a7707031e",
-    )
+    monkeypatch.setenv("DIAG_PROTECTION_DISABLED", "true")
+
+    with pytest.raises(HTTPException) as exc:
+        require_diag_access()
+
+    assert exc.value.status_code == 503
+
+
+def test_diag_requires_token_when_hash_configured(monkeypatch):
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", sha256_token("test-token"))
+
+    with pytest.raises(HTTPException) as exc:
+        require_diag_access()
+
+    assert exc.value.status_code == 401
+
+
+def test_diag_rejects_invalid_token(monkeypatch):
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", sha256_token("test-token"))
+
+    with pytest.raises(HTTPException) as exc:
+        require_diag_access(authorization="Bearer wrong-token")
+
+    assert exc.value.status_code == 401
+
+
+def test_diag_accepts_bearer_token(monkeypatch):
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", sha256_token("test-token"))
     monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
-    response = client.get("/diag", headers={"Authorization": "Bearer test-token"})
+    require_diag_access(authorization="Bearer test-token")
+    data = diag()
 
-    assert response.status_code == 200
-    assert response.json()["metadata"]["schema_version"] == SCHEMA_VERSION
+    assert data["metadata"]["schema_version"] == APP_VERSION
 
 
-def test_diag_export_json_rejects_missing_token(client, monkeypatch):
-    monkeypatch.setenv("APP_ENV", "vps")
-    monkeypatch.setenv("DIAG_ACCESS_TOKEN", "test-token")
+def test_diag_accepts_bcrypt_hash(monkeypatch):
+    bcrypt = pytest.importorskip("bcrypt")
+    stored_hash = bcrypt.hashpw(b"test-token", bcrypt.gensalt()).decode("utf-8")
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", f"bcrypt:{stored_hash}")
+    monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
-    response = client.post("/diag/export/json")
+    require_diag_access(authorization="Bearer test-token")
 
-    assert response.status_code == 401
+
+def test_diag_accepts_token_hash_from_secret_file(tmp_path, monkeypatch):
+    hash_file = tmp_path / "diag-token-hash"
+    hash_file.write_text(sha256_token("test-token"), encoding="utf-8")
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH_FILE", str(hash_file))
+    monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
+
+    require_diag_access(authorization="Bearer test-token")
+
+
+def test_diag_export_json_rejects_missing_token(monkeypatch):
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", sha256_token("test-token"))
+
+    with pytest.raises(HTTPException) as exc:
+        require_diag_access()
+
+    assert exc.value.status_code == 401
 
 
 def test_diag_export_markdown_accepts_x_diag_token(
-    client,
     tmp_path,
     monkeypatch,
 ):
-    monkeypatch.setenv("APP_ENV", "vps")
-    monkeypatch.setenv("DIAG_ACCESS_TOKEN", "test-token")
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", sha256_token("test-token"))
     monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
     def fake_write_markdown_report(_report):
@@ -225,10 +278,7 @@ def test_diag_export_markdown_accepts_x_diag_token(
 
     monkeypatch.setattr("app.main.write_markdown_report", fake_write_markdown_report)
 
-    response = client.post(
-        "/diag/export/markdown",
-        headers={"X-Diag-Token": "test-token"},
-    )
+    require_diag_access(x_diag_token="test-token")
+    data = export_diag_markdown()
 
-    assert response.status_code == 200
-    assert response.json()["path"] == str(tmp_path / "diagnostic.md")
+    assert data["path"] == str(tmp_path / "diagnostic.md")

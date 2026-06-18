@@ -7,8 +7,8 @@ Recommandations :
 - cloner le dépôt sur le VPS avec une branche/tag validé ;
 - garder `APP_HOST=127.0.0.1` pour ne pas exposer l'API directement ;
 - définir `APP_ENV=vps` dans un fichier `.env` privé ;
-- définir `DIAG_ACCESS_TOKEN_SHA256` dans ce même fichier privé avant toute exposition via reverse proxy ;
-- garder `DIAG_ACCESS_TOKEN` seulement si le reverse proxy doit injecter `X-Diag-Token` vers l'API locale ;
+- définir `DIAG_ACCESS_TOKEN_HASH` via un gestionnaire de secrets, Vault Agent, AWS Secrets Manager ou un fichier monté privé ;
+- garder le token clair hors de l'application ; il sert seulement au client ou au reverse proxy de confiance ;
 - monter `outputs/` pour conserver les rapports ;
 - vérifier `make compose-config` avant démarrage ;
 - lancer l'application seulement après revue de la configuration.
@@ -20,11 +20,18 @@ Configuration attendue côté application :
 APP_ENV=vps
 APP_HOST=127.0.0.1
 APP_PORT=8000
-DIAG_ACCESS_TOKEN_SHA256=<HASH_SHA256_DU_TOKEN_PRIVE_HORS_GIT>
+DIAG_ACCESS_TOKEN_HASH=<HASH_DEPUIS_GESTIONNAIRE_DE_SECRETS>
+DIAG_ACCESS_TOKEN_HASH_FILE=
+DIAG_PROTECTION_DISABLED=false
 DIAG_COMMAND_TIMEOUT=3
+DIAG_COMMAND_RETRIES=0
 LAB_DOMAIN=<LAB_DOMAIN>
 ADMIN_EMAIL=<ADMIN_EMAIL>
 ```
+
+Le profil Compose `future-persistence` prépare un service Postgres inactif par
+défaut. Ne pas l'activer en production sans migrations relues, mot de passe réel
+hors Git et sauvegardes validées.
 
 `/diag`, `/diag/export/json` et `/diag/export/markdown` peuvent contenir des informations système : ne jamais les exposer publiquement sans authentification, reverse proxy HTTPS et token applicatif.
 

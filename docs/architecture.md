@@ -27,23 +27,32 @@ L’objectif est de construire progressivement une application capable de :
 
 ## Architecture actuelle
 
-```text
-Utilisateur
-   ↓
-Makefile
-   ↓
-Docker Compose
-   ↓
-Application FastAPI
-   ↓
-app/main.py
-   ↓
-app/diagnostics.py
-   ↓
-Endpoints : /health, /version, /diag, /diag/export/json, /diag/export/markdown
-   ↓
-Rapports locaux : outputs/reports/*.json et outputs/reports/*.md
+```mermaid
+flowchart TD
+    user[Utilisateur local] --> make[Makefile]
+    make --> compose[Docker Compose]
+    compose --> api[Application FastAPI]
+    api --> main[app/main.py]
+    main --> auth[Protection /diag<br/>hash SHA-256 ou bcrypt]
+    auth --> diagnostics[app/diagnostics.py]
+    diagnostics --> allowlist[Allowlist commandes read-only<br/>timeout + logging]
+    allowlist --> reports[outputs/reports<br/>JSON et Markdown]
+    diagnostics --> logs[outputs/logs/app.log]
+    make --> localdiag[scripts/diagnostic_local.sh]
+    localdiag --> api
+    localdiag --> reports
+    make --> backups[backup/*.sh]
+    backups --> backupstore[outputs/backups<br/>Restic local-first]
 ```
+
+Flux principal :
+
+1. `Makefile` orchestre les commandes locales.
+2. Docker Compose démarre l'API sur `127.0.0.1`.
+3. `app/main.py` protège les routes `/diag` avec un hash de jeton.
+4. `app/diagnostics.py` exécute uniquement les commandes read-only allowlistées.
+5. Les rapports sont écrits dans `outputs/reports` et les logs dans `outputs/logs`.
+6. Les scripts de backup Restic restent séparés des diagnostics API.
 
 ## Composants
 
@@ -75,6 +84,8 @@ Il collecte :
 * état Docker en lecture seule.
 
 Il produit également les exports JSON et Markdown dans `outputs/reports`.
+
+Le module journalise les commandes lancées, les commandes absentes, les timeouts et l'écriture des rapports via la bibliothèque `logging`. Le fichier par défaut est `outputs/logs/app.log`, ignoré par Git.
 
 ### Docker Compose
 

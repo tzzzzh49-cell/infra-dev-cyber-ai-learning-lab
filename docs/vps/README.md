@@ -10,7 +10,8 @@ Principes :
 - exposition applicative locale privilégiée sur `127.0.0.1` ;
 - reverse proxy HTTPS devant l'application avant toute exposition publique ;
 - `/diag` et les exports de diagnostic ne doivent jamais être publics sans authentification ;
-- `APP_ENV=vps` doit activer la protection applicative par token privé ou `DIAG_ACCESS_TOKEN_SHA256`.
+- `/diag` est protégé par défaut par un token dont seul le hash est côté application ;
+- `DIAG_ACCESS_TOKEN_HASH` doit venir d'un gestionnaire de secrets ou d'un fichier monté hors dépôt ;
 - toute action système réelle doit être relue et validée manuellement hors dépôt.
 
 Documents :
@@ -26,11 +27,12 @@ Documents :
 Exemples de configuration :
 
 - [Caddyfile.example](Caddyfile.example)
+- [nginx.reverse-proxy.example.conf](nginx.reverse-proxy.example.conf)
 - [compose.vps.example.yaml](compose.vps.example.yaml)
 
 Variables préparatoires :
 
 - `.env.vps.example` documente les variables attendues sans secret réel ;
 - le fichier privé réel doit rester hors Git ;
-- `DIAG_ACCESS_TOKEN_SHA256` doit être défini hors dépôt avant toute exposition de `/diag`.
-- `DIAG_ACCESS_TOKEN` ne doit être utilisé que dans l'environnement privé du reverse proxy si Caddy injecte `X-Diag-Token`.
+- `DIAG_ACCESS_TOKEN_HASH` doit être défini hors dépôt avant toute exposition de `/diag` ;
+- le proxy peut utiliser un secret runtime distinct `DIAG_UPSTREAM_TOKEN` pour injecter `X-Diag-Token` après authentification basique ou OAuth.
