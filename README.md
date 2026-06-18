@@ -86,7 +86,7 @@ Fonctionnalités prévues plus tard :
 - Ansible
 - ShellCheck
 
-Les prérequis sont installés automatiquement via les scripts de bootstrap ci-dessous. Les dépendances Python de développement sont listées dans `app/requirements-dev.txt`.
+Les prérequis sont installés via les scripts de bootstrap ci-dessous, après validation humaine explicite. Ces scripts utilisent `sudo`, installent Docker et peuvent retirer d'anciens paquets Docker conflictuels. Les dépendances Python de développement sont listées dans `app/requirements-dev.txt`.
 
 ## Reproduction locale Ubuntu 26.04 LTS Server
 
@@ -94,7 +94,7 @@ Les prérequis sont installés automatiquement via les scripts de bootstrap ci-d
 git clone https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab.git
 cd infra-dev-cyber-ai-learning-lab
 
-make bootstrap-ubuntu
+BOOTSTRAP_CONFIRM=yes make bootstrap-ubuntu
 # se déconnecter / reconnecter après l'ajout au groupe docker
 
 make check
@@ -122,7 +122,7 @@ La documentation Ubuntu Server décrit la procédure attendue et la checklist de
 ### Fedora 44 Workstation VM
 
 ```bash
-make bootstrap-fedora
+BOOTSTRAP_CONFIRM=yes make bootstrap-fedora
 ```
 
 Documentation détaillée : `docs/reproductibilite-fedora-44-vm.md`.
@@ -130,7 +130,7 @@ Documentation détaillée : `docs/reproductibilite-fedora-44-vm.md`.
 ### Ubuntu 26.04 LTS Server
 
 ```bash
-make bootstrap-ubuntu
+BOOTSTRAP_CONFIRM=yes make bootstrap-ubuntu
 ```
 
 Documentation détaillée : `docs/reproductibilite-ubuntu-26.04-server.md`.
@@ -181,8 +181,8 @@ hors environnements locaux.
 | `make check-fast` | Alias de `make check` |
 | `make check-full` | Lance la validation complète avec build Docker et Ansible |
 | `make bootstrap` | Alias de `make bootstrap-fedora` |
-| `make bootstrap-fedora` | Installe les prérequis sur Fedora 44 VM |
-| `make bootstrap-ubuntu` | Installe les prérequis sur Ubuntu 26.04 LTS Server |
+| `make bootstrap-fedora` | Installe les prérequis sur Fedora 44 VM après `BOOTSTRAP_CONFIRM=yes` |
+| `make bootstrap-ubuntu` | Installe les prérequis sur Ubuntu 26.04 LTS Server après `BOOTSTRAP_CONFIRM=yes` |
 | `make compose-config` | Valide `compose.yaml` |
 | `make shellcheck` | Vérifie les scripts Bash |
 | `make lint-python` | Vérifie le code Python avec Ruff |

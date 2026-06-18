@@ -1,88 +1,90 @@
-# Instructions pour agents IA
+# AGENTS.md — secure_ai_ops_lab
 
-## Contexte du projet
+## Mission
 
-`infra-dev-cyber-ai-learning-lab` est un laboratoire local d'apprentissage DevOps, Linux, Docker, FastAPI, diagnostic défensif et bonnes pratiques DevSecOps. Le projet doit rester reproductible, auditable et sûr par défaut.
+Ce dépôt est un laboratoire d’apprentissage Secure AI Ops.
 
-La cible prioritaire est **Ubuntu 26.04 LTS Server**. Fedora Workstation 44 reste une cible secondaire. Ubuntu 24.04.4 LTS Desktop est conservée comme cible historique validée.
+Objectif :
+comprendre, construire et documenter progressivement.
 
-## Règles de sécurité absolues
+Priorités :
+simplicité, lisibilité, sécurité, traçabilité, vérification.
 
-- Conserver le mode **lecture seule** pour les diagnostics.
-- Ne jamais ajouter de commande destructive ou modifiant le système hôte.
-- Ne jamais ajouter de secret réel, token, clé privée, mot de passe, adresse IP sensible ou domaine privé.
-- Ne pas exposer publiquement `/diag` sans authentification et reverse proxy sécurisé.
-- Privilégier `127.0.0.1` pour l'exposition locale de l'API.
-- Ne pas intégrer OpenAI API dans les tâches qui ne le demandent pas explicitement.
-- Ne pas intégrer OpenClaw dans les tâches qui ne le demandent pas explicitement.
-- Ne jamais ajouter de logique d'exécution automatique de commandes par IA.
+## Principes par défaut
 
-## Commandes autorisées
+- Utiliser Ponytail en mode `full` sauf demande explicite contraire.
+- Proposer la solution minimale qui fonctionne.
+- Préférer Python standard library, Bash simple, Docker Compose simple et fichiers de configuration lisibles.
+- Ne pas ajouter de dépendance, de service, de base de données, d’API, de cache, de queue, de scheduler ou d’abstraction interne sans besoin démontré dans le dépôt.
+- Garder les changements petits, séparés et faciles à relire.
+- Préférer un script clair à un framework interne, une classe abstraite, un wrapper ou une orchestration inutile.
 
-Les agents peuvent utiliser les commandes de validation et de lecture suivantes :
+## Sécurité non négociable
 
-- `git status`, `git diff`, `git log`, `git branch`, `git switch -c <branche>` ;
-- `make check` ;
-- `make test` ;
-- `make lint` ;
-- `make compose-config` ;
-- `make lint-python` ;
-- `make shellcheck` ;
-- `python -m pytest app/tests -v` ;
-- `docker compose config` via `./scripts/compose.sh config` ;
-- commandes de consultation non destructives comme `cat`, `sed`, `find`, `rg`.
+- Ne jamais exécuter d’action destructive, irréversible ou à impact système sans validation humaine explicite.
+- Cela inclut notamment : `sudo`, suppression de fichiers, suppression d’images ou volumes Docker, `git push`, rotation de clés, accès distant, modification VPS, arrêt ou redémarrage de services, suppression d’environnements ou de données.
+- Ne jamais afficher, logger ou commiter de secrets.
+- Utiliser `.env.example` pour documenter les variables, jamais de vraies valeurs.
+- Valider les entrées aux frontières : fichiers, variables d’environnement, arguments CLI, requêtes réseau.
+- Préserver des logs utiles et des erreurs explicites.
+- Pour toute action sensible, préférer des commandes directes et simples. Éviter les chaînes shell complexes qui masquent plusieurs actions dans une seule commande.
 
-`make check-full` est recommandé avant merge, mais il peut être plus lourd car il inclut des vérifications complémentaires comme le build Docker et Ansible.
+## Ce qu’il faut éviter
 
-## Commandes interdites
+- Ne pas créer de microservice si un script suffit.
+- Ne pas créer de module `utils` générique sans usage immédiat.
+- Ne pas ajouter de dépendance “au cas où”.
+- Ne pas remplacer une commande Linux claire par du code Python inutile.
+- Ne pas faire de refactoring non demandé.
+- Ne pas masquer une action système dangereuse derrière une fonction “safe” sans garde-fous réels.
 
-Ne pas utiliser de commandes destructives ou risquées, notamment :
+## Méthode de travail
 
-- suppression massive : `rm -rf`, `find ... -delete` ;
-- modification système : `sudo`, `apt remove`, `dnf remove`, `systemctl enable/disable` ;
-- manipulation disque : `mkfs`, `dd`, `mount` hors contexte explicitement validé ;
-- exposition réseau publique non protégée ;
-- commandes téléchargeant ou exécutant du code distant sans revue.
+### Avant de modifier
 
-## Workflow de modification
+1. Lire les fichiers pertinents.
+2. Résumer le problème en termes simples.
+3. Proposer le plus petit changement possible.
+4. Expliquer pourquoi une solution plus simple ne suffit pas.
+5. Si la demande impose “ne modifie rien” ou “attends validation”, s’arrêter après l’analyse.
 
-1. Ne pas modifier directement `master` : créer une branche dédiée.
-2. Lire les instructions locales avant modification.
-3. Faire des changements petits, cohérents et documentés.
-4. Préserver la compatibilité Docker Compose et les chemins existants.
-5. Isoler les tests avec `tmp_path`/`monkeypatch` lorsqu'ils écrivent des fichiers.
-6. Vérifier qu'aucun secret ou donnée réelle sensible n'est ajouté.
-7. Exécuter les validations obligatoires avant PR.
+### Pendant la modification
 
-## Validations obligatoires avant Pull Request
+1. Modifier uniquement les fichiers nécessaires.
+2. Garder des noms explicites.
+3. Éviter les refactorings non demandés.
+4. Ajouter ou adapter les tests seulement si cela sert une vérification réelle.
+5. Ne pas élargir le périmètre sans raison explicite.
 
-À exécuter avant de proposer une PR :
+### Après la modification
 
-```bash
-make check
-make test
-make lint
-make compose-config
-```
+1. Montrer le diff ou en faire un résumé fidèle.
+2. Expliquer exactement ce qui a changé.
+3. Donner les commandes de vérification.
+4. Signaler les limites restantes, hypothèses et risques résiduels.
 
-Si possible avant merge :
+## Définition de terminé
 
-```bash
-make check-full
-```
+Une tâche est terminée seulement si :
+- le changement est minimal et cohérent avec la demande ;
+- les fichiers touchés sont justifiés ;
+- les vérifications pertinentes ont été proposées ou exécutées selon le contexte ;
+- aucun secret n’a été exposé ;
+- les limites restantes sont explicites.
 
-Si `make check-full` n'est pas exécuté, expliquer pourquoi dans la PR.
+## Vérification
 
-## Format des commits
+Utiliser d’abord les commandes déjà prévues par le dépôt. Ne pas inventer de pipeline complexe.
 
-Utiliser des messages courts, explicites et orientés changement, par exemple :
+Exemples selon les fichiers présents :
+- `python -m pytest`
+- `python -m compileall .`
+- `shellcheck scripts/*.sh`
+- `docker compose config`
+- `git diff --check`
 
-- `Add minimal GitHub Actions CI`
-- `Harden FastAPI diagnostics tests`
-- `Document VPS preparation workflow`
+## Si le contexte manque
 
-## Limites OpenAI API et OpenClaw
-
-- Aucune intégration OpenAI API ne doit être ajoutée sans tâche dédiée.
-- Aucune intégration OpenClaw ne doit être ajoutée sans tâche dédiée.
-- Les futures intégrations devront rester en lecture seule par défaut, sans exécution automatique de commandes et avec validation humaine.
+- Ne pas inventer.
+- Dire ce qui manque.
+- Indiquer quel fichier ou quelle commande de lecture permettrait de lever le doute.

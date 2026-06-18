@@ -35,7 +35,7 @@ git switch <branche-de-validation>
 ## 2) Bootstrap système Ubuntu Server
 
 ```bash
-make bootstrap-ubuntu
+BOOTSTRAP_CONFIRM=yes make bootstrap-ubuntu
 ```
 
 Ce script prépare les outils attendus pour le lab :
@@ -149,7 +149,7 @@ make down
 
 - [ ] dépôt cloné depuis GitHub ;
 - [ ] branche de validation dédiée sélectionnée ;
-- [ ] `make bootstrap-ubuntu` exécuté sans erreur bloquante ;
+- [ ] `BOOTSTRAP_CONFIRM=yes make bootstrap-ubuntu` exécuté sans erreur bloquante ;
 - [ ] reconnexion effectuée si l'utilisateur a été ajouté au groupe `docker` ;
 - [ ] `docker --version` fonctionne sans `sudo` ;
 - [ ] `docker compose version` fonctionne sans `sudo` ;
