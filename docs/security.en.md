@@ -73,16 +73,16 @@ Sensitive routes:
 
 Expected behavior:
 
-- locally on `127.0.0.1`, diagnostics can remain open for learning;
-- if `DIAG_ACCESS_TOKEN_SHA256` is set, the API compares the SHA-256 hash of the
-  provided bearer or `X-Diag-Token` token;
-- `DIAG_ACCESS_TOKEN` remains supported for local compatibility or reverse proxy
-  injection, but must stay in a private untracked file;
-- in `APP_ENV=vps`, a clear private token or hash is required;
-- if VPS mode has no token configuration, diagnostic routes fail closed.
+- diagnostic routes require a token by default in every environment;
+- the API expects `DIAG_ACCESS_TOKEN_HASH` or `DIAG_ACCESS_TOKEN_HASH_FILE`;
+- accepted hash formats are `sha256:<hash>` and `bcrypt:<hash>`;
+- the provided bearer or `X-Diag-Token` token is compared with the stored hash;
+- `DIAG_PROTECTION_DISABLED=true` is honored only for explicit local
+  development environments;
+- if no token hash is configured, diagnostic routes fail closed.
 
 Use `scripts/generate_diag_token.py` to generate a client token and export only
-`DIAG_ACCESS_TOKEN_SHA256` to the application.
+`DIAG_ACCESS_TOKEN_HASH` to the application.
 
 ## Timeouts And Retries
 

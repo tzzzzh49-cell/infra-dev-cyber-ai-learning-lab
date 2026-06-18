@@ -82,7 +82,7 @@ Inclus / livré :
 - `.dockerignore` pour exclure sorties, environnements locaux, tests et secrets ;
 - timeout de diagnostic configurable via `DIAG_COMMAND_TIMEOUT`, par défaut `3` secondes ;
 - tentatives bornées via `DIAG_COMMAND_RETRIES`, désactivées par défaut ;
-- protection des diagnostics par hash `DIAG_ACCESS_TOKEN_SHA256` avec compatibilité `DIAG_ACCESS_TOKEN` ;
+- protection des diagnostics par hash `DIAG_ACCESS_TOKEN_HASH` avec jeton client transmis via `Authorization` ou `X-Diag-Token` ;
 - script `scripts/generate_diag_token.py` et tests associés ;
 - documentation bilingue initiale pour architecture, sécurité et reproductibilité Ubuntu Server ;
 - sommaire principal `docs/README.md` ;
@@ -113,7 +113,7 @@ Prévu / en préparation :
 Limites :
 - pas de déploiement VPS réel ;
 - pas d'adresse IP, domaine, token, clé privée ou mot de passe réel ;
-- `/diag` reste protégé en mode `APP_ENV=vps` par `DIAG_ACCESS_TOKEN_SHA256` ou token privé et reverse proxy authentifié.
+- `/diag` reste protégé en mode `APP_ENV=vps` par `DIAG_ACCESS_TOKEN_HASH` ou `DIAG_ACCESS_TOKEN_HASH_FILE` et reverse proxy authentifié.
 
 ## v0.5.0 - OpenAI API read-only
 

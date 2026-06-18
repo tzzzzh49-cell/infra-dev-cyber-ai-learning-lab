@@ -10,6 +10,12 @@ if [ "${ID:-}" != "fedora" ] || [ "${VERSION_ID:-}" != "44" ]; then
     exit 1
 fi
 
+if [ "${BOOTSTRAP_CONFIRM:-}" != "yes" ]; then
+    echo "Erreur : ce script modifie le système avec sudo." >&2
+    echo "Relance après revue avec : BOOTSTRAP_CONFIRM=yes $0" >&2
+    exit 2
+fi
+
 echo "==> Mise à jour de Fedora"
 sudo dnf -y update
 

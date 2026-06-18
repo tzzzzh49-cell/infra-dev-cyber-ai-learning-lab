@@ -47,7 +47,7 @@ git switch <validation-branch>
 ## 2) Bootstrap Ubuntu Server
 
 ```bash
-make bootstrap-ubuntu
+BOOTSTRAP_CONFIRM=yes make bootstrap-ubuntu
 ```
 
 After Docker group changes, disconnect and reconnect if required.
@@ -131,7 +131,7 @@ working tree.
 
 - [ ] repository cloned from GitHub;
 - [ ] dedicated validation branch selected;
-- [ ] `make bootstrap-ubuntu` completed;
+- [ ] `BOOTSTRAP_CONFIRM=yes make bootstrap-ubuntu` completed;
 - [ ] Docker group reconnect completed if needed;
 - [ ] `docker --version` works without `sudo`;
 - [ ] `docker compose version` works without `sudo`;
@@ -152,7 +152,7 @@ working tree.
 - Do not add real secrets to examples, scripts, reports or commits.
 - Do not expose `/diag` or exports publicly without authentication and HTTPS
   reverse proxy protection.
-- Prefer `DIAG_ACCESS_TOKEN_SHA256` over storing a clear application token.
+- Prefer `DIAG_ACCESS_TOKEN_HASH` over storing a clear application token.
 - `DIAG_COMMAND_TIMEOUT` defaults to `3` seconds; only raise it for a documented
   slow environment.
 - Protected API call examples are in `docs/api-examples.md`.

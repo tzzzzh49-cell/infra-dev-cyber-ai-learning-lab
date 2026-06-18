@@ -19,7 +19,7 @@ cd infra-dev-cyber-ai-learning-lab
 ## 2) Bootstrap système Fedora
 
 ```bash
-make bootstrap-fedora
+BOOTSTRAP_CONFIRM=yes make bootstrap-fedora
 ```
 
 Ce script :

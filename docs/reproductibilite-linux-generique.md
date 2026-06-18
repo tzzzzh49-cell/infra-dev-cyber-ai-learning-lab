@@ -22,8 +22,8 @@ Aucune autre distribution Linux n'est déclarée compatible à ce stade.
 
 ## Bootstrap selon distribution
 
-- Fedora 44 Workstation VM : `make bootstrap-fedora`
-- Ubuntu 26.04 LTS Server : `make bootstrap-ubuntu`
+- Fedora 44 Workstation VM : `BOOTSTRAP_CONFIRM=yes make bootstrap-fedora`
+- Ubuntu 26.04 LTS Server : `BOOTSTRAP_CONFIRM=yes make bootstrap-ubuntu`
 
 ## Niveaux de validation
 

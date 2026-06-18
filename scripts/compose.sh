@@ -9,13 +9,9 @@ find_compose_cmd() {
             return
         fi
 
-        if command -v sudo >/dev/null 2>&1 && sudo -n docker ps >/dev/null 2>&1; then
-            COMPOSE_CMD=(sudo docker compose)
-            return
-        fi
-
-        COMPOSE_CMD=(docker compose)
-        return
+        echo "Erreur : Docker n'est pas accessible sans sudo." >&2
+        echo "Reconnecte l'utilisateur au groupe docker, puis relance la commande." >&2
+        exit 1
     fi
 
     if command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
@@ -24,13 +20,9 @@ find_compose_cmd() {
             return
         fi
 
-        if command -v sudo >/dev/null 2>&1 && sudo -n docker ps >/dev/null 2>&1; then
-            COMPOSE_CMD=(sudo docker-compose)
-            return
-        fi
-
-        COMPOSE_CMD=(docker-compose)
-        return
+        echo "Erreur : Docker n'est pas accessible sans sudo." >&2
+        echo "Reconnecte l'utilisateur au groupe docker, puis relance la commande." >&2
+        exit 1
     fi
 
     echo "Erreur : Docker Compose est introuvable." >&2

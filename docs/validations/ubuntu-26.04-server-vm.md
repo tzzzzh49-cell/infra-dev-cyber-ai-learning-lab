@@ -32,7 +32,7 @@ Renseigner la colonne `Résultat observé` avec `Réussi`, `Échec` ou `Non exé
 | Clone | `git clone https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab.git` | Dépôt cloné sans secret local | Non exécuté | À renseigner |
 | Entrée dépôt | `cd infra-dev-cyber-ai-learning-lab` | Répertoire projet actif | Non exécuté | À renseigner |
 | Branche | `git switch <branche-de-validation>` | Branche dédiée, pas `master` | Non exécuté | À renseigner |
-| Bootstrap Ubuntu Server | `make bootstrap-ubuntu` | Prérequis installés ; reconnexion possible si le groupe Docker change | Non exécuté | À renseigner |
+| Bootstrap Ubuntu Server | `BOOTSTRAP_CONFIRM=yes make bootstrap-ubuntu` | Prérequis installés ; reconnexion possible si le groupe Docker change | Non exécuté | À renseigner |
 | Reconnexion Docker | `docker ps` | Docker utilisable sans `sudo` après reconnexion | Non exécuté | À renseigner |
 | Compose plugin | `docker compose version` | Plugin Docker Compose disponible | Non exécuté | À renseigner |
 | Validation rapide | `make check` | Vérifications rapides et tests passent | Non exécuté | À renseigner |

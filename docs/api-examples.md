@@ -16,14 +16,12 @@ dans un rapport.
 ## Générer un jeton
 
 ```bash
-DIAG_CLIENT_TOKEN="$(python3 scripts/generate_diag_token.py --token-only)"
-export DIAG_ACCESS_TOKEN_SHA256="$(
-  printf '%s' "$DIAG_CLIENT_TOKEN" |
-    python3 scripts/generate_diag_token.py --stdin --hash-only
-)"
+python3 scripts/generate_diag_token.py --format sha256
+export DIAG_CLIENT_TOKEN='<JETON_AFFICHE_PAR_LE_SCRIPT>'
+export DIAG_ACCESS_TOKEN_HASH='<HASH_AFFICHE_PAR_LE_SCRIPT>'
 ```
 
-`DIAG_CLIENT_TOKEN` sert uniquement au client `curl`. `DIAG_ACCESS_TOKEN_SHA256`
+`DIAG_CLIENT_TOKEN` sert uniquement au client `curl`. `DIAG_ACCESS_TOKEN_HASH`
 est la valeur à fournir à l'application. Le script ne crée aucun fichier.
 
 ## Configurer l'application
@@ -33,7 +31,7 @@ export APP_ENV=vps
 export APP_HOST=127.0.0.1
 export APP_PORT=8000
 export DIAG_COMMAND_TIMEOUT=3
-export DIAG_ACCESS_TOKEN_SHA256
+export DIAG_ACCESS_TOKEN_HASH
 ```
 
 En local, `APP_ENV=lab` reste possible. Pour vérifier la protection avant toute
