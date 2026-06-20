@@ -2,10 +2,6 @@
     email thomas.spengler24@gmail.com
 }
 
-api.infra-lab-thom.fr {
-    reverse_proxy webapp:8000
-}
-
 infra-lab-thom.fr {
     respond "Secure AI Ops Lab" 200
 }
