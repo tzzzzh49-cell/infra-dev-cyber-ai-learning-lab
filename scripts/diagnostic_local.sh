@@ -6,6 +6,7 @@
 # Ce script ne modifie rien sur la machine.
 
 set -u
+umask 077
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPORT_DIR="$PROJECT_ROOT/outputs/reports"
@@ -14,8 +15,30 @@ REPORT_FILE="$REPORT_DIR/diagnostic-$TIMESTAMP.md"
 API_HEALTH_URL="${API_HEALTH_URL:-http://127.0.0.1:8000/health}"
 API_DIAG_URL="${API_DIAG_URL:-http://127.0.0.1:8000/diag}"
 DIAG_JSON_FILE="$REPORT_DIR/diagnostic-api-$TIMESTAMP.json"
+TEMP_DIR="$(mktemp -d /tmp/infra-dev-cyber-ai-learning-lab-diagnostic.XXXXXX)" || {
+    echo "Erreur : impossible de créer le dossier temporaire sécurisé." >&2
+    exit 1
+}
+DOCKER_OUT_FILE="$TEMP_DIR/docker.out"
+DOCKER_ERR_FILE="$TEMP_DIR/docker.err"
+API_DIAG_ERR_FILE="$TEMP_DIR/api-diag.err"
+API_BODY_FILE="$TEMP_DIR/api-health.body"
+API_ERR_FILE="$TEMP_DIR/api-health.err"
+
+cleanup() {
+    rm -f -- \
+        "$DOCKER_OUT_FILE" \
+        "$DOCKER_ERR_FILE" \
+        "$API_DIAG_ERR_FILE" \
+        "$API_BODY_FILE" \
+        "$API_ERR_FILE"
+    rmdir -- "$TEMP_DIR" 2>/dev/null || true
+}
+
+trap cleanup EXIT
 
 mkdir -p "$REPORT_DIR"
+chmod 700 "$REPORT_DIR"
 
 DOCKER_STATUS="KO"
 DOCKER_DETAILS="Docker non testé."
@@ -32,12 +55,12 @@ check_docker() {
         return
     fi
 
-    if timeout 5 docker ps >/tmp/diagnostic_docker.out 2>/tmp/diagnostic_docker.err; then
+    if timeout 5 docker ps >"$DOCKER_OUT_FILE" 2>"$DOCKER_ERR_FILE"; then
         DOCKER_STATUS="OK"
         DOCKER_DETAILS="Docker répond correctement à la commande docker ps."
     else
         DOCKER_STATUS="KO"
-        DOCKER_DETAILS="$(cat /tmp/diagnostic_docker.err 2>/dev/null)"
+        DOCKER_DETAILS="$(<"$DOCKER_ERR_FILE")"
     fi
 }
 
@@ -51,7 +74,7 @@ check_api_diag() {
     local err_file
     local http_code
 
-    err_file="$(mktemp)"
+    err_file="$API_DIAG_ERR_FILE"
     local curl_args=(
         -sS
         --max-time 5
@@ -61,21 +84,30 @@ check_api_diag() {
 
     local diag_client_token="${DIAG_CLIENT_TOKEN:-${DIAG_ACCESS_TOKEN:-}}"
     if [ -n "$diag_client_token" ]; then
-        curl_args+=(-H "Authorization: Bearer $diag_client_token")
+        case "$diag_client_token" in
+            *[!A-Za-z0-9._~-]*)
+                API_DIAG_STATUS="KO"
+                API_DIAG_DETAILS="Format du jeton diagnostic invalide."
+                return
+                ;;
+        esac
+        http_code="$(
+            printf 'header = "Authorization: Bearer %s"\n' "$diag_client_token" \
+                | curl --config - "${curl_args[@]}" "$API_DIAG_URL" 2>"$err_file" \
+                || true
+        )"
+    else
+        http_code="$(curl "${curl_args[@]}" "$API_DIAG_URL" 2>"$err_file" || true)"
     fi
-
-    http_code="$(curl "${curl_args[@]}" "$API_DIAG_URL" 2>"$err_file" || true)"
 
     if [ "$http_code" = "200" ]; then
         API_DIAG_STATUS="OK"
         API_DIAG_DETAILS="Réponse JSON sauvegardée dans $DIAG_JSON_FILE."
     else
         API_DIAG_STATUS="KO"
-        API_DIAG_DETAILS="/diag indisponible. Code HTTP : $http_code. Erreur : $(cat "$err_file")"
+        API_DIAG_DETAILS="/diag indisponible. Code HTTP : $http_code. Erreur : $(<"$err_file")"
         rm -f "$DIAG_JSON_FILE"
     fi
-
-    rm -f "$err_file"
 }
 
 check_api() {
@@ -89,8 +121,8 @@ check_api() {
     local err_file
     local http_code
 
-    body_file="$(mktemp)"
-    err_file="$(mktemp)"
+    body_file="$API_BODY_FILE"
+    err_file="$API_ERR_FILE"
 
     http_code="$(curl -sS --max-time 3 -o "$body_file" -w "%{http_code}" "$API_HEALTH_URL" 2>"$err_file" || true)"
 
@@ -99,10 +131,8 @@ check_api() {
         API_DETAILS="L'API répond correctement avec le code HTTP 200."
     else
         API_STATUS="KO"
-        API_DETAILS="L'API ne répond pas correctement. Code HTTP : $http_code. Erreur : $(cat "$err_file")"
+        API_DETAILS="L'API ne répond pas correctement. Code HTTP : $http_code. Erreur : $(<"$err_file")"
     fi
-
-    rm -f "$body_file" "$err_file"
 }
 
 write_title() {

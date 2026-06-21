@@ -39,30 +39,25 @@ exposition, tester avec `APP_ENV=vps`.
 
 ## Appeler les endpoints
 
-Avec l'en-tête standard `Authorization` :
+Avec l'en-tête standard `Authorization`, transmis à `curl` par son entrée standard
+plutôt que dans ses arguments visibles par les autres processus :
 
 ```bash
-curl -fsS \
-  -H "Authorization: Bearer $DIAG_CLIENT_TOKEN" \
-  http://127.0.0.1:8000/diag
+printf 'header = "Authorization: Bearer %s"\n' "$DIAG_CLIENT_TOKEN" \
+  | curl --config - -fsS http://127.0.0.1:8000/diag
 
-curl -fsS \
-  -H "Authorization: Bearer $DIAG_CLIENT_TOKEN" \
-  -X POST \
-  http://127.0.0.1:8000/diag/export/json
+printf 'header = "Authorization: Bearer %s"\n' "$DIAG_CLIENT_TOKEN" \
+  | curl --config - -fsS -X POST http://127.0.0.1:8000/diag/export/json
 
-curl -fsS \
-  -H "Authorization: Bearer $DIAG_CLIENT_TOKEN" \
-  -X POST \
-  http://127.0.0.1:8000/diag/export/markdown
+printf 'header = "Authorization: Bearer %s"\n' "$DIAG_CLIENT_TOKEN" \
+  | curl --config - -fsS -X POST http://127.0.0.1:8000/diag/export/markdown
 ```
 
 Avec l'en-tête interne `X-Diag-Token`, utile derrière un reverse proxy contrôlé :
 
 ```bash
-curl -fsS \
-  -H "X-Diag-Token: $DIAG_CLIENT_TOKEN" \
-  http://127.0.0.1:8000/diag
+printf 'header = "X-Diag-Token: %s"\n' "$DIAG_CLIENT_TOKEN" \
+  | curl --config - -fsS http://127.0.0.1:8000/diag
 ```
 
 ## Limites

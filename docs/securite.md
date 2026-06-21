@@ -129,7 +129,7 @@ Comportement attendu :
 * le serveur ne stocke pas de token clair : il attend `DIAG_ACCESS_TOKEN_HASH` ou `DIAG_ACCESS_TOKEN_HASH_FILE` ;
 * les formats acceptés sont `sha256:<hash>` et `bcrypt:<hash>` ;
 * le token fourni via `Authorization: Bearer <token>` ou `X-Diag-Token` est hashé puis comparé ;
-* `DIAG_PROTECTION_DISABLED=true` désactive la protection uniquement en développement local explicite (`APP_ENV=local`, `lab`, `dev`, `development` ou `test`) ;
+* `DIAG_PROTECTION_DISABLED=true` désactive la protection uniquement en développement local explicite (`APP_ENV=local`, `dev`, `development` ou `test`) ;
 * si aucun hash n'est configuré, les routes de diagnostic refusent l'accès au lieu de s'exposer sans protection.
 
 Ne jamais commiter le token clair, le hash réel, un fichier de secret ou une configuration de reverse proxy contenant un secret. Les hashes doivent venir d'un gestionnaire de secrets comme Vault, AWS Secrets Manager, un secret Docker ou un fichier monté hors dépôt.
@@ -232,14 +232,23 @@ La CI contient des contrôles non secrets :
 
 Les mainteneurs doivent surveiller les CVE des dépendances applicatives, de l'image de base et des GitHub Actions. Toute exception CVE doit être documentée avant merge.
 
+Les images sont épinglées à une version précise et les GitHub Actions à un SHA.
+Les tags d'images ne sont toutefois pas immuables : épingler aussi les digests
+après validation avant un déploiement de production.
+
 ## Objectif sécurité à long terme
 
 Le projet doit évoluer vers un lab capable de diagnostiquer et expliquer, mais pas de prendre le contrôle sans validation humaine.
 
 ## Vérification
 
-Cherche les mots sensibles dans ton dépôt :
+Détecte les contenus sensibles probables sans afficher les valeurs :
 
 ```bash
-git grep -n "OPENAI_API_KEY\|password\|token\|secret\|PRIVATE KEY" || true
+find . \
+  \( -path '*/.git' -o -path '*/.venv' -o -path '*/venv' -o -path '*/site-packages' -o -path '*/node_modules' -o -path '*/.ssh' -o -path '*/secrets' -o -path '*/.secrets' -o -path '*/outputs/backups' -o -path '*/outputs/raw' \) -prune -o \
+  -type f -print \
+  | xargs -r grep -IlE 'BEGIN OPENSSH PRIVATE KEY|BEGIN RSA PRIVATE KEY|OPENAI_API_KEY[[:space:]]*=|GITHUB_TOKEN[[:space:]]*=|github_pat_|ghp_|sk-[A-Za-z0-9_-]{20,}|CLOUDFLARE_API_TOKEN[[:space:]]*=|TAILSCALE_AUTHKEY[[:space:]]*=|AWS_SECRET_ACCESS_KEY[[:space:]]*=|RESTIC_PASSWORD[[:space:]]*=|POSTGRES_PASSWORD[[:space:]]*=|DATABASE_URL[[:space:]]*=' 2>/dev/null || true
 ```
+
+La sortie contient uniquement des chemins de fichiers à examiner manuellement.

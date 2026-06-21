@@ -41,7 +41,7 @@ services:
   db:
     profiles:
       - future-persistence
-    image: postgres:17-alpine
+    image: postgres:17.10-alpine3.24
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-lab_reports}
       POSTGRES_USER: ${POSTGRES_USER:-lab}
@@ -60,7 +60,10 @@ services:
     restart: unless-stopped
 
   caddy:
-    image: caddy:2
+    # Explicit opt-in: the default local lab must not bind public HTTP(S) ports.
+    profiles:
+      - public-proxy
+    image: caddy:2.11.4-alpine
     container_name: lab-caddy
     restart: unless-stopped
     depends_on:

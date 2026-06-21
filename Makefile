@@ -5,14 +5,22 @@ DEFAULT_APP_URL ?= http://127.0.0.1:8000
 APP_URL ?= $(shell test -f "$(APP_URL_FILE)" && cat "$(APP_URL_FILE)" || printf '%s' "$(DEFAULT_APP_URL)")
 COMPOSE ?= ./scripts/compose.sh
 CURL ?= curl -fsS
-DIAG_CURL_TOKEN ?= $(if $(DIAG_CLIENT_TOKEN),$(DIAG_CLIENT_TOKEN),$(DIAG_ACCESS_TOKEN))
-DIAG_CURL_AUTH ?= $(if $(DIAG_CURL_TOKEN),-H "Authorization: Bearer $(DIAG_CURL_TOKEN)",)
 PYTHON ?= python3
 VENV ?= .venv
 VENV_PYTHON := $(VENV)/bin/python
 VALIDATION_TMP ?= /tmp/infra-dev-cyber-ai-learning-lab
 ANSIBLE_LOCAL_TEMP ?= $(VALIDATION_TMP)/ansible-local
 BUILDX_CONFIG ?= $(VALIDATION_TMP)/buildx-config
+
+define run_diag_curl
+	@token="$${DIAG_CLIENT_TOKEN:-$${DIAG_ACCESS_TOKEN:-}}"; \
+	if [ -n "$$token" ]; then \
+		case "$$token" in *[!A-Za-z0-9._~-]*) echo "Erreur : format de jeton diagnostic invalide." >&2; exit 2;; esac; \
+		printf 'header = "Authorization: Bearer %s"\n' "$$token" | $(CURL) --config - $(1); \
+	else \
+		$(CURL) $(1); \
+	fi
+endef
 
 help:
 	@echo "Commandes disponibles :"
@@ -102,15 +110,15 @@ version:
 	@echo ""
 
 diag:
-	@$(CURL) $(DIAG_CURL_AUTH) $(APP_URL)/diag
+	$(call run_diag_curl,"$(APP_URL)/diag")
 	@echo ""
 
 diag-json:
-	@$(CURL) $(DIAG_CURL_AUTH) -X POST $(APP_URL)/diag/export/json
+	$(call run_diag_curl,-X POST "$(APP_URL)/diag/export/json")
 	@echo ""
 
 diag-md:
-	@$(CURL) $(DIAG_CURL_AUTH) -X POST $(APP_URL)/diag/export/markdown
+	$(call run_diag_curl,-X POST "$(APP_URL)/diag/export/markdown")
 	@echo ""
 
 reports:
@@ -127,7 +135,6 @@ ansible-check:
 
 $(VENV_PYTHON):
 	$(PYTHON) -m venv $(VENV)
-	$(VENV_PYTHON) -m pip install --upgrade pip
 	$(VENV_PYTHON) -m pip install -r app/requirements-dev.txt
 
 setup-dev: $(VENV_PYTHON)

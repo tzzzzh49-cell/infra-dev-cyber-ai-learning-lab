@@ -190,6 +190,8 @@ def test_write_json_report_uses_requested_directory(tmp_path):
     assert path.endswith(".json")
     saved = json.loads((tmp_path / path.split("/")[-1]).read_text(encoding="utf-8"))
     assert saved["metadata"]["schema_version"] == "0.3.0"
+    assert tmp_path.stat().st_mode & 0o777 == 0o700
+    assert (tmp_path / path.split("/")[-1]).stat().st_mode & 0o777 == 0o600
 
 
 def test_write_markdown_report_uses_requested_directory(tmp_path):
@@ -203,6 +205,8 @@ def test_write_markdown_report_uses_requested_directory(tmp_path):
     assert "# Diagnostic réseau avancé v0.3.0" in content
     assert "## Interfaces réseau" in content
     assert "## Conclusion" in content
+    assert tmp_path.stat().st_mode & 0o777 == 0o700
+    assert (tmp_path / path.split("/")[-1]).stat().st_mode & 0o777 == 0o600
 
 
 def test_parse_json_output_returns_dict():

@@ -18,8 +18,11 @@ venv/
 .runtime/
 
 # Secrets et identifiants locaux
+secrets
 secrets/
+.secrets
 .secrets/
+.ssh
 .ssh/
 .aws/
 .azure/

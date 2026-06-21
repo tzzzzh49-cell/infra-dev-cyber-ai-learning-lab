@@ -21,7 +21,7 @@ APP_VERSION = "0.3.2"
 DIAG_TOKEN_HASH_ENV = "DIAG_ACCESS_TOKEN_HASH"
 DIAG_TOKEN_HASH_FILE_ENV = "DIAG_ACCESS_TOKEN_HASH_FILE"
 DIAG_PROTECTION_DISABLED_ENV = "DIAG_PROTECTION_DISABLED"
-LOCAL_DEVELOPMENT_ENVS = {"local", "lab", "dev", "development", "test"}
+LOCAL_DEVELOPMENT_ENVS = {"local", "dev", "development", "test"}
 TRUE_VALUES = {"1", "true", "yes", "on"}
 BCRYPT_PREFIXES = ("$2a$", "$2b$", "$2y$")
 

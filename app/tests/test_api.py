@@ -209,6 +209,16 @@ def test_diag_disable_is_ignored_in_vps(monkeypatch):
     assert exc.value.status_code == 503
 
 
+def test_diag_disable_is_ignored_in_default_lab(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "lab")
+    monkeypatch.setenv("DIAG_PROTECTION_DISABLED", "true")
+
+    with pytest.raises(HTTPException) as exc:
+        require_diag_access()
+
+    assert exc.value.status_code == 503
+
+
 def test_diag_requires_token_when_hash_configured(monkeypatch):
     monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", sha256_token("test-token"))
 

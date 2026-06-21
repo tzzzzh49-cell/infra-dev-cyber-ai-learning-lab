@@ -417,7 +417,8 @@ def collect_network_diagnostic(
 def ensure_report_dir(output_dir: str | Path) -> Path:
     """Create and return the report directory path."""
     report_dir = Path(output_dir)
-    report_dir.mkdir(parents=True, exist_ok=True)
+    report_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    report_dir.chmod(0o700)
     logger.info("Diagnostic report directory ready: %s", report_dir)
     return report_dir
 
@@ -433,6 +434,7 @@ def write_json_report(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    report_path.chmod(0o600)
     logger.info("Wrote JSON diagnostic report: %s", report_path)
     return str(report_path)
 
@@ -567,5 +569,6 @@ def write_markdown_report(
 - Ne pas exposer `/diag` publiquement sans authentification.
 """
     report_path.write_text(content, encoding="utf-8")
+    report_path.chmod(0o600)
     logger.info("Wrote Markdown diagnostic report: %s", report_path)
     return str(report_path)

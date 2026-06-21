@@ -3,7 +3,7 @@
 }
 
 api.infra-lab-thom.fr {
-    reverse_proxy webapp:8000
+    reverse_proxy api:8000
 }
 
 infra-lab-thom.fr {

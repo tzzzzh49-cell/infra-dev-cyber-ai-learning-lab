@@ -15,6 +15,7 @@ BASE_LOGGER_NAME = "lab"
 
 def configure_logging(name: str | None = None) -> logging.Logger:
     """Configure file and console logging, then return a project logger."""
+    os.umask(0o077)
     base_logger = logging.getLogger(BASE_LOGGER_NAME)
     if not base_logger.handlers:
         level_name = os.environ.get(LOG_LEVEL_ENV, "INFO").strip().upper()
@@ -32,7 +33,10 @@ def configure_logging(name: str | None = None) -> logging.Logger:
 
         log_file = Path(os.environ.get(LOG_FILE_ENV, DEFAULT_LOG_FILE))
         try:
-            log_file.parent.mkdir(parents=True, exist_ok=True)
+            log_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            log_file.parent.chmod(0o700)
+            log_file.touch(mode=0o600, exist_ok=True)
+            log_file.chmod(0o600)
             file_handler = RotatingFileHandler(
                 log_file,
                 maxBytes=1_000_000,

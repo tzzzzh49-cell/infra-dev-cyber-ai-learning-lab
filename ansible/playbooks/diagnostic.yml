@@ -8,7 +8,7 @@
       ansible.builtin.file:
         path: "{{ diagnostic_report_dir }}"
         state: directory
-        mode: "0755"
+        mode: "0700"
       tags:
         - diagnostic
         - report
@@ -64,7 +64,7 @@
     - name: Écrire un rapport Ansible simple
       ansible.builtin.copy:
         dest: "{{ diagnostic_report_file }}"
-        mode: "0644"
+        mode: "0600"
         content: |
           # Rapport Ansible local
 
