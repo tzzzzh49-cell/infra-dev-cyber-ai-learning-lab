@@ -87,14 +87,15 @@ The application image uses a multi-stage build:
   `app/requirements.txt` into a virtual environment;
 - the `runtime` stage copies that environment, the app code and selected
   configuration files into separate directories;
-- the container runs as non-root user `10001:10001`.
+- the code stays root-owned and the container runs as non-root user `10001:10001`.
 
 The non-root user reduces the impact of an application flaw. Compose repeats
-the same user setting so this runtime contract is visible during review.
+the same user setting, makes the root filesystem read-only, drops all Linux
+capabilities and enables `no-new-privileges`.
 
-The only writable mount is `./outputs:/workspace/outputs:Z`, because reports are
-the expected mutable output. The full repository, `.env` files and local secrets
-must not be mounted into the container.
+The only writable mounts are `./outputs/reports` and `./outputs/logs`.
+`outputs/raw`, `outputs/backups`, the full repository, `.env` files and local
+secrets are not mounted into the container.
 
 `restart: unless-stopped` models a VPS-friendly runtime: the service comes back
 after a Docker restart, while explicit operator shutdown remains respected.

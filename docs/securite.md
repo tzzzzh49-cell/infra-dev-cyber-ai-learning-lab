@@ -127,7 +127,7 @@ Comportement attendu :
 
 * elles exigent un token dans tous les environnements par défaut ;
 * le serveur ne stocke pas de token clair : il attend `DIAG_ACCESS_TOKEN_HASH` ou `DIAG_ACCESS_TOKEN_HASH_FILE` ;
-* les formats acceptés sont `sha256:<hash>` et `bcrypt:<hash>` ;
+* le seul format accepté est `sha256:<hash>`, avec un jeton aléatoire de forte entropie ;
 * le token fourni via `Authorization: Bearer <token>` ou `X-Diag-Token` est hashé puis comparé ;
 * `DIAG_PROTECTION_DISABLED=true` désactive la protection uniquement en développement local explicite (`APP_ENV=local`, `dev`, `development` ou `test`) ;
 * si aucun hash n'est configuré, les routes de diagnostic refusent l'accès au lieu de s'exposer sans protection.
@@ -137,8 +137,7 @@ Ne jamais commiter le token clair, le hash réel, un fichier de secret ou une co
 Génération :
 
 ```bash
-python3 scripts/generate_diag_token.py --format sha256
-python3 scripts/generate_diag_token.py --format bcrypt
+python3 scripts/generate_diag_token.py
 ```
 
 Côté proxy, un secret runtime distinct peut être utilisé pour injecter `X-Diag-Token` après authentification basique ou OAuth. Dans ce cas, le proxy conserve le token clair dans son propre gestionnaire de secrets, tandis que l'application ne reçoit que `DIAG_ACCESS_TOKEN_HASH`.
@@ -152,6 +151,9 @@ diagnostic bloqué immobilise l'API.
 `DIAG_COMMAND_RETRIES` existe pour des environnements lents ou transitoires,
 mais vaut `0` par défaut et reste plafonné. Les tentatives supplémentaires ne
 doivent concerner que des commandes d'observation idempotentes.
+
+Un seul diagnostic est exécuté à la fois. Un appel concurrent reçoit HTTP 429.
+Les exports serveur conservent les 20 fichiers les plus récents par format.
 
 ## Règles pour OpenAI API
 
@@ -227,7 +229,8 @@ La CI contient des contrôles non secrets :
 
 * Bandit sur le code Python, avec seuil medium et confidence medium pour bloquer les failles applicatives significatives ;
 * Hadolint sur `app/Dockerfile` ;
-* Trivy sur l'image Docker construite en CI, bloquant sur les vulnérabilités critiques corrigibles ;
+* Gitleaks sur l'historique Git pour détecter les secrets committés ;
+* Trivy sur l'image Docker construite en CI, bloquant sur les vulnérabilités élevées et critiques corrigibles ;
 * Dependabot pour ouvrir des Pull Requests de mise à jour.
 
 Les mainteneurs doivent surveiller les CVE des dépendances applicatives, de l'image de base et des GitHub Actions. Toute exception CVE doit être documentée avant merge.

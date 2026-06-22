@@ -2,9 +2,11 @@ import hashlib
 
 import pytest
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
 from app.main import (
     APP_VERSION,
+    DIAG_EXECUTION_LOCK,
     app,
     diag,
     export_diag_json,
@@ -107,6 +109,12 @@ def test_get_health_returns_ok_status():
     assert health() == {"status": "ok", "service": "lab-api"}
 
 
+def test_http_routes_work_with_pinned_starlette():
+    with TestClient(app) as client:
+        assert client.get("/health").status_code == 200
+        assert client.get("/diag").status_code == 503
+
+
 def test_get_version_returns_app_version():
     assert version() == {
         "app": "infra-dev-cyber-ai-learning-lab-api",
@@ -127,6 +135,18 @@ def test_get_diag_returns_structured_diagnostic(monkeypatch):
     assert "resources" in data
     assert "docker" in data
     assert "security" in data
+
+
+def test_diag_rejects_concurrent_execution():
+    DIAG_EXECUTION_LOCK.acquire()
+    try:
+        with pytest.raises(HTTPException) as exc:
+            diag()
+    finally:
+        DIAG_EXECUTION_LOCK.release()
+
+    assert exc.value.status_code == 429
+    assert exc.value.headers == {"Retry-After": "1"}
 
 
 def test_post_diag_export_json_uses_isolated_output(tmp_path, monkeypatch):
@@ -247,13 +267,13 @@ def test_diag_accepts_bearer_token(monkeypatch):
     assert data["metadata"]["schema_version"] == APP_VERSION
 
 
-def test_diag_accepts_bcrypt_hash(monkeypatch):
-    bcrypt = pytest.importorskip("bcrypt")
-    stored_hash = bcrypt.hashpw(b"test-token", bcrypt.gensalt()).decode("utf-8")
-    monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", f"bcrypt:{stored_hash}")
-    monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
+def test_diag_rejects_bcrypt_hash(monkeypatch):
+    monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", "bcrypt:unsupported")
 
-    require_diag_access(authorization="Bearer test-token")
+    with pytest.raises(HTTPException) as exc:
+        require_diag_access(authorization="Bearer test-token")
+
+    assert exc.value.status_code == 401
 
 
 def test_diag_accepts_token_hash_from_secret_file(tmp_path, monkeypatch):

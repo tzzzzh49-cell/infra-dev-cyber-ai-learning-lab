@@ -29,7 +29,8 @@ RESTIC_PASSWORD_FILE=<CHEMIN_ABSOLU_VERS_UN_FICHIER_PRIVE>
 RESTIC_EXCLUDE_FILE=backup/restic-excludes.txt
 ```
 
-Le fichier pointé par `RESTIC_PASSWORD_FILE` doit rester hors dépôt.
+Le fichier pointé par `RESTIC_PASSWORD_FILE` doit rester hors dépôt et avoir le
+mode `0400` ou `0600`.
 
 ## Exclusions par défaut
 

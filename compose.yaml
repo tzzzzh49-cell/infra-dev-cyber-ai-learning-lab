@@ -10,6 +10,11 @@ services:
     # The image already switches to UID/GID 10001. Keeping the user here makes
     # the non-root runtime contract visible at Compose review time.
     user: "10001:10001"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     environment:
       APP_ENV: ${APP_ENV:-lab}
       APP_LOG_FILE: ${APP_LOG_FILE:-/workspace/outputs/logs/app.log}
@@ -19,9 +24,10 @@ services:
       DIAG_COMMAND_TIMEOUT: ${DIAG_COMMAND_TIMEOUT:-3}
       DIAG_COMMAND_RETRIES: ${DIAG_COMMAND_RETRIES:-0}
     volumes:
-      # Reports and logs are the only mutable application outputs. Keep this
-      # bind mount narrow so source code and local secrets are not exposed.
-      - ./outputs:/workspace/outputs:Z
+      # Only reports and logs are writable. Raw data and backups stay outside
+      # the application container.
+      - ./outputs/reports:/workspace/outputs/reports:Z
+      - ./outputs/logs:/workspace/outputs/logs:Z
     ports:
       # Local-first exposure. Use a protected reverse proxy before publishing
       # diagnostic routes outside 127.0.0.1.

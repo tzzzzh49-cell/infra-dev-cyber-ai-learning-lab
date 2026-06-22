@@ -30,7 +30,8 @@ Scripts préparatoires :
 - `backup/backup-local.sh` : sauvegarde une sélection prudente du dépôt ;
 - `backup/restore-test-local.sh` : restaure le dernier snapshot dans `/tmp` pour vérifier la récupérabilité.
 
-Ces scripts n'utilisent aucun backend S3 et exigent une passphrase hors dépôt via `RESTIC_PASSWORD_FILE`.
+Ces scripts n'utilisent aucun backend S3 et exigent une passphrase hors dépôt via
+`RESTIC_PASSWORD_FILE`, dans un fichier au mode `0400` ou `0600`.
 
 Contrôles à intégrer aux drills :
 

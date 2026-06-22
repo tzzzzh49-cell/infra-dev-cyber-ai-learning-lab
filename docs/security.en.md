@@ -75,7 +75,7 @@ Expected behavior:
 
 - diagnostic routes require a token by default in every environment;
 - the API expects `DIAG_ACCESS_TOKEN_HASH` or `DIAG_ACCESS_TOKEN_HASH_FILE`;
-- accepted hash formats are `sha256:<hash>` and `bcrypt:<hash>`;
+- the only accepted hash format is `sha256:<hash>`, with a high-entropy random token;
 - the provided bearer or `X-Diag-Token` token is compared with the stored hash;
 - `DIAG_PROTECTION_DISABLED=true` is honored only for explicit local
   development environments;
@@ -92,6 +92,9 @@ code caps this value to avoid blocking the API for too long.
 `DIAG_COMMAND_RETRIES` defaults to `0` and is bounded. Extra attempts should only
 be used for read-only idempotent commands in slow or transient environments.
 
+Only one diagnostic runs at a time. Concurrent requests receive HTTP 429.
+Server exports keep the 20 newest files for each format.
+
 ## Logs
 
 Application logs go to stdout/stderr. On a VPS, collect them with Docker
@@ -105,7 +108,7 @@ Suggested policy:
 
 - review Python dependencies and the Docker base image monthly;
 - react quickly to critical or publicly exploited vulnerabilities;
-- run Bandit and Trivy locally before merge when available;
+- run Bandit, Gitleaks and Trivy locally before merge when available;
 - never update dependencies automatically without changelog review and tests.
 
 If Bandit or Trivy cannot run locally because their databases or binaries are

@@ -27,22 +27,22 @@ WORKDIR /workspace
 # enforce the same identity and mounted report files are not written as root.
 RUN groupadd --gid 10001 appuser \
     && useradd --uid 10001 --gid appuser --home-dir /workspace --shell /usr/sbin/nologin --no-create-home appuser \
-    && mkdir -p /workspace/outputs \
+    && mkdir -p /workspace/outputs/logs /workspace/outputs/reports \
     && mkdir -p /workspace/config \
-    && chown -R appuser:appuser /workspace
+    && chown -R appuser:appuser /workspace/outputs
 
 COPY --from=builder /opt/venv /opt/venv
 
-# Runtime application code. The .dockerignore excludes tests, dev requirements
-# and generated outputs so the image does not embed local artifacts.
-COPY --chown=appuser:appuser app ./app
+# Runtime application code stays root-owned and read-only to the runtime user.
+# The .dockerignore excludes tests, dev requirements and generated outputs.
+COPY app ./app
 
 # Operational examples are kept outside the importable app package. This avoids
 # copying the full repository into /workspace/app while preserving useful
 # Compose, Caddy and script references for inspection in the image.
-COPY --chown=appuser:appuser compose.yaml ./config/compose.yaml
-COPY --chown=appuser:appuser docs/vps/Caddyfile.example ./config/Caddyfile.example
-COPY --chown=appuser:appuser scripts ./config/scripts
+COPY compose.yaml ./config/compose.yaml
+COPY docs/vps/Caddyfile.example ./config/Caddyfile.example
+COPY scripts ./config/scripts
 
 USER 10001:10001
 

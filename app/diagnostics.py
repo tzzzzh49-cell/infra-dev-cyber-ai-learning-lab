@@ -20,6 +20,7 @@ DIAG_COMMAND_TIMEOUT_ENV = "DIAG_COMMAND_TIMEOUT"
 DIAG_COMMAND_RETRIES_ENV = "DIAG_COMMAND_RETRIES"
 DEFAULT_COMMAND_RETRIES = 0
 MAX_COMMAND_RETRIES = 2
+MAX_REPORT_FILES_PER_FORMAT = 20
 ALLOWED_DIAGNOSTIC_COMMANDS: tuple[tuple[str, ...], ...] = (
     ("ip", "-j", "addr"),
     ("ip", "-j", "route"),
@@ -423,6 +424,18 @@ def ensure_report_dir(output_dir: str | Path) -> Path:
     return report_dir
 
 
+def prune_old_reports(
+    report_dir: Path,
+    suffix: str,
+    keep: int = MAX_REPORT_FILES_PER_FORMAT,
+) -> None:
+    """Keep only the newest diagnostic reports for one file format."""
+    reports = sorted(report_dir.glob(f"diagnostic-network-*{suffix}"))
+    for report_path in reports[:-keep]:
+        report_path.unlink()
+        logger.info("Removed expired diagnostic report: %s", report_path)
+
+
 def write_json_report(
     report: dict[str, Any],
     output_dir: str | Path = DEFAULT_REPORT_DIR,
@@ -435,6 +448,7 @@ def write_json_report(
         encoding="utf-8",
     )
     report_path.chmod(0o600)
+    prune_old_reports(report_dir, ".json")
     logger.info("Wrote JSON diagnostic report: %s", report_path)
     return str(report_path)
 
@@ -570,5 +584,6 @@ def write_markdown_report(
 """
     report_path.write_text(content, encoding="utf-8")
     report_path.chmod(0o600)
+    prune_old_reports(report_dir, ".md")
     logger.info("Wrote Markdown diagnostic report: %s", report_path)
     return str(report_path)

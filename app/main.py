@@ -1,12 +1,8 @@
 import hashlib
 import os
 from secrets import compare_digest
+from threading import Lock
 from typing import Annotated
-
-try:
-    import bcrypt
-except ImportError:  # pragma: no cover - exercised only without optional package
-    bcrypt = None
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 
@@ -23,7 +19,10 @@ DIAG_TOKEN_HASH_FILE_ENV = "DIAG_ACCESS_TOKEN_HASH_FILE"
 DIAG_PROTECTION_DISABLED_ENV = "DIAG_PROTECTION_DISABLED"
 LOCAL_DEVELOPMENT_ENVS = {"local", "dev", "development", "test"}
 TRUE_VALUES = {"1", "true", "yes", "on"}
-BCRYPT_PREFIXES = ("$2a$", "$2b$", "$2y$")
+
+# ponytail: one global lock is enough for this lab; use a job queue only if
+# concurrent diagnostics become a measured requirement.
+DIAG_EXECUTION_LOCK = Lock()
 
 logger = configure_logging(__name__)
 
@@ -86,44 +85,39 @@ def sha256_token_hash(token: str) -> str:
 
 
 def parse_stored_token_hash(stored_hash: str) -> tuple[str, str]:
-    """Return the hash algorithm and normalized value from configuration."""
+    """Return the SHA-256 algorithm and normalized value from configuration."""
     value = stored_hash.strip()
     if value.startswith("sha256:"):
         return "sha256", value.removeprefix("sha256:").lower()
     if len(value) == 64 and all(char in "0123456789abcdefABCDEF" for char in value):
         return "sha256", value.lower()
-    if value.startswith("bcrypt:"):
-        return "bcrypt", value.removeprefix("bcrypt:")
-    if value.startswith(BCRYPT_PREFIXES):
-        return "bcrypt", value
     return "unsupported", value
 
 
 def diag_token_matches(provided_token: str, stored_hash: str) -> bool:
-    """Compare a provided token with a stored SHA-256 or bcrypt hash."""
+    """Compare a provided token with a stored SHA-256 hash."""
     algorithm, expected_hash = parse_stored_token_hash(stored_hash)
 
     if algorithm == "sha256":
         provided_hash = sha256_token_hash(provided_token)
         return compare_digest(provided_hash, expected_hash)
 
-    if algorithm == "bcrypt":
-        if bcrypt is None:
-            logger.error("bcrypt token hash configured but bcrypt is not installed.")
-            return False
-        try:
-            return bool(
-                bcrypt.checkpw(
-                    provided_token.encode("utf-8"),
-                    expected_hash.encode("utf-8"),
-                )
-            )
-        except ValueError as exc:
-            logger.error("Invalid bcrypt diagnostic token hash: %s", exc)
-            return False
-
     logger.error("Unsupported diagnostic token hash format configured.")
     return False
+
+
+def collect_diagnostic_serialized():
+    """Run one diagnostic at a time and reject excess concurrent work."""
+    if not DIAG_EXECUTION_LOCK.acquire(blocking=False):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="A diagnostic is already running.",
+            headers={"Retry-After": "1"},
+        )
+    try:
+        return collect_network_diagnostic()
+    finally:
+        DIAG_EXECUTION_LOCK.release()
 
 
 def require_diag_access(
@@ -198,13 +192,13 @@ def version():
 @app.get("/diag", dependencies=[Depends(require_diag_access)])
 def diag():
     """Return a read-only diagnostic report."""
-    return collect_network_diagnostic()
+    return collect_diagnostic_serialized()
 
 
 @app.post("/diag/export/json", dependencies=[Depends(require_diag_access)])
 def export_diag_json():
     """Write a read-only diagnostic report as JSON."""
-    report = collect_network_diagnostic()
+    report = collect_diagnostic_serialized()
     path = write_json_report(report)
     return {
         "status": "ok",
@@ -216,7 +210,7 @@ def export_diag_json():
 @app.post("/diag/export/markdown", dependencies=[Depends(require_diag_access)])
 def export_diag_markdown():
     """Write a read-only diagnostic report as Markdown."""
-    report = collect_network_diagnostic()
+    report = collect_diagnostic_serialized()
     path = write_markdown_report(report)
     return {
         "status": "ok",

@@ -209,6 +209,18 @@ def test_write_markdown_report_uses_requested_directory(tmp_path):
     assert (tmp_path / path.split("/")[-1]).stat().st_mode & 0o777 == 0o600
 
 
+def test_prune_old_reports_keeps_latest_files(tmp_path):
+    for index in range(4):
+        (tmp_path / f"diagnostic-network-2026-01-01-00000{index}.json").touch()
+
+    diagnostics.prune_old_reports(tmp_path, ".json", keep=2)
+
+    assert [path.name for path in sorted(tmp_path.iterdir())] == [
+        "diagnostic-network-2026-01-01-000002.json",
+        "diagnostic-network-2026-01-01-000003.json",
+    ]
+
+
 def test_parse_json_output_returns_dict():
     data = diagnostics.parse_json_output({"stdout": '{"status": "ok"}'})
 

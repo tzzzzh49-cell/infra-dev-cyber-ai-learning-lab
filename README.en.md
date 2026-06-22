@@ -8,20 +8,20 @@ The project is designed to stay reproducible, auditable and safe by default. The
 
 - FastAPI endpoints: `/`, `/health`, `/version`, `/diag`, `/diag/export/json`, `/diag/export/markdown`.
 - Read-only network and system diagnostics.
-- JSON and Markdown diagnostic exports in `outputs/reports`.
+- JSON and Markdown diagnostic exports in `outputs/reports`, limited to the 20 newest files per format.
 - Local-first Restic backup scripts.
 - Docker Compose workflow bound to `127.0.0.1` by default.
-- Python tests, Ruff, ShellCheck, Docker Compose validation, Bandit and Trivy in CI.
+- Python tests, Ruff, ShellCheck, Docker Compose validation, Bandit, Gitleaks and Trivy in CI.
 - Dependabot updates for Python dependencies, GitHub Actions and Docker.
 
 ## Security Defaults
 
-Diagnostics are protected by default in every environment. The API never stores a plaintext diagnostic token. Configure `DIAG_ACCESS_TOKEN_HASH` or `DIAG_ACCESS_TOKEN_HASH_FILE` with a `sha256:<hash>` or `bcrypt:<hash>` value injected from a secrets manager such as Vault, AWS Secrets Manager, Docker secrets or a private mounted file.
+Diagnostics are protected by default in every environment. The API never stores a plaintext diagnostic token. Configure `DIAG_ACCESS_TOKEN_HASH` or `DIAG_ACCESS_TOKEN_HASH_FILE` with a `sha256:<hash>` value injected from a secrets manager such as Vault, AWS Secrets Manager, Docker secrets or a private mounted file.
 
 Generate a token and hash:
 
 ```bash
-python3 scripts/generate_diag_token.py --format sha256
+python3 scripts/generate_diag_token.py
 ```
 
 Use the displayed token only on the client side, for example:
@@ -33,7 +33,7 @@ make up
 make diag
 ```
 
-`DIAG_PROTECTION_DISABLED=true` is only for explicit local development with `APP_ENV=local`, `lab`, `dev`, `development` or `test`. It is ignored outside local development environments.
+`DIAG_PROTECTION_DISABLED=true` is only for explicit local development with `APP_ENV=local`, `dev`, `development` or `test`. It is ignored outside local development environments.
 
 ## Quick Start
 
@@ -41,7 +41,7 @@ make diag
 git clone https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab.git
 cd infra-dev-cyber-ai-learning-lab
 make check
-python3 scripts/generate_diag_token.py --format sha256
+python3 scripts/generate_diag_token.py
 export DIAG_ACCESS_TOKEN='<DISPLAYED_TOKEN>'
 export DIAG_ACCESS_TOKEN_HASH='<DISPLAYED_HASH>'
 make run
