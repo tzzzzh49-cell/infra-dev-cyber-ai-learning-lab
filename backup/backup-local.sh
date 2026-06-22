@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
@@ -35,6 +36,8 @@ ensure_local_repository() {
 }
 
 ensure_password_file() {
+    local mode
+
     if [ -z "$RESTIC_PASSWORD_FILE" ]; then
         echo "ERREUR : RESTIC_PASSWORD_FILE doit pointer vers un fichier privé hors Git." >&2
         exit 1
@@ -44,6 +47,20 @@ ensure_password_file() {
         echo "ERREUR : fichier de passphrase introuvable : $RESTIC_PASSWORD_FILE" >&2
         exit 1
     fi
+
+    if [ ! -r "$RESTIC_PASSWORD_FILE" ]; then
+        echo "ERREUR : fichier de passphrase illisible : $RESTIC_PASSWORD_FILE" >&2
+        exit 1
+    fi
+
+    mode="$(stat -c '%a' -- "$RESTIC_PASSWORD_FILE")"
+    case "$mode" in
+        400|600) ;;
+        *)
+            echo "ERREUR : le fichier de passphrase doit avoir le mode 0400 ou 0600, pas $mode." >&2
+            exit 1
+            ;;
+    esac
 }
 
 select_backup_paths() {
@@ -82,6 +99,7 @@ select_backup_paths() {
     done
 }
 
+require_command stat
 require_command restic
 ensure_local_repository
 ensure_password_file

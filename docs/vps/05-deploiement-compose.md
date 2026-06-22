@@ -9,7 +9,7 @@ Recommandations :
 - définir `APP_ENV=vps` dans un fichier `.env` privé ;
 - définir `DIAG_ACCESS_TOKEN_HASH` via un gestionnaire de secrets, Vault Agent, AWS Secrets Manager ou un fichier monté privé ;
 - garder le token clair hors de l'application ; il sert seulement au client ou au reverse proxy de confiance ;
-- monter `outputs/` pour conserver les rapports ;
+- monter uniquement `outputs/reports/` et `outputs/logs/` ;
 - vérifier `make compose-config` avant démarrage ;
 - lancer l'application seulement après revue de la configuration.
 - utiliser `docs/vps/compose.vps.example.yaml` comme exemple de structure, pas comme configuration finale non relue.

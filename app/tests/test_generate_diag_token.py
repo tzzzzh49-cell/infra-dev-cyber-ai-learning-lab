@@ -2,6 +2,8 @@ import hashlib
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 SCRIPT_PATH = (
     Path(__file__).resolve().parents[2] / "scripts" / "generate_diag_token.py"
 )
@@ -27,13 +29,24 @@ def test_generate_token_rejects_weak_byte_count():
         raise AssertionError("generate_token accepted an unsafe byte count")
 
 
-def test_cli_hashes_existing_token_without_files(tmp_path, monkeypatch, capsys):
-    monkeypatch.chdir(tmp_path)
+def test_cli_rejects_plaintext_token_argument():
+    with pytest.raises(SystemExit):
+        generate_diag_token.build_parser().parse_args(["--token", "placeholder"])
 
-    exit_code = generate_diag_token.main(["--token", "secret-client-token"])
+
+def test_cli_generates_token_without_files(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        generate_diag_token,
+        "generate_token",
+        lambda _byte_count: "generated-client-token",
+    )
+
+    exit_code = generate_diag_token.main([])
 
     assert exit_code == 0
     output = capsys.readouterr().out
+    assert "generated-client-token" in output
     assert "DIAG_ACCESS_TOKEN_HASH" in output
     assert "sha256:" in output
     assert list(tmp_path.iterdir()) == []

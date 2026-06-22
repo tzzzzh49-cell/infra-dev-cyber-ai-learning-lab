@@ -131,12 +131,12 @@ Détail :
 
 Configuration attendue :
 
-- générer un jeton avec `python3 scripts/generate_diag_token.py --format sha256` ou `--format bcrypt` ;
+- générer un jeton aléatoire avec `python3 scripts/generate_diag_token.py` ;
 - stocker `DIAG_ACCESS_TOKEN_HASH` dans un gestionnaire de secrets ou monter un fichier via `DIAG_ACCESS_TOKEN_HASH_FILE` ;
 - appeler les routes sensibles avec `Authorization: Bearer <token>` ou `X-Diag-Token: <token>` ;
 - garder l'API liée à `127.0.0.1` derrière un reverse proxy HTTPS authentifié.
 
-Pour un développement strictement local, `DIAG_PROTECTION_DISABLED=true` peut désactiver la protection seulement si `APP_ENV` vaut `local`, `lab`, `dev`, `development` ou `test`. Cette variable est ignorée en VPS/production.
+Pour un développement strictement local, `DIAG_PROTECTION_DISABLED=true` peut désactiver la protection seulement si `APP_ENV` vaut `local`, `dev`, `development` ou `test`. Cette variable est ignorée en VPS/production.
 
 Si aucun hash n'est configuré, les routes de diagnostic renvoient une erreur et ne publient pas le diagnostic.
 
@@ -149,6 +149,8 @@ Si aucun hash n'est configuré, les routes de diagnostic renvoient une erreur et
 - `DIAG_COMMAND_RETRIES` vaut `0` par défaut et reste réservé aux commandes d'observation idempotentes.
 - `/diag` peut exposer des informations locales sensibles et ne doit pas être exposé publiquement sans authentification.
 - Les exports `/diag/export/json` et `/diag/export/markdown` suivent la même règle de protection que `/diag`.
+- Un seul diagnostic est exécuté à la fois ; un appel concurrent reçoit HTTP 429.
+- Les 20 exports les plus récents sont conservés pour chaque format JSON et Markdown.
 - Aucun secret réel ne doit être ajouté aux rapports, scripts ou exemples de configuration.
 
 ## Notes de reproductibilité Ubuntu 26.04 LTS Server

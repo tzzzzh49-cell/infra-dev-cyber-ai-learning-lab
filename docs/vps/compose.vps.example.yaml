@@ -7,8 +7,15 @@ name: infra-dev-cyber-ai-learning-lab-vps
 services:
   api:
     build:
-      context: ../../app
+      context: ../..
+      dockerfile: app/Dockerfile
     image: infra-dev-cyber-ai-learning-lab-api:v0.4.0-placeholder
+    user: "10001:10001"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     environment:
       APP_ENV: vps
       APP_LOG_FILE: /workspace/outputs/logs/app.log
@@ -16,7 +23,8 @@ services:
       DIAG_ACCESS_TOKEN_HASH_FILE: ${DIAG_ACCESS_TOKEN_HASH_FILE:-}
       DIAG_PROTECTION_DISABLED: "false"
     volumes:
-      - ../../outputs:/workspace/outputs:Z
+      - ../../outputs/reports:/workspace/outputs/reports:Z
+      - ../../outputs/logs:/workspace/outputs/logs:Z
     ports:
       - "127.0.0.1:${APP_PORT:-8000}:8000"
     restart: unless-stopped

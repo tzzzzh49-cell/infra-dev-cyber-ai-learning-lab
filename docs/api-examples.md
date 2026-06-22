@@ -16,7 +16,7 @@ dans un rapport.
 ## Générer un jeton
 
 ```bash
-python3 scripts/generate_diag_token.py --format sha256
+python3 scripts/generate_diag_token.py
 export DIAG_CLIENT_TOKEN='<JETON_AFFICHE_PAR_LE_SCRIPT>'
 export DIAG_ACCESS_TOKEN_HASH='<HASH_AFFICHE_PAR_LE_SCRIPT>'
 ```

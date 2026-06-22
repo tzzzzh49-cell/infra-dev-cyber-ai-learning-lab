@@ -33,7 +33,7 @@ flowchart TD
     make --> compose[Docker Compose]
     compose --> api[Application FastAPI]
     api --> main[app/main.py]
-    main --> auth[Protection /diag<br/>hash SHA-256 ou bcrypt]
+    main --> auth[Protection /diag<br/>hash SHA-256]
     auth --> diagnostics[app/diagnostics.py]
     diagnostics --> allowlist[Allowlist commandes read-only<br/>timeout + logging]
     allowlist --> reports[outputs/reports<br/>JSON et Markdown]
@@ -83,7 +83,9 @@ Il collecte :
 * mémoire ;
 * état Docker en lecture seule.
 
-Il produit également les exports JSON et Markdown dans `outputs/reports`.
+Il produit également les exports JSON et Markdown dans `outputs/reports`. Un
+verrou global empêche les diagnostics concurrents et chaque format conserve ses
+20 exports les plus récents.
 
 Le module journalise les commandes lancées, les commandes absentes, les timeouts et l'écriture des rapports via la bibliothèque `logging`. Le fichier par défaut est `outputs/logs/app.log`, ignoré par Git.
 
@@ -105,16 +107,17 @@ L'image applicative utilise un build multi-étapes :
   `app/requirements.txt` dans un environnement virtuel ;
 * l'étape `runtime` copie cet environnement, le code applicatif et quelques
   fichiers de configuration dans des chemins séparés ;
-* le conteneur s'exécute avec l'utilisateur non-root `10001:10001`.
+* le code reste propriétaire de root et le conteneur s'exécute avec l'utilisateur non-root `10001:10001`.
 
 Le non-root limite l'impact d'une faille applicative : même si l'API est
 compromise, le processus ne doit pas disposer de privilèges root dans le
 conteneur. Compose répète ce choix avec `user: "10001:10001"` pour rendre le
-contrat visible pendant la revue.
+contrat visible pendant la revue. Le système de fichiers racine est en lecture
+seule, toutes les capacités Linux sont retirées et `no-new-privileges` est actif.
 
-Les montages sont limités à `./outputs:/workspace/outputs:Z`, car les rapports
-sont la seule sortie mutable attendue. Le dépôt complet, les fichiers `.env` et
-les secrets locaux ne doivent pas être montés dans le conteneur.
+Les seuls montages en écriture sont `./outputs/reports` et `./outputs/logs`.
+`outputs/raw`, `outputs/backups`, le dépôt complet, les fichiers `.env` et les
+secrets locaux ne sont pas montés dans le conteneur.
 
 `restart: unless-stopped` est utilisé pour simuler un comportement VPS réaliste :
 le service revient après un redémarrage Docker, mais un arrêt explicite par
