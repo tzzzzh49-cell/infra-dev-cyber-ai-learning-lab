@@ -184,7 +184,7 @@ suppose un seul worker Uvicorn.
 Les exports serveur conservent les 20 fichiers les plus récents par format.
 
 L'API expose le mécanisme OIDC Bearer dans OpenAPI en local. En mode VPS,
-Swagger, ReDoc et le schéma OpenAPI sont désactivés. Caddy retire les en-têtes
+Swagger, ReDoc et le schéma OpenAPI sont désactivés. Nginx retire les en-têtes
 d'identité forgés par le client avant de transmettre la requête.
 
 ## Règles pour OpenAI API

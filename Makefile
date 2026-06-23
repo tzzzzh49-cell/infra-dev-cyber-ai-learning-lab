@@ -1,4 +1,4 @@
-.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diag-json diag-md reports diagnostic diagnostic-local ansible-check shellcheck compose-config lint-python lint run setup-dev test clean
+.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diag-json diag-md reports diagnostic diagnostic-local ansible-check check-api-contract shellcheck compose-config lint-python lint run setup-dev test clean
 
 APP_URL_FILE ?= .runtime/app_url
 DEFAULT_APP_URL ?= http://127.0.0.1:8000
@@ -33,6 +33,7 @@ help:
 	@echo "  make bootstrap-fedora  Prépare Fedora 44 avec BOOTSTRAP_CONFIRM=yes"
 	@echo "  make bootstrap-ubuntu  Prépare Ubuntu 26.04 avec BOOTSTRAP_CONFIRM=yes"
 	@echo "  make compose-config    Valide compose.yaml"
+	@echo "  make check-api-contract Vérifie les routes FastAPI contre OpenAPI"
 	@echo "  make shellcheck        Vérifie les scripts Bash"
 	@echo "  make lint-python       Vérifie le code Python avec ruff"
 	@echo "  make lint              Lance ruff, ShellCheck et Docker Compose config"
@@ -75,6 +76,10 @@ bootstrap-ubuntu:
 
 compose-config:
 	$(COMPOSE) config >/dev/null
+	$(COMPOSE) -f compose.yaml -f compose.public.yaml --profile public-proxy config >/dev/null
+
+check-api-contract: setup-dev
+	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. $(VENV_PYTHON) scripts/check_openapi_routes.py
 
 shellcheck:
 	shellcheck scripts/*.sh backup/*.sh

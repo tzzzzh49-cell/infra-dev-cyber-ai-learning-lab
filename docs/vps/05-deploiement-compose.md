@@ -40,7 +40,9 @@ hors Git et sauvegardes validées.
 informations système : ne jamais les exposer sans HTTPS, OIDC, MFA admin et RBAC
 applicatif.
 
-Le reverse proxy doit joindre l'application sur `127.0.0.1:8000`. Ne pas publier directement le port FastAPI sur une interface publique.
+Le port FastAPI reste publié uniquement sur `127.0.0.1:8000` pour les contrôles
+locaux. Dans `compose.public.yaml`, Nginx joint directement le service `api` en
+mTLS sur le réseau Compose ; aucune interface publique n'expose le port 8000.
 
 Exemple préparatoire :
 

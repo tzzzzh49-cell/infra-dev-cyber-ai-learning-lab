@@ -55,6 +55,9 @@ jobs:
       - name: Tests
         run: make test
 
+      - name: FastAPI routes match OpenAPI
+        run: make check-api-contract
+
       - name: Python security scan with Bandit
         run: python -m bandit -q -r app -x app/tests --severity-level medium --confidence-level medium
 
@@ -92,11 +95,6 @@ jobs:
         uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
         with:
           dockerfile: app/Dockerfile
-
-      - name: Hadolint Caddy runtime
-        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
-        with:
-          dockerfile: caddy/Dockerfile
 
   trivy:
     name: Trivy image scan

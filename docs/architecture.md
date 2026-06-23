@@ -30,10 +30,10 @@ L’objectif est de construire progressivement une application capable de :
 ```mermaid
 flowchart TD
     user[Utilisateur local] --> make[Makefile]
-    browser[Utilisateur VPS] --> caddy[Caddy HTTPS]
-    caddy --> oauth[OAuth2 Proxy<br/>Authorization Code + PKCE]
+    browser[Utilisateur VPS] --> nginx[Nginx HTTPS<br/>ModSecurity + OWASP CRS]
+    nginx -. auth_request .-> oauth[OAuth2 Proxy<br/>Authorization Code + PKCE]
     oauth <--> idp[Fournisseur OIDC<br/>MFA et anti-bruteforce]
-    oauth --> api
+    nginx -- mTLS --> api
     make --> compose[Docker Compose]
     compose --> api[Application FastAPI]
     api --> main[app/main.py]

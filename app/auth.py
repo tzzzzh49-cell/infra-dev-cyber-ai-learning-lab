@@ -110,15 +110,30 @@ def local_diag_protection_disabled() -> bool:
 
 def client_ip(request: Request) -> str:
     """Return a validated gateway client IP, or the direct peer address."""
-    candidate = ""
-    if current_app_env() == "vps":
-        candidate = request.headers.get("X-Verified-Client-IP", "")
-    if not candidate and request.client:
-        candidate = request.client.host
+    peer = request.client.host if request.client else ""
     try:
-        return str(ipaddress.ip_address(candidate))
+        peer_ip = ipaddress.ip_address(peer)
     except ValueError:
         return "unknown"
+
+    if current_app_env() == "vps":
+        configured_networks = os.environ.get("TRUSTED_PROXY_CIDRS", "")
+        for value in configured_networks.split(","):
+            try:
+                trusted = peer_ip in ipaddress.ip_network(value.strip(), strict=False)
+            except ValueError:
+                trusted = False
+            if trusted:
+                try:
+                    return str(
+                        ipaddress.ip_address(
+                            request.headers.get("X-Verified-Client-IP", "")
+                        )
+                    )
+                except ValueError:
+                    break
+
+    return str(peer_ip)
 
 
 def _prune(events: deque[float], cutoff: float) -> None:

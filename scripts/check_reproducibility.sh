@@ -119,6 +119,7 @@ check_paths() {
         AGENTS.md
         .github/dependabot.yml
         compose.yaml
+        compose.public.yaml
         app/Dockerfile
         app/main.py
         app/requirements.txt
@@ -128,8 +129,10 @@ check_paths() {
         scripts/bootstrap_fedora44_vm.sh
         scripts/bootstrap_ubuntu2604_server.sh
         scripts/compose.sh
+        scripts/check_openapi_routes.py
         scripts/diagnostic_local.sh
         scripts/generate_diag_token.py
+        scripts/provision_public_proxy.sh
         scripts/run_lab.sh
         backup/init-local.sh
         backup/backup-local.sh
@@ -148,6 +151,10 @@ check_paths() {
         docs/validations/ubuntu-26.04-server-vm.md
         docs/vps/compose.vps.example.yaml
         docs/vps/nginx.reverse-proxy.example.conf
+        nginx/default.conf.template
+        nginx/api_proxy.conf
+        nginx/oauth2_proxy.conf
+        systemd/infra-lab-public-proxy.service.in
         docs/backups/restic-s3-compatible.md
         docs/ai/README.md
         app/ai/README.md
@@ -201,12 +208,16 @@ check_pytest() {
 
     PYTHONPATH=. "$PYTHON_CMD" -m pytest -p no:cacheprovider app/tests -v
     echo "OK   tests Python validés"
+
+    PYTHONPATH=. "$PYTHON_CMD" scripts/check_openapi_routes.py
+    echo "OK   contrat routes/OpenAPI validé"
 }
 
 check_compose() {
     echo
     echo "==> Vérification Docker Compose"
     ./scripts/compose.sh config >/dev/null
+    ./scripts/compose.sh -f compose.yaml -f compose.public.yaml --profile public-proxy config >/dev/null
     echo "OK   compose.yaml est valide"
 }
 

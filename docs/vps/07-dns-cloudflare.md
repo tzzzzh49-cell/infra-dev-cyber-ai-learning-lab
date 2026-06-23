@@ -21,23 +21,23 @@ Utiliser uniquement des placeholders dans le dépôt :
 
 ## Stratégie Cloudflare
 
-- Commencer en mode DNS uniquement pendant la validation TLS Caddy, sauf choix explicite documenté.
+- Commencer en mode DNS uniquement pendant la validation TLS Nginx, sauf choix explicite documenté.
 - Ne pas commiter de token API Cloudflare.
 - Ne pas commiter de domaine réel.
 - Ne pas commiter d'adresse IP réelle.
-- Utiliser le mode proxy Cloudflare seulement après vérification de la chaîne HTTPS et des en-têtes côté Caddy.
+- Utiliser le mode proxy Cloudflare seulement après vérification de la chaîne HTTPS et des en-têtes côté Nginx.
 
 ## Règles d'exposition
 
 - L'API FastAPI reste liée à `127.0.0.1:8000`.
-- Le trafic public arrive uniquement sur Caddy en HTTPS.
+- Le trafic public arrive uniquement sur Nginx en HTTPS.
 - `/health` peut rester accessible pour contrôle léger.
 - `/diag`, `/diag/export/json` et `/diag/export/markdown` doivent rester protégés par authentification reverse proxy et par `DIAG_ACCESS_TOKEN_HASH` côté application.
 
 ## Points à valider hors dépôt
 
 - Résolution DNS de `<LAB_DOMAIN>` vers le VPS.
-- Certificat TLS obtenu par Caddy.
+- Certificat TLS public de `<LAB_DOMAIN>` monté dans Nginx.
 - Redirection ou refus des accès HTTP non sécurisés selon la configuration choisie.
 - Accès refusé aux diagnostics sans authentification.
 - Accès autorisé aux diagnostics uniquement après authentification.

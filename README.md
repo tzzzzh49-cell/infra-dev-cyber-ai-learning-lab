@@ -41,6 +41,9 @@ Fonctionnalités disponibles :
 - tests FastAPI centrés sur les routes, dépendances de sécurité et fonctions de diagnostic ;
 - diagnostic réseau avancé en lecture seule ;
 - protection locale par hash et protection VPS OAuth2/OIDC avec RBAC ;
+- reverse proxy Nginx HTTPS avec quotas 429, ModSecurity et OWASP CRS ;
+- mTLS entre Nginx et FastAPI, avec IP client vérifiée côté API ;
+- contrôle CI des routes FastAPI absentes du schéma OpenAPI ;
 - export JSON du diagnostic ;
 - export Markdown du diagnostic ;
 - diagnostics sérialisés et rétention des 20 derniers exports par format ;
@@ -186,6 +189,7 @@ hors environnements locaux.
 | `make bootstrap-fedora` | Installe les prérequis sur Fedora 44 VM après `BOOTSTRAP_CONFIRM=yes` |
 | `make bootstrap-ubuntu` | Installe les prérequis sur Ubuntu 26.04 LTS Server après `BOOTSTRAP_CONFIRM=yes` |
 | `make compose-config` | Valide `compose.yaml` |
+| `make check-api-contract` | Compare les routes FastAPI actives au schéma OpenAPI |
 | `make shellcheck` | Vérifie les scripts Bash |
 | `make lint-python` | Vérifie le code Python avec Ruff |
 | `make lint` | Lance Ruff, ShellCheck et Docker Compose config |
@@ -227,6 +231,16 @@ python3 scripts/generate_diag_token.py
 
 Stocker seulement le hash côté application locale. En VPS, suivre
 [`docs/vps/08-authentification-oidc.md`](docs/vps/08-authentification-oidc.md).
+
+Le profil public se valide avec les deux fichiers Compose :
+
+```bash
+docker compose -f compose.yaml -f compose.public.yaml --profile public-proxy config
+```
+
+Le script `scripts/provision_public_proxy.sh` prépare mTLS, systemd et UFW. Il
+est bloqué par défaut et ne doit être lancé avec `APPLY_CONFIRM=yes` qu'après
+revue et maintien d'une session SSH de secours.
 
 Exemples d'appels protégés : [docs/api-examples.md](docs/api-examples.md).
 

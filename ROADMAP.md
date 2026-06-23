@@ -28,7 +28,7 @@ Inclus :
 
 Limites de cette étape :
 - ne pas ajouter GitHub Actions ;
-- ne pas ajouter Caddy, Restic, PostgreSQL, OpenAI API, OpenClaw, Containerlab, déploiement VPS ou authentification ;
+- ne pas ajouter de reverse proxy, Restic, PostgreSQL, OpenAI API, OpenClaw, Containerlab, déploiement VPS ou authentification ;
 - ne pas ajouter de nouvelles grosses fonctionnalités applicatives.
 
 Note historique : la reproductibilité sur Ubuntu 24.04.4 LTS Desktop a ensuite été validée à 100 % et sert de référence passée, pas de cible active.
@@ -102,8 +102,8 @@ Prévu / en préparation :
 - documentation de reproductibilité Ubuntu 26.04 LTS Server ;
 - journal de validation `docs/validations/ubuntu-26.04-server-vm.md` ;
 - checklist Server : clone, bootstrap, reconnexion Docker, `make check`, `make check-full`, `make run`, endpoints, exports et backups locaux ;
-- procédure VPS ordonnée : première connexion, utilisateur non-root, SSH, firewall, Docker, Compose, Caddy HTTPS, Cloudflare DNS et variables `.env.vps.example` ;
-- exemples sûrs `docs/vps/Caddyfile.example` et `docs/vps/compose.vps.example.yaml` ;
+- procédure VPS ordonnée : première connexion, utilisateur non-root, SSH, firewall, Docker, Compose, Nginx HTTPS, Cloudflare DNS et variables `.env.vps.example` ;
+- exemples sûrs `docs/vps/nginx.reverse-proxy.example.conf` et `docs/vps/compose.vps.example.yaml` ;
 - stratégie Restic local-first étendue vers S3-compatible avec placeholders uniquement ;
 - documentation init, backup, check et restore drill ;
 - politique mensuelle de mise à jour des dépendances ;

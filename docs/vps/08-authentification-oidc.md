@@ -20,7 +20,7 @@ Créer une application Web avec les paramètres suivants :
 
 Ne pas activer les flows Implicit, Resource Owner Password ou les algorithmes
 symétriques pour cette application. Aucun identifiant utilisateur ne doit être
-transmis dans une URL ou géré par Caddy/FastAPI.
+transmis dans une URL ou géré directement par Nginx/FastAPI.
 
 ## Variables non secrètes
 
@@ -48,8 +48,8 @@ OIDC_CLIENT_SECRET_FILE=<CHEMIN_PRIVE_HORS_GIT>
 OIDC_COOKIE_SECRET_FILE=<CHEMIN_PRIVE_HORS_GIT>
 ```
 
-Ces fichiers doivent appartenir au compte de déploiement, avoir le mode `0400`
-ou `0440` et ne jamais être ajoutés au dépôt. La clé de cookie doit contenir une
+Ces fichiers doivent appartenir à `root:10001`, avoir le mode `0440` et ne
+jamais être ajoutés au dépôt. La clé de cookie doit contenir une
 valeur aléatoire compatible OAuth2 Proxy de 16, 24 ou 32 octets.
 
 ## RBAC appliqué par l'API
@@ -75,8 +75,8 @@ bloque en complément une IP pendant cinq minutes après cinq JWT invalides.
 Après configuration de l'IdP et des fichiers secrets :
 
 ```bash
-docker compose --profile public-proxy config --quiet
-docker compose --profile public-proxy up -d --build
+docker compose -f compose.yaml -f compose.public.yaml --profile public-proxy config --quiet
+docker compose -f compose.yaml -f compose.public.yaml --profile public-proxy up -d
 ```
 
 Le démarrage réel modifie l'état des services : le relire et le confirmer avant
