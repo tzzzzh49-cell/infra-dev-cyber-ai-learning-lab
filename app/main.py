@@ -7,7 +7,7 @@ from threading import Lock
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth import client_ip, require_roles
+from app.auth import client_ip, require_permissions
 from app.diagnostics import (
     collect_network_diagnostic,
     write_json_report,
@@ -125,8 +125,8 @@ def diagnostic_api_view(report: dict) -> dict:
     }
 
 
-diag_read_access = require_roles("partner", "admin")
-diag_admin_access = require_roles("admin")
+diag_read_access = require_permissions("diagnostic:read")
+diag_export_access = require_permissions("diagnostic:export", require_mfa=True)
 
 
 @app.get("/")
@@ -173,7 +173,7 @@ def diag():
     return diagnostic_api_view(collect_diagnostic_serialized())
 
 
-@app.post("/diag/export/json", dependencies=[Depends(diag_admin_access)])
+@app.post("/diag/export/json", dependencies=[Depends(diag_export_access)])
 def export_diag_json():
     """Write a read-only diagnostic report as JSON."""
     report = collect_diagnostic_serialized()
@@ -185,7 +185,7 @@ def export_diag_json():
     }
 
 
-@app.post("/diag/export/markdown", dependencies=[Depends(diag_admin_access)])
+@app.post("/diag/export/markdown", dependencies=[Depends(diag_export_access)])
 def export_diag_markdown():
     """Write a read-only diagnostic report as Markdown."""
     report = collect_diagnostic_serialized()

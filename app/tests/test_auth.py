@@ -25,13 +25,14 @@ def bearer(token):
     return HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
 
-def principal(*roles, mfa=False):
+def principal(*roles, mfa=False, subject="subject-a", scopes=()):
     return auth.Principal(
-        subject="subject-a",
+        subject=subject,
         audit_id="oidc:audit",
         roles=frozenset(roles),
         mfa_verified=mfa,
         auth_method="oidc",
+        scopes=frozenset(scopes),
     )
 
 
@@ -82,11 +83,18 @@ def oidc_environment(monkeypatch, rsa_key):
 
 
 def test_valid_oidc_token_checks_roles_and_mfa(rsa_key):
-    token = signed_token(rsa_key, roles=["admin"], amr=["pwd", "mfa"])
+    token = signed_token(
+        rsa_key,
+        roles=["admin"],
+        scope="diagnostic:read unknown:scope",
+        amr=["pwd", "mfa"],
+    )
 
     result = auth.validate_oidc_token(token)
 
     assert result.roles == frozenset({"admin"})
+    assert result.scopes == frozenset({"diagnostic:read"})
+    assert result.permissions == auth.ALLOWED_PERMISSIONS
     assert result.mfa_verified is True
     assert result.audit_id.startswith("oidc:")
 
@@ -154,7 +162,7 @@ def test_oidc_rejects_short_rsa_key(monkeypatch):
     "path",
     ["/diag/export/json", "/diag/export/markdown"],
 )
-def test_rbac_denies_standard_user_on_admin_endpoints(monkeypatch, path):
+def test_permission_denies_standard_user_on_export_endpoints(monkeypatch, path):
     monkeypatch.setattr(auth, "validate_oidc_token", lambda _token: principal("user"))
 
     with TestClient(app) as client:
@@ -167,8 +175,56 @@ def test_rbac_denies_standard_user_on_admin_endpoints(monkeypatch, path):
     assert response.json() == {"detail": "Insufficient permissions."}
 
 
-def test_rbac_requires_mfa_for_admin_in_vps():
-    authorize = auth.require_roles("admin")
+def test_verified_scope_allows_http_diagnostic_read(monkeypatch):
+    monkeypatch.setattr(
+        auth,
+        "validate_oidc_token",
+        lambda _token: principal("user", scopes={"diagnostic:read"}),
+    )
+    monkeypatch.setattr("app.main.collect_diagnostic_serialized", lambda: {})
+    monkeypatch.setattr(
+        "app.main.diagnostic_api_view",
+        lambda _report: {"status": "ok"},
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/diag",
+            headers={"Authorization": "Bearer signed.jwt.token"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+@pytest.mark.parametrize(
+    ("path", "writer"),
+    [
+        ("/diag/export/json", "write_json_report"),
+        ("/diag/export/markdown", "write_markdown_report"),
+    ],
+)
+def test_mfa_admin_can_export(monkeypatch, path, writer):
+    monkeypatch.setattr(
+        auth,
+        "validate_oidc_token",
+        lambda _token: principal("admin", mfa=True),
+    )
+    monkeypatch.setattr("app.main.collect_diagnostic_serialized", lambda: {})
+    monkeypatch.setattr(f"app.main.{writer}", lambda _report: "/tmp/diagnostic")
+
+    with TestClient(app) as client:
+        response = client.post(
+            path,
+            headers={"Authorization": "Bearer signed.jwt.token"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["report_id"] == "diagnostic"
+
+
+def test_permission_requires_mfa_for_critical_action_in_vps():
+    authorize = auth.require_permissions("diagnostic:export", require_mfa=True)
     request = make_request()
 
     with pytest.raises(HTTPException) as exc:
@@ -178,31 +234,66 @@ def test_rbac_requires_mfa_for_admin_in_vps():
     assert exc.value.detail == "Multi-factor authentication is required."
 
 
-def test_rbac_allows_partner_read_but_not_admin_action():
-    request = make_request()
+def test_permission_allows_mapped_role_or_verified_scope():
+    authorize = auth.require_permissions("diagnostic:read")
+
     partner = principal("partner")
+    scoped_user = principal("user", scopes={"diagnostic:read"})
 
-    assert auth.require_roles("partner", "admin")(request, partner) == partner
-    with pytest.raises(HTTPException) as exc:
-        auth.require_roles("admin")(request, partner)
-
-    assert exc.value.status_code == 403
+    assert authorize(make_request(), partner) == partner
+    assert authorize(make_request(), scoped_user) == scoped_user
 
 
-def test_rbac_defaults_to_deny_for_unknown_or_missing_roles():
-    authorize = auth.require_roles("partner", "admin")
+def test_permission_defaults_to_deny_without_explicit_grant():
+    authorize = auth.require_permissions("diagnostic:export")
 
-    for denied_roles in [(), ("unknown",), ("user",)]:
+    for denied in (principal(), principal("user"), principal("partner")):
         with pytest.raises(HTTPException) as exc:
-            authorize(make_request(), principal(*denied_roles))
+            authorize(make_request(), denied)
 
         assert exc.value.status_code == 403
 
 
-def test_rbac_allows_mfa_admin_on_admin_action():
-    admin = principal("admin", mfa=True)
+def test_malformed_mfa_claims_fail_closed(rsa_key, monkeypatch):
+    monkeypatch.setenv("OIDC_MFA_ACR_VALUES", "trusted-acr")
+    token = signed_token(rsa_key, roles=["admin"], amr=123, acr=[])
 
-    assert auth.require_roles("admin")(make_request(), admin) == admin
+    assert auth.validate_oidc_token(token).mfa_verified is False
+
+
+def test_resource_access_allows_owner_or_server_side_acl():
+    owner = principal("partner", subject="owner-a")
+    acl_member = principal("partner", subject="member-b")
+
+    auth.authorize_resource_access(
+        owner,
+        permission="diagnostic:read",
+        owner_subject="owner-a",
+    )
+    auth.authorize_resource_access(
+        acl_member,
+        permission="diagnostic:read",
+        owner_subject="owner-a",
+        acl_subjects={"member-b"},
+    )
+
+
+def test_resource_access_hides_other_owners_and_denies_missing_permission():
+    with pytest.raises(HTTPException) as exc:
+        auth.authorize_resource_access(
+            principal("partner", subject="attacker"),
+            permission="diagnostic:read",
+            owner_subject="owner-a",
+        )
+    assert exc.value.status_code == 404
+
+    with pytest.raises(HTTPException) as exc:
+        auth.authorize_resource_access(
+            principal("user", subject="owner-a"),
+            permission="diagnostic:read",
+            owner_subject="owner-a",
+        )
+    assert exc.value.status_code == 403
 
 
 def test_repeated_authentication_failures_are_blocked():

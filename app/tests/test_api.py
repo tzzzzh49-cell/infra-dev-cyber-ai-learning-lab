@@ -17,7 +17,7 @@ from app.main import (
     DIAG_EXECUTION_LOCK,
     app,
     diag,
-    diag_admin_access,
+    diag_export_access,
     diag_read_access,
     diagnostic_api_view,
     export_diag_json,
@@ -128,8 +128,8 @@ def test_app_registers_expected_routes():
 
 def test_diag_routes_require_access_dependency():
     assert diag_read_access in route_dependencies("/diag")
-    assert diag_admin_access in route_dependencies("/diag/export/json")
-    assert diag_admin_access in route_dependencies("/diag/export/markdown")
+    assert diag_export_access in route_dependencies("/diag/export/json")
+    assert diag_export_access in route_dependencies("/diag/export/markdown")
 
 
 def test_openapi_declares_bearer_security():
