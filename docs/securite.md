@@ -129,8 +129,14 @@ Comportement attendu :
 * l'API valide issuer, audience, signature, expiration, durée maximale et taille
   de clé à chaque requête ;
 * seuls les algorithmes asymétriques RS, PS et ES forts sont acceptés ;
-* `user` ne peut appeler aucune route diagnostic, `partner` peut seulement lire
-  `/diag`, et `admin` avec MFA peut lire et exporter ;
+* les routes refusent l'accès par défaut et exigent une permission explicite :
+  `diagnostic:read` pour `/diag`, `diagnostic:export` pour les exports ;
+* côté serveur, le rôle `partner` accorde seulement `diagnostic:read`, le rôle
+  `admin` accorde les deux permissions et le rôle `user` n'en accorde aucune ;
+* un scope OIDC vérifié portant exactement le nom d'une permission peut aussi
+  l'accorder ; les rôles et scopes inconnus sont ignorés ;
+* les exports exigent en plus un second facteur vérifié (`amr=mfa` ou une valeur
+  `acr` explicitement admise) en environnement VPS ;
 * `DIAG_PROTECTION_DISABLED=true` désactive la protection uniquement en développement local explicite (`APP_ENV=local`, `dev`, `development` ou `test`) ;
 * le jeton partagé historique reste accepté uniquement en environnement local.
 
@@ -147,6 +153,19 @@ python3 scripts/generate_diag_token.py
 OAuth2 Proxy gère Authorization Code avec PKCE S256 et transmet un ID token à
 l'API. L'API ne fait confiance ni au rôle ni à l'identité déclarés par un simple
 en-tête de gateway : elle les extrait uniquement du JWT validé.
+
+## Autorisation des ressources (BOLA/IDOR)
+
+L'ID utilisateur fiable est le claim `sub` du JWT validé. Une route qui reçoit
+un identifiant de ressource doit charger l'objet côté serveur, puis appeler
+`authorize_resource_access` avec le propriétaire et l'ACL enregistrés avec cet
+objet. Un `owner_id` ou une ACL envoyés par le client ne doivent jamais servir à
+autoriser l'accès. Le garde vérifie aussi la permission de l'action et renvoie
+404 si l'utilisateur n'est ni propriétaire ni membre de l'ACL, ce qui limite
+l'énumération des objets d'autres utilisateurs.
+
+L'API actuelle n'accepte encore aucun identifiant de ressource : `report_id` est
+uniquement renvoyé après un export et aucune route ne permet de le relire.
 
 ## Timeouts et tentatives
 

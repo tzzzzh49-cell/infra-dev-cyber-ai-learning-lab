@@ -1,4 +1,4 @@
-"""OIDC authentication, service-side JWT validation and RBAC."""
+"""OIDC authentication and default-deny service-side authorization."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import math
 import os
 import time
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from secrets import compare_digest
 from threading import Lock
@@ -32,6 +32,12 @@ LOCAL_TOKEN_ENVS = LOCAL_DEVELOPMENT_ENVS | {"lab"}
 TRUE_VALUES = {"1", "true", "yes", "on"}
 
 ALLOWED_ROLES = frozenset({"user", "admin", "partner"})
+ALLOWED_PERMISSIONS = frozenset({"diagnostic:read", "diagnostic:export"})
+ROLE_PERMISSIONS = {
+    "user": frozenset(),
+    "partner": frozenset({"diagnostic:read"}),
+    "admin": ALLOWED_PERMISSIONS,
+}
 STRONG_JWT_ALGORITHMS = frozenset(
     {"RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512"}
 )
@@ -77,6 +83,14 @@ class Principal:
     roles: frozenset[str]
     mfa_verified: bool
     auth_method: str
+    scopes: frozenset[str] = frozenset()
+
+    @property
+    def permissions(self) -> frozenset[str]:
+        granted = set(self.scopes)
+        for role in self.roles:
+            granted.update(ROLE_PERMISSIONS.get(role, ()))
+        return frozenset(granted)
 
 
 def current_app_env() -> str:
@@ -256,9 +270,29 @@ def validated_roles(claims: dict[str, Any]) -> frozenset[str]:
     return frozenset(role for role in values if role in ALLOWED_ROLES)
 
 
+def validated_scopes(claims: dict[str, Any]) -> frozenset[str]:
+    """Keep only permissions explicitly supported by this API."""
+    values: set[str] = set()
+    for raw_scopes in (claims.get("scope"), claims.get("scp")):
+        if isinstance(raw_scopes, str):
+            values.update(raw_scopes.split())
+        elif isinstance(raw_scopes, list) and all(
+            isinstance(scope, str) for scope in raw_scopes
+        ):
+            values.update(raw_scopes)
+    return frozenset(values.intersection(ALLOWED_PERMISSIONS))
+
+
 def mfa_verified(claims: dict[str, Any]) -> bool:
     raw_amr = claims.get("amr", [])
-    amr = {raw_amr} if isinstance(raw_amr, str) else set(raw_amr or [])
+    if isinstance(raw_amr, str):
+        amr = {raw_amr}
+    elif isinstance(raw_amr, list) and all(
+        isinstance(method, str) for method in raw_amr
+    ):
+        amr = set(raw_amr)
+    else:
+        amr = set()
     if "mfa" in amr:
         return True
     accepted_acr = {
@@ -266,7 +300,8 @@ def mfa_verified(claims: dict[str, Any]) -> bool:
         for value in os.environ.get("OIDC_MFA_ACR_VALUES", "").split(",")
         if value.strip()
     }
-    return bool(accepted_acr and claims.get("acr") in accepted_acr)
+    acr = claims.get("acr")
+    return bool(accepted_acr and isinstance(acr, str) and acr in accepted_acr)
 
 
 def validate_oidc_token(token: str) -> Principal:
@@ -326,6 +361,7 @@ def validate_oidc_token(token: str) -> Principal:
         roles=roles,
         mfa_verified=mfa_verified(claims),
         auth_method="oidc",
+        scopes=validated_scopes(claims),
     )
 
 
@@ -409,27 +445,26 @@ def authenticate_request(
     return principal
 
 
-def require_roles(*allowed_roles: str) -> Callable[..., Principal]:
-    """Return a default-deny dependency for one explicit role set."""
-    allowed = frozenset(allowed_roles)
-    if not allowed or not allowed.issubset(ALLOWED_ROLES):
-        raise ValueError("RBAC dependencies require explicit known roles")
+def require_permissions(
+    *required_permissions: str,
+    require_mfa: bool = False,
+) -> Callable[..., Principal]:
+    """Require every named permission and optionally a verified second factor."""
+    required = frozenset(required_permissions)
+    if not required or not required.issubset(ALLOWED_PERMISSIONS):
+        raise ValueError("Authorization requires explicit known permissions")
 
     def authorize(
         request: Request,
         principal: Annotated[Principal, Depends(authenticate_request)],
     ) -> Principal:
-        if not principal.roles.intersection(allowed):
+        if not required.issubset(principal.permissions):
             request.state.auth_result = "forbidden"
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions.",
             )
-        if (
-            current_app_env() == "vps"
-            and "admin" in principal.roles
-            and not principal.mfa_verified
-        ):
+        if require_mfa and current_app_env() == "vps" and not principal.mfa_verified:
             request.state.auth_result = "mfa-required"
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -440,3 +475,27 @@ def require_roles(*allowed_roles: str) -> Callable[..., Principal]:
         return principal
 
     return authorize
+
+
+def authorize_resource_access(
+    principal: Principal,
+    *,
+    permission: str,
+    owner_subject: str,
+    acl_subjects: Collection[str] = (),
+) -> None:
+    """Authorize using the persisted owner/ACL, never an owner sent by the client."""
+    if permission not in ALLOWED_PERMISSIONS:
+        raise ValueError("Resource authorization requires a known permission")
+    if permission not in principal.permissions:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions.",
+        )
+    if not owner_subject or (
+        principal.subject != owner_subject and principal.subject not in acl_subjects
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resource not found.",
+        )
