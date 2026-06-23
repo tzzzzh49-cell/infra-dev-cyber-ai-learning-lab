@@ -28,7 +28,6 @@ WORKDIR /workspace
 RUN groupadd --gid 10001 appuser \
     && useradd --uid 10001 --gid appuser --home-dir /workspace --shell /usr/sbin/nologin --no-create-home appuser \
     && mkdir -p /workspace/outputs/logs /workspace/outputs/reports \
-    && mkdir -p /workspace/config \
     && chown -R appuser:appuser /workspace/outputs
 
 COPY --from=builder /opt/venv /opt/venv
@@ -36,13 +35,6 @@ COPY --from=builder /opt/venv /opt/venv
 # Runtime application code stays root-owned and read-only to the runtime user.
 # The .dockerignore excludes tests, dev requirements and generated outputs.
 COPY app ./app
-
-# Operational examples are kept outside the importable app package. This avoids
-# copying the full repository into /workspace/app while preserving useful
-# Compose, Caddy and script references for inspection in the image.
-COPY compose.yaml ./config/compose.yaml
-COPY docs/vps/Caddyfile.example ./config/Caddyfile.example
-COPY scripts ./config/scripts
 
 USER 10001:10001
 

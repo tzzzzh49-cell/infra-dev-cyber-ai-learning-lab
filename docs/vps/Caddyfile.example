@@ -5,27 +5,44 @@
 <LAB_DOMAIN> {
     encode zstd gzip
 
-    @diagnostics {
-        path /diag /diag/export/json /diag/export/markdown
+    @oauth2 path /oauth2/*
+    handle @oauth2 {
+        header Cache-Control "no-store"
+        reverse_proxy oauth2-proxy:4180 {
+            header_up -X-Diag-Token
+            header_up -X-Authenticated-User
+            header_up -X-Forwarded-Access-Token
+            header_up X-Verified-Client-IP {remote_host}
+        }
     }
 
+    @diagnostics path /diag*
     handle @diagnostics {
-        basicauth {
-            <BASIC_AUTH_USER> <CADDY_HASHED_PASSWORD>
-        }
-
         header {
             Cache-Control "no-store"
             X-Content-Type-Options "nosniff"
         }
 
-        reverse_proxy 127.0.0.1:8000 {
-            # DIAG_UPSTREAM_TOKEN doit venir d'un secret runtime du proxy.
-            header_up X-Diag-Token {env.DIAG_UPSTREAM_TOKEN}
+        reverse_proxy oauth2-proxy:4180 {
+            header_up -X-Diag-Token
+            header_up -X-Authenticated-User
+            header_up -X-Forwarded-Access-Token
+            header_up X-Verified-Client-IP {remote_host}
         }
     }
 
+    @api_docs path /docs* /redoc* /openapi.json
+    handle @api_docs {
+        respond 404
+    }
+
     handle {
-        reverse_proxy 127.0.0.1:8000
+        reverse_proxy 127.0.0.1:8000 {
+            header_up -Authorization
+            header_up -X-Diag-Token
+            header_up -X-Authenticated-User
+            header_up -X-Forwarded-Access-Token
+            header_up X-Verified-Client-IP {remote_host}
+        }
     }
 }

@@ -1,11 +1,13 @@
-import hashlib
 import os
-from secrets import compare_digest
+import time
+import uuid
+from pathlib import Path
 from threading import Lock
-from typing import Annotated
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 
+from app.auth import client_ip, require_roles
 from app.diagnostics import (
     collect_network_diagnostic,
     write_json_report,
@@ -14,11 +16,7 @@ from app.diagnostics import (
 from app.logging_config import configure_logging
 
 APP_VERSION = "0.3.2"
-DIAG_TOKEN_HASH_ENV = "DIAG_ACCESS_TOKEN_HASH"
-DIAG_TOKEN_HASH_FILE_ENV = "DIAG_ACCESS_TOKEN_HASH_FILE"
-DIAG_PROTECTION_DISABLED_ENV = "DIAG_PROTECTION_DISABLED"
-LOCAL_DEVELOPMENT_ENVS = {"local", "dev", "development", "test"}
-TRUE_VALUES = {"1", "true", "yes", "on"}
+VPS_MODE = os.environ.get("APP_ENV", "").strip().lower() == "vps"
 
 # ponytail: one global lock is enough for this lab; use a job queue only if
 # concurrent diagnostics become a measured requirement.
@@ -30,80 +28,51 @@ app = FastAPI(
     title="Infra Dev Cyber AI Learning Lab API",
     description="Mini API locale pour apprendre le DevOps, Docker et les diagnostics.",
     version=APP_VERSION,
+    docs_url=None if VPS_MODE else "/docs",
+    redoc_url=None if VPS_MODE else "/redoc",
+    openapi_url=None if VPS_MODE else "/openapi.json",
 )
 
 
-def env_flag_enabled(name: str) -> bool:
-    """Return true when an environment flag is explicitly enabled."""
-    return os.environ.get(name, "").strip().lower() in TRUE_VALUES
+@app.middleware("http")
+async def audit_http_request(request: Request, call_next):
+    """Add a request ID, safe audit fields and uniform internal errors."""
+    request_id = uuid.uuid4().hex
+    request.state.request_id = request_id
+    request.state.auth_identity = "anonymous"
+    request.state.auth_result = "not-required"
+    started_at = time.monotonic()
 
-
-def current_app_env() -> str:
-    """Return the normalized application environment name."""
-    return os.environ.get("APP_ENV", "").strip().lower()
-
-
-def diag_protection_enabled() -> bool:
-    """Return true unless diagnostics are explicitly opened for local development."""
-    app_env = current_app_env()
-    protection_disabled = env_flag_enabled(DIAG_PROTECTION_DISABLED_ENV)
-
-    if protection_disabled and app_env in LOCAL_DEVELOPMENT_ENVS:
-        logger.warning("Diagnostic protection disabled for local development.")
-        return False
-
-    if protection_disabled:
-        logger.warning(
-            "Ignoring %s outside local development.",
-            DIAG_PROTECTION_DISABLED_ENV,
+    try:
+        response = await call_next(request)
+    except Exception:
+        request.state.auth_result = "error"
+        logger.exception("Unhandled HTTP request error request_id=%s", request_id)
+        response = JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "detail": "Internal server error.",
+                "request_id": request_id,
+            },
         )
 
-    return True
+    response.headers["X-Request-ID"] = request_id
+    if request.url.path.startswith("/diag"):
+        response.headers["Cache-Control"] = "no-store"
 
-
-def read_secret_file(path: str) -> str:
-    """Read a secret value from a file mounted by a secrets manager."""
-    try:
-        with open(path, encoding="utf-8") as secret_file:
-            return secret_file.read().strip()
-    except OSError as exc:
-        logger.error("Unable to read diagnostic token hash file: %s", exc)
-        return ""
-
-
-def configured_diag_token_hash() -> str:
-    """Return the configured diagnostic token hash from env or a secret file."""
-    hash_file = os.environ.get(DIAG_TOKEN_HASH_FILE_ENV, "").strip()
-    if hash_file:
-        return read_secret_file(hash_file)
-    return os.environ.get(DIAG_TOKEN_HASH_ENV, "").strip()
-
-
-def sha256_token_hash(token: str) -> str:
-    """Hash a provided diagnostic token with SHA-256."""
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
-
-
-def parse_stored_token_hash(stored_hash: str) -> tuple[str, str]:
-    """Return the SHA-256 algorithm and normalized value from configuration."""
-    value = stored_hash.strip()
-    if value.startswith("sha256:"):
-        return "sha256", value.removeprefix("sha256:").lower()
-    if len(value) == 64 and all(char in "0123456789abcdefABCDEF" for char in value):
-        return "sha256", value.lower()
-    return "unsupported", value
-
-
-def diag_token_matches(provided_token: str, stored_hash: str) -> bool:
-    """Compare a provided token with a stored SHA-256 hash."""
-    algorithm, expected_hash = parse_stored_token_hash(stored_hash)
-
-    if algorithm == "sha256":
-        provided_hash = sha256_token_hash(provided_token)
-        return compare_digest(provided_hash, expected_hash)
-
-    logger.error("Unsupported diagnostic token hash format configured.")
-    return False
+    logger.info(
+        "HTTP request request_id=%s method=%s path=%r status=%s "
+        "duration_ms=%.3f client_ip=%s identity=%s auth=%s",
+        request_id,
+        request.method,
+        request.url.path,
+        response.status_code,
+        (time.monotonic() - started_at) * 1000,
+        client_ip(request),
+        request.state.auth_identity,
+        request.state.auth_result,
+    )
+    return response
 
 
 def collect_diagnostic_serialized():
@@ -120,35 +89,44 @@ def collect_diagnostic_serialized():
         DIAG_EXECUTION_LOCK.release()
 
 
-def require_diag_access(
-    authorization: Annotated[str | None, Header()] = None,
-    x_diag_token: Annotated[str | None, Header(alias="X-Diag-Token")] = None,
-) -> None:
-    """Require a valid diagnostic token unless local development disabled protection."""
-    if not diag_protection_enabled():
-        return
+def command_status(section: dict) -> dict:
+    """Return command health without raw command output or local identifiers."""
+    return {
+        "available": bool(section.get("available")),
+        "ok": section.get("returncode") == 0,
+        "timed_out": bool(section.get("timed_out")),
+        "duration_seconds": section.get("duration_seconds", 0.0),
+        "error_type": section.get("error_type") or None,
+    }
 
-    expected_hash = configured_diag_token_hash()
-    if not expected_hash:
-        logger.error("Diagnostic access denied: no token hash configured.")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Diagnostic access token hash is required.",
-        )
 
-    provided_token = x_diag_token
-    if authorization:
-        scheme, _, token = authorization.partition(" ")
-        if scheme.lower() == "bearer" and token:
-            provided_token = token
+def diagnostic_api_view(report: dict) -> dict:
+    """Reduce a full local diagnostic to a safe HTTP status summary."""
+    network = report["network"]
+    resources = report["resources"]
+    resolver = network["dns"]["resolver_commands"].get("selected") or {}
+    return {
+        "metadata": report["metadata"],
+        "checks": {
+            "interfaces": command_status(network["interfaces"]),
+            "routes": command_status(network["routes"]),
+            "dns": command_status(resolver),
+            "ports": command_status(network["ports"]),
+            "disk": command_status(resources["disk"]),
+            "memory": command_status(resources["memory"]),
+            "docker": command_status(report["docker"]),
+        },
+        "security": {
+            "read_only": report["security"]["read_only"],
+            "destructive_commands_used": report["security"][
+                "destructive_commands_used"
+            ],
+        },
+    }
 
-    if not provided_token or not diag_token_matches(provided_token, expected_hash):
-        logger.warning("Diagnostic authentication failed.")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Diagnostic authentication required.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+
+diag_read_access = require_roles("partner", "admin")
+diag_admin_access = require_roles("admin")
 
 
 @app.get("/")
@@ -189,13 +167,13 @@ def version():
     }
 
 
-@app.get("/diag", dependencies=[Depends(require_diag_access)])
+@app.get("/diag", dependencies=[Depends(diag_read_access)])
 def diag():
-    """Return a read-only diagnostic report."""
-    return collect_diagnostic_serialized()
+    """Return a minimized read-only diagnostic status."""
+    return diagnostic_api_view(collect_diagnostic_serialized())
 
 
-@app.post("/diag/export/json", dependencies=[Depends(require_diag_access)])
+@app.post("/diag/export/json", dependencies=[Depends(diag_admin_access)])
 def export_diag_json():
     """Write a read-only diagnostic report as JSON."""
     report = collect_diagnostic_serialized()
@@ -203,11 +181,11 @@ def export_diag_json():
     return {
         "status": "ok",
         "format": "json",
-        "path": path,
+        "report_id": Path(path).stem,
     }
 
 
-@app.post("/diag/export/markdown", dependencies=[Depends(require_diag_access)])
+@app.post("/diag/export/markdown", dependencies=[Depends(diag_admin_access)])
 def export_diag_markdown():
     """Write a read-only diagnostic report as Markdown."""
     report = collect_diagnostic_serialized()
@@ -215,5 +193,5 @@ def export_diag_markdown():
     return {
         "status": "ok",
         "format": "markdown",
-        "path": path,
+        "report_id": Path(path).stem,
     }

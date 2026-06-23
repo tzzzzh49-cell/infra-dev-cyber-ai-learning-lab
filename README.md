@@ -40,7 +40,7 @@ Fonctionnalités disponibles :
 - `AGENTS.md` documenté pour les agents IA ;
 - tests FastAPI centrés sur les routes, dépendances de sécurité et fonctions de diagnostic ;
 - diagnostic réseau avancé en lecture seule ;
-- protection `/diag` activée par défaut avec hash SHA-256 ;
+- protection locale par hash et protection VPS OAuth2/OIDC avec RBAC ;
 - export JSON du diagnostic ;
 - export Markdown du diagnostic ;
 - diagnostics sérialisés et rétention des 20 derniers exports par format ;
@@ -143,6 +143,7 @@ git clone https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab.git
 cd infra-dev-cyber-ai-learning-lab
 make check
 python3 scripts/generate_diag_token.py
+export APP_ENV=lab
 export DIAG_ACCESS_TOKEN='<JETON_AFFICHE_PAR_LE_SCRIPT>'
 export DIAG_ACCESS_TOKEN_HASH='<HASH_AFFICHE_PAR_LE_SCRIPT>'
 make build
@@ -208,22 +209,24 @@ hors environnements locaux.
 
 La configuration locale doit rester sûre par défaut :
 
-- `.env.example` utilise `APP_HOST=127.0.0.1` pour exposer l'API uniquement sur la machine locale ;
-- ne pas utiliser `APP_HOST=0.0.0.0` sans authentification et sans reverse proxy HTTPS sécurisé ;
-- `/diag` peut contenir des informations système et exige un jeton par défaut dans tous les environnements ;
-- l'application attend `DIAG_ACCESS_TOKEN_HASH`, au format `sha256:<hash>`, idéalement injecté depuis Vault, AWS Secrets Manager, un secret Docker ou un fichier monté via `DIAG_ACCESS_TOKEN_HASH_FILE` ;
-- `DIAG_ACCESS_TOKEN` reste uniquement une variable client pratique pour `make diag`, `make diag-json` et `make diag-md` ; elle ne doit pas être transmise au serveur ;
+- Compose lie toujours le port API à `127.0.0.1` ;
+- `/diag` exige un JWT OIDC signé en VPS ; l'issuer, l'audience, la signature,
+  l'expiration, la durée, la taille de clé, le rôle et la MFA admin sont validés
+  dans l'API ;
+- `DIAG_ACCESS_TOKEN_HASH` et `DIAG_ACCESS_TOKEN` sont réservés au lab local ;
+- OAuth2 Proxy gère Authorization Code avec PKCE S256, sans mot de passe local ;
 - `DIAG_PROTECTION_DISABLED=true` est réservé au développement local explicite (`APP_ENV=local`, `dev`, `development` ou `test`) ;
 - `DIAG_COMMAND_TIMEOUT` vaut `3` secondes par défaut et peut être ajusté raisonnablement selon l'environnement ;
 - aucun secret réel ne doit être ajouté dans les fichiers `.env*.example`, la documentation ou les scripts.
 
-Générer un jeton :
+Générer un jeton pour le lab local uniquement :
 
 ```bash
 python3 scripts/generate_diag_token.py
 ```
 
-Stocker seulement le hash côté application. Le jeton clair doit rester dans un gestionnaire de mots de passe, un secret de reverse proxy ou une variable de shell temporaire côté client.
+Stocker seulement le hash côté application locale. En VPS, suivre
+[`docs/vps/08-authentification-oidc.md`](docs/vps/08-authentification-oidc.md).
 
 Exemples d'appels protégés : [docs/api-examples.md](docs/api-examples.md).
 

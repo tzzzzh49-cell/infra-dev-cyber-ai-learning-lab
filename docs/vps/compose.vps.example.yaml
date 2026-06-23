@@ -9,7 +9,7 @@ services:
     build:
       context: ../..
       dockerfile: app/Dockerfile
-    image: infra-dev-cyber-ai-learning-lab-api:v0.4.0-placeholder
+    image: infra-dev-cyber-ai-learning-lab:v0.4.0-placeholder
     user: "10001:10001"
     read_only: true
     cap_drop:

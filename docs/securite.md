@@ -125,22 +125,28 @@ Les routes suivantes sont sensibles :
 
 Comportement attendu :
 
-* elles exigent un token dans tous les environnements par défaut ;
-* le serveur ne stocke pas de token clair : il attend `DIAG_ACCESS_TOKEN_HASH` ou `DIAG_ACCESS_TOKEN_HASH_FILE` ;
-* le seul format accepté est `sha256:<hash>`, avec un jeton aléatoire de forte entropie ;
-* le token fourni via `Authorization: Bearer <token>` ou `X-Diag-Token` est hashé puis comparé ;
+* en VPS, elles exigent un JWT OIDC dans `Authorization: Bearer` ;
+* l'API valide issuer, audience, signature, expiration, durée maximale et taille
+  de clé à chaque requête ;
+* seuls les algorithmes asymétriques RS, PS et ES forts sont acceptés ;
+* `user` ne peut appeler aucune route diagnostic, `partner` peut seulement lire
+  `/diag`, et `admin` avec MFA peut lire et exporter ;
 * `DIAG_PROTECTION_DISABLED=true` désactive la protection uniquement en développement local explicite (`APP_ENV=local`, `dev`, `development` ou `test`) ;
-* si aucun hash n'est configuré, les routes de diagnostic refusent l'accès au lieu de s'exposer sans protection.
+* le jeton partagé historique reste accepté uniquement en environnement local.
 
-Ne jamais commiter le token clair, le hash réel, un fichier de secret ou une configuration de reverse proxy contenant un secret. Les hashes doivent venir d'un gestionnaire de secrets comme Vault, AWS Secrets Manager, un secret Docker ou un fichier monté hors dépôt.
+Ne jamais commiter le secret client OIDC, la clé de cookie, un token ou une
+configuration contenant un secret. OAuth2 Proxy lit ses secrets depuis des
+fichiers privés montés en lecture seule.
 
-Génération :
+Génération du jeton partagé, pour le lab local uniquement :
 
 ```bash
 python3 scripts/generate_diag_token.py
 ```
 
-Côté proxy, un secret runtime distinct peut être utilisé pour injecter `X-Diag-Token` après authentification basique ou OAuth. Dans ce cas, le proxy conserve le token clair dans son propre gestionnaire de secrets, tandis que l'application ne reçoit que `DIAG_ACCESS_TOKEN_HASH`.
+OAuth2 Proxy gère Authorization Code avec PKCE S256 et transmet un ID token à
+l'API. L'API ne fait confiance ni au rôle ni à l'identité déclarés par un simple
+en-tête de gateway : elle les extrait uniquement du JWT validé.
 
 ## Timeouts et tentatives
 
@@ -153,7 +159,14 @@ mais vaut `0` par défaut et reste plafonné. Les tentatives supplémentaires ne
 doivent concerner que des commandes d'observation idempotentes.
 
 Un seul diagnostic est exécuté à la fois. Un appel concurrent reçoit HTTP 429.
+Une identité authentifiée, ou à défaut son adresse IP validée par le proxy, est
+limitée à cinq diagnostics par minute. Ce quota est conservé en mémoire et
+suppose un seul worker Uvicorn.
 Les exports serveur conservent les 20 fichiers les plus récents par format.
+
+L'API expose le mécanisme OIDC Bearer dans OpenAPI en local. En mode VPS,
+Swagger, ReDoc et le schéma OpenAPI sont désactivés. Caddy retire les en-têtes
+d'identité forgés par le client avant de transmettre la requête.
 
 ## Règles pour OpenAI API
 

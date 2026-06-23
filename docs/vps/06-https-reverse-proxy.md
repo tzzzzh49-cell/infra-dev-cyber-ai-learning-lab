@@ -6,8 +6,9 @@ Principes :
 
 - terminer TLS via un reverse proxy maintenu ;
 - proxy vers `127.0.0.1:8000` uniquement ;
-- ajouter une authentification avant tout accès public à `/diag` et aux exports ;
-- transmettre au backend un `X-Diag-Token` issu d'un secret runtime privé si le proxy termine l'authentification ;
+- placer OAuth2 Proxy devant `/diag*` avec le flux Authorization Code et PKCE S256 ;
+- transmettre au backend un JWT OIDC dans `Authorization: Bearer`, puis le
+  revalider et l'autoriser dans l'API ;
 - ne pas documenter de domaine réel obligatoire ;
 - ne pas committer de certificat, clé privée ou token DNS.
 
@@ -22,18 +23,17 @@ Placeholders à remplacer hors dépôt :
 
 - `<LAB_DOMAIN>` : domaine de lab, jamais un domaine réel dans l'exemple commité ;
 - `<ADMIN_EMAIL>` : email utilisé pour ACME ;
-- `<BASIC_AUTH_USER>` : utilisateur de l'authentification reverse proxy ;
-- `<CADDY_HASHED_PASSWORD>` : hash Caddy généré hors dépôt ;
-- `DIAG_ACCESS_TOKEN_HASH` : hash stocké côté application via secrets manager ;
-- `DIAG_UPSTREAM_TOKEN` : token clair côté proxy si le proxy injecte `X-Diag-Token` après auth.
+- `OIDC_ISSUER_URL`, `OIDC_JWKS_URL`, `OIDC_CLIENT_ID` et `OIDC_AUDIENCE` ;
+- `OIDC_CLIENT_SECRET_FILE` et `OIDC_COOKIE_SECRET_FILE`, montés hors Git.
 
 Points de contrôle avant exposition :
 
-- `APP_HOST=127.0.0.1` reste actif côté Compose ;
+- le binding API Compose reste forcé sur `127.0.0.1` ;
 - `APP_ENV=vps` est actif côté application ;
-- `DIAG_ACCESS_TOKEN_HASH` est injecté hors Git ;
 - `DIAG_PROTECTION_DISABLED=false` ;
-- Caddy applique une authentification sur les routes de diagnostic ;
+- Caddy envoie `/diag*` vers OAuth2 Proxy ;
+- Swagger, ReDoc et OpenAPI sont désactivés en mode VPS ;
+- l'API valide issuer, audience, signature, expiration, durée et rôles du JWT ;
 - aucun domaine, token DNS, certificat ou mot de passe réel n'est commité.
 - les routes publiques non sensibles ne transmettent pas de token inutilement.
 
@@ -68,4 +68,6 @@ Extrait non actif à adapter dans un rôle relu avant usage réel :
         state: reloaded
 ```
 
-Le template réel doit récupérer `DIAG_UPSTREAM_TOKEN` depuis un gestionnaire de secrets, jamais depuis Git. Pour OAuth/OIDC, placer `oauth2-proxy` ou un mécanisme équivalent devant les locations `/diag*`, puis conserver la protection applicative par hash.
+La configuration OIDC complète est décrite dans
+[`08-authentification-oidc.md`](08-authentification-oidc.md). Le secret client et
+la clé de cookie restent dans des fichiers privés montés au runtime.

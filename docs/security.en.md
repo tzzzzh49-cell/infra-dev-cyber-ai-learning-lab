@@ -76,7 +76,7 @@ Expected behavior:
 - diagnostic routes require a token by default in every environment;
 - the API expects `DIAG_ACCESS_TOKEN_HASH` or `DIAG_ACCESS_TOKEN_HASH_FILE`;
 - the only accepted hash format is `sha256:<hash>`, with a high-entropy random token;
-- the provided bearer or `X-Diag-Token` token is compared with the stored hash;
+- VPS requests require a signed OIDC bearer JWT validated again by the API;
 - `DIAG_PROTECTION_DISABLED=true` is honored only for explicit local
   development environments;
 - if no token hash is configured, diagnostic routes fail closed.

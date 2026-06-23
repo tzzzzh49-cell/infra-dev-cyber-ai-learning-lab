@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  merge_group:
   pull_request:
     branches:
       - master
@@ -91,6 +92,11 @@ jobs:
         uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
         with:
           dockerfile: app/Dockerfile
+
+      - name: Hadolint Caddy runtime
+        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
+        with:
+          dockerfile: caddy/Dockerfile
 
   trivy:
     name: Trivy image scan

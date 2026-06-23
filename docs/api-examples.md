@@ -1,10 +1,10 @@
-# Exemples d'appels API protégés
+# Exemples d'appels API protégés en local
 
 > Langues : Français
 
-Ces exemples gardent le jeton client dans la session shell et exportent seulement
-son hash côté application. Ne pas copier de jeton réel dans Git, dans une issue ou
-dans un rapport.
+Ces exemples concernent uniquement `APP_ENV=lab`. En VPS, utiliser le flux OIDC
+documenté dans [`vps/08-authentification-oidc.md`](vps/08-authentification-oidc.md).
+Ne pas copier de jeton réel dans Git, dans une issue ou dans un rapport.
 
 ## Sommaire
 
@@ -27,15 +27,13 @@ est la valeur à fournir à l'application. Le script ne crée aucun fichier.
 ## Configurer l'application
 
 ```bash
-export APP_ENV=vps
-export APP_HOST=127.0.0.1
+export APP_ENV=lab
 export APP_PORT=8000
 export DIAG_COMMAND_TIMEOUT=3
 export DIAG_ACCESS_TOKEN_HASH
 ```
 
-En local, `APP_ENV=lab` reste possible. Pour vérifier la protection avant toute
-exposition, tester avec `APP_ENV=vps`.
+Le jeton partagé est refusé lorsque `APP_ENV=vps`.
 
 ## Appeler les endpoints
 
@@ -53,7 +51,7 @@ printf 'header = "Authorization: Bearer %s"\n' "$DIAG_CLIENT_TOKEN" \
   | curl --config - -fsS -X POST http://127.0.0.1:8000/diag/export/markdown
 ```
 
-Avec l'en-tête interne `X-Diag-Token`, utile derrière un reverse proxy contrôlé :
+Avec l'en-tête local historique `X-Diag-Token` :
 
 ```bash
 printf 'header = "X-Diag-Token: %s"\n' "$DIAG_CLIENT_TOKEN" \
@@ -62,6 +60,10 @@ printf 'header = "X-Diag-Token: %s"\n' "$DIAG_CLIENT_TOKEN" \
 
 ## Limites
 
+- `/diag` retourne un état minimisé sans hostname, adresse IP, suffixe DNS,
+  processus, nom de conteneur ni sortie brute de commande.
+- Les exports complets restent locaux ; l'API retourne seulement `report_id`.
+- Chaque identité ou adresse IP est limitée à 5 diagnostics par minute.
 - `DIAG_COMMAND_TIMEOUT` vaut `3` secondes par défaut et reste plafonné côté code.
 - `DIAG_COMMAND_RETRIES` vaut `0` par défaut et doit rester bas pour éviter des
   diagnostics longs ou bruyants.

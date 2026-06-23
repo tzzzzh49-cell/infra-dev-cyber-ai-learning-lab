@@ -10,8 +10,8 @@ Principes :
 - exposition applicative locale privilégiée sur `127.0.0.1` ;
 - reverse proxy HTTPS devant l'application avant toute exposition publique ;
 - `/diag` et les exports de diagnostic ne doivent jamais être publics sans authentification ;
-- `/diag` est protégé par défaut par un token dont seul le hash est côté application ;
-- `DIAG_ACCESS_TOKEN_HASH` doit venir d'un gestionnaire de secrets ou d'un fichier monté hors dépôt ;
+- `/diag` est protégé par OAuth2/OIDC et un RBAC vérifié dans l'API ;
+- les secrets OIDC sont montés depuis des fichiers privés hors dépôt ;
 - toute action système réelle doit être relue et validée manuellement hors dépôt.
 
 Documents :
@@ -27,6 +27,7 @@ Documents :
 Exemples de configuration :
 
 - [Caddyfile.example](Caddyfile.example)
+- [08 - Authentification OAuth2/OIDC](08-authentification-oidc.md)
 - [nginx.reverse-proxy.example.conf](nginx.reverse-proxy.example.conf)
 - [compose.vps.example.yaml](compose.vps.example.yaml)
 
@@ -34,5 +35,6 @@ Variables préparatoires :
 
 - `.env.vps.example` documente les variables attendues sans secret réel ;
 - le fichier privé réel doit rester hors Git ;
-- `DIAG_ACCESS_TOKEN_HASH` doit être défini hors dépôt avant toute exposition de `/diag` ;
-- le proxy peut utiliser un secret runtime distinct `DIAG_UPSTREAM_TOKEN` pour injecter `X-Diag-Token` après authentification basique ou OAuth.
+- l'issuer, le JWKS, l'audience, le client et les claims de rôles doivent être
+  configurés avant toute exposition ;
+- le secret client et la clé de cookie restent dans des fichiers runtime.

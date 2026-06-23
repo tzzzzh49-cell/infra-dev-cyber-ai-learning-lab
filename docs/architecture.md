@@ -30,10 +30,14 @@ L’objectif est de construire progressivement une application capable de :
 ```mermaid
 flowchart TD
     user[Utilisateur local] --> make[Makefile]
+    browser[Utilisateur VPS] --> caddy[Caddy HTTPS]
+    caddy --> oauth[OAuth2 Proxy<br/>Authorization Code + PKCE]
+    oauth <--> idp[Fournisseur OIDC<br/>MFA et anti-bruteforce]
+    oauth --> api
     make --> compose[Docker Compose]
     compose --> api[Application FastAPI]
     api --> main[app/main.py]
-    main --> auth[Protection /diag<br/>hash SHA-256]
+    main --> auth[OIDC JWT + RBAC<br/>token local en mode lab]
     auth --> diagnostics[app/diagnostics.py]
     diagnostics --> allowlist[Allowlist commandes read-only<br/>timeout + logging]
     allowlist --> reports[outputs/reports<br/>JSON et Markdown]
@@ -49,7 +53,8 @@ Flux principal :
 
 1. `Makefile` orchestre les commandes locales.
 2. Docker Compose démarre l'API sur `127.0.0.1`.
-3. `app/main.py` protège les routes `/diag` avec un hash de jeton.
+3. `app/main.py` protège les routes `/diag` par OIDC/RBAC en VPS et conserve le
+   hash de jeton uniquement pour le lab local.
 4. `app/diagnostics.py` exécute uniquement les commandes read-only allowlistées.
 5. Les rapports sont écrits dans `outputs/reports` et les logs dans `outputs/logs`.
 6. Les scripts de backup Restic restent séparés des diagnostics API.
@@ -64,7 +69,7 @@ Endpoints actuels :
 
 * `/health` : vérifie que l’application répond ;
 * `/version` : affiche la version applicative ;
-* `/diag` : retourne un diagnostic système/réseau structuré en lecture seule ;
+* `/diag` : retourne un état système/réseau minimisé en lecture seule ;
 * `/diag/export/json` : génère un rapport JSON local ;
 * `/diag/export/markdown` : génère un rapport Markdown local.
 
@@ -105,8 +110,7 @@ L'image applicative utilise un build multi-étapes :
 
 * l'étape `builder` installe uniquement les dépendances runtime depuis
   `app/requirements.txt` dans un environnement virtuel ;
-* l'étape `runtime` copie cet environnement, le code applicatif et quelques
-  fichiers de configuration dans des chemins séparés ;
+* l'étape `runtime` copie uniquement cet environnement et le code applicatif ;
 * le code reste propriétaire de root et le conteneur s'exécute avec l'utilisateur non-root `10001:10001`.
 
 Le non-root limite l'impact d'une faille applicative : même si l'API est

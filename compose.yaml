@@ -16,22 +16,26 @@ services:
     security_opt:
       - no-new-privileges:true
     environment:
-      APP_ENV: ${APP_ENV:-lab}
+      APP_ENV: ${APP_ENV:-vps}
       APP_LOG_FILE: ${APP_LOG_FILE:-/workspace/outputs/logs/app.log}
       DIAG_ACCESS_TOKEN_HASH: ${DIAG_ACCESS_TOKEN_HASH:-}
       DIAG_ACCESS_TOKEN_HASH_FILE: ${DIAG_ACCESS_TOKEN_HASH_FILE:-}
       DIAG_PROTECTION_DISABLED: ${DIAG_PROTECTION_DISABLED:-false}
       DIAG_COMMAND_TIMEOUT: ${DIAG_COMMAND_TIMEOUT:-3}
       DIAG_COMMAND_RETRIES: ${DIAG_COMMAND_RETRIES:-0}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL:-}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-}
+      OIDC_ROLES_CLAIM: ${OIDC_ROLES_CLAIM:-roles}
+      OIDC_MFA_ACR_VALUES: ${OIDC_MFA_ACR_VALUES:-}
     volumes:
       # Only reports and logs are writable. Raw data and backups stay outside
       # the application container.
       - ./outputs/reports:/workspace/outputs/reports:Z
       - ./outputs/logs:/workspace/outputs/logs:Z
     ports:
-      # Local-first exposure. Use a protected reverse proxy before publishing
-      # diagnostic routes outside 127.0.0.1.
-      - "${APP_HOST:-127.0.0.1}:${APP_PORT:-8000}:8000"
+      # Never publish FastAPI directly on a public interface.
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
     healthcheck:
       test:
         - CMD
@@ -51,7 +55,9 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-lab_reports}
       POSTGRES_USER: ${POSTGRES_USER:-lab}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-placeholder-not-for-production}
+      # Empty fails closed in the Postgres image. Set it only when enabling
+      # the future-persistence profile.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
     volumes:
       # Prepared for a future reports/index database. Migrations are not active
       # yet; introduce Alembic or an equivalent reviewed tool before use.
@@ -65,15 +71,89 @@ services:
       retries: 5
     restart: unless-stopped
 
+  oauth2-proxy:
+    profiles:
+      - public-proxy
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.3@sha256:10a1165743a192e1940b4708fb9647027185ce11a681a1c5519b442ff7f1f561
+    container_name: lab-oauth2-proxy
+    user: "65532:65532"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - api
+    environment:
+      OAUTH2_PROXY_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OAUTH2_PROXY_CLIENT_SECRET_FILE: /run/secrets/oidc_client_secret
+      OAUTH2_PROXY_COOKIE_SECRET_FILE: /run/secrets/oidc_cookie_secret
+      OAUTH2_PROXY_OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-}
+      OAUTH2_PROXY_REDIRECT_URL: ${OIDC_REDIRECT_URL:-https://api.infra-lab-thom.fr/oauth2/callback}
+      OAUTH2_PROXY_ACR_VALUES: ${OIDC_ACR_VALUES:-}
+    command:
+      - --provider=oidc
+      - --http-address=0.0.0.0:4180
+      - --upstream=http://api:8000
+      - --scope=openid profile email
+      - --code-challenge-method=S256
+      - --oidc-enabled-signing-alg=RS256
+      - --oidc-enabled-signing-alg=RS384
+      - --oidc-enabled-signing-alg=RS512
+      - --oidc-enabled-signing-alg=PS256
+      - --oidc-enabled-signing-alg=PS384
+      - --oidc-enabled-signing-alg=PS512
+      - --oidc-enabled-signing-alg=ES256
+      - --oidc-enabled-signing-alg=ES384
+      - --oidc-enabled-signing-alg=ES512
+      - --insecure-oidc-skip-issuer-verification=false
+      - --insecure-oidc-allow-unverified-email=false
+      - --insecure-oidc-skip-nonce=false
+      - --pass-authorization-header=true
+      - --pass-access-token=false
+      - --pass-basic-auth=false
+      - --pass-user-headers=false
+      - --skip-jwt-bearer-tokens=true
+      - --bearer-token-login-fallback=false
+      - --skip-provider-button=true
+      - --email-domain=*
+      - --cookie-name=__Host-lab_oidc
+      - --cookie-expire=15m
+      - --cookie-refresh=5m
+      - --cookie-secure=true
+      - --cookie-httponly=true
+      - --cookie-samesite=lax
+      - --cookie-csrf-per-request=true
+      - --cookie-csrf-per-request-limit=5
+      - --show-debug-on-error=false
+      - --whitelist-domain=api.infra-lab-thom.fr
+    volumes:
+      - ${OIDC_CLIENT_SECRET_FILE:-/dev/null}:/run/secrets/oidc_client_secret:ro
+      - ${OIDC_COOKIE_SECRET_FILE:-/dev/null}:/run/secrets/oidc_cookie_secret:ro
+    expose:
+      - "4180"
+    restart: unless-stopped
+
   caddy:
     # Explicit opt-in: the default local lab must not bind public HTTP(S) ports.
     profiles:
       - public-proxy
-    image: caddy:2.11.4-alpine
+    build:
+      context: .
+      dockerfile: caddy/Dockerfile
+    image: infra-dev-cyber-ai-learning-lab-caddy:2.11.4
     container_name: lab-caddy
+    user: "65532:65532"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     depends_on:
-      - api
+      - oauth2-proxy
     ports:
       - "80:80"
       - "443:443"

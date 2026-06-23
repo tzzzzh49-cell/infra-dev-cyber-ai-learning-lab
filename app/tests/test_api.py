@@ -2,17 +2,27 @@ import hashlib
 
 import pytest
 from fastapi import HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
+from app.auth import (
+    AUTH_FAILURE_EVENTS,
+    DIAG_RATE_EVENTS,
+    authenticate_request,
+    enforce_diag_rate_limit,
+)
 from app.main import (
     APP_VERSION,
     DIAG_EXECUTION_LOCK,
     app,
     diag,
+    diag_admin_access,
+    diag_read_access,
+    diagnostic_api_view,
     export_diag_json,
     export_diag_markdown,
     health,
-    require_diag_access,
     root,
     version,
 )
@@ -20,22 +30,59 @@ from app.main import (
 
 @pytest.fixture(autouse=True)
 def clear_diag_environment(monkeypatch):
-    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.setenv("APP_ENV", "lab")
     monkeypatch.delenv("DIAG_ACCESS_TOKEN", raising=False)
     monkeypatch.delenv("DIAG_ACCESS_TOKEN_HASH", raising=False)
     monkeypatch.delenv("DIAG_ACCESS_TOKEN_HASH_FILE", raising=False)
     monkeypatch.delenv("DIAG_PROTECTION_DISABLED", raising=False)
+    DIAG_RATE_EVENTS.clear()
+    AUTH_FAILURE_EVENTS.clear()
+
+
+def command_result():
+    return {
+        "available": True,
+        "returncode": 0,
+        "stdout": "sensitive raw output",
+        "stderr": "",
+        "timed_out": False,
+        "duration_seconds": 0.01,
+        "error_type": "",
+    }
 
 
 def sample_report():
     return {
         "metadata": {"schema_version": APP_VERSION},
-        "system": {},
-        "network": {},
-        "resources": {},
-        "docker": {},
-        "security": {},
+        "system": {"hostname": "private-host"},
+        "network": {
+            "interfaces": command_result(),
+            "routes": command_result(),
+            "dns": {"resolver_commands": {"selected": command_result()}},
+            "ports": command_result(),
+        },
+        "resources": {
+            "disk": command_result(),
+            "memory": command_result(),
+        },
+        "docker": command_result(),
+        "security": {
+            "read_only": True,
+            "destructive_commands_used": False,
+        },
     }
+
+
+def make_request(headers=None, client="127.0.0.1"):
+    raw_headers = [
+        (name.lower().encode("ascii"), value.encode("ascii"))
+        for name, value in (headers or {}).items()
+    ]
+    return Request({"type": "http", "headers": raw_headers, "client": (client, 1)})
+
+
+def bearer(token):
+    return HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
 
 def route_methods(path):
@@ -80,14 +127,16 @@ def test_app_registers_expected_routes():
 
 
 def test_diag_routes_require_access_dependency():
-    sensitive_routes = (
-        "/diag",
-        "/diag/export/json",
-        "/diag/export/markdown",
-    )
+    assert diag_read_access in route_dependencies("/diag")
+    assert diag_admin_access in route_dependencies("/diag/export/json")
+    assert diag_admin_access in route_dependencies("/diag/export/markdown")
 
-    for path in sensitive_routes:
-        assert require_diag_access in route_dependencies(path)
+
+def test_openapi_declares_bearer_security():
+    schema = app.openapi()
+
+    assert "OIDC" in schema["components"]["securitySchemes"]
+    assert {"OIDC": []} in schema["paths"]["/diag"]["get"]["security"]
 
 
 def test_root_registers_head_for_curl_i():
@@ -112,7 +161,11 @@ def test_get_health_returns_ok_status():
 def test_http_routes_work_with_pinned_starlette():
     with TestClient(app) as client:
         assert client.get("/health").status_code == 200
-        assert client.get("/diag").status_code == 503
+        response = client.get("/diag")
+
+    assert response.status_code == 401
+    assert response.headers["cache-control"] == "no-store"
+    assert len(response.headers["x-request-id"]) == 32
 
 
 def test_get_version_returns_app_version():
@@ -126,15 +179,14 @@ def test_get_diag_returns_structured_diagnostic(monkeypatch):
     disable_diag_protection_for_local_dev(monkeypatch)
     monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
-    require_diag_access()
+    authenticate_request(make_request())
     data = diag()
 
     assert "metadata" in data
-    assert "system" in data
-    assert "network" in data
-    assert "resources" in data
-    assert "docker" in data
+    assert "checks" in data
     assert "security" in data
+    assert "system" not in data
+    assert "stdout" not in str(data)
 
 
 def test_diag_rejects_concurrent_execution():
@@ -160,12 +212,12 @@ def test_post_diag_export_json_uses_isolated_output(tmp_path, monkeypatch):
 
     monkeypatch.setattr("app.main.write_json_report", fake_write_json_report)
 
-    require_diag_access()
+    authenticate_request(make_request())
     data = export_diag_json()
 
     assert data["status"] == "ok"
     assert data["format"] == "json"
-    assert data["path"] == str(tmp_path / "diagnostic.json")
+    assert data["report_id"] == "diagnostic"
 
 
 def test_post_diag_export_markdown_uses_isolated_output(tmp_path, monkeypatch):
@@ -179,17 +231,17 @@ def test_post_diag_export_markdown_uses_isolated_output(tmp_path, monkeypatch):
 
     monkeypatch.setattr("app.main.write_markdown_report", fake_write_markdown_report)
 
-    require_diag_access()
+    authenticate_request(make_request())
     data = export_diag_markdown()
 
     assert data["status"] == "ok"
     assert data["format"] == "markdown"
-    assert data["path"] == str(tmp_path / "diagnostic.md")
+    assert data["report_id"] == "diagnostic"
 
 
 def test_diag_requires_hash_by_default():
     with pytest.raises(HTTPException) as exc:
-        require_diag_access()
+        authenticate_request(make_request(), x_diag_token="test-token")
 
     assert exc.value.status_code == 503
 
@@ -198,7 +250,7 @@ def test_diag_requires_hash_in_local_unless_explicitly_disabled(monkeypatch):
     monkeypatch.setenv("APP_ENV", "local")
 
     with pytest.raises(HTTPException) as exc:
-        require_diag_access()
+        authenticate_request(make_request(), x_diag_token="test-token")
 
     assert exc.value.status_code == 503
 
@@ -207,7 +259,7 @@ def test_diag_ignores_legacy_plaintext_token_configuration(monkeypatch):
     monkeypatch.setenv("DIAG_ACCESS_TOKEN", "test-token")
 
     with pytest.raises(HTTPException) as exc:
-        require_diag_access()
+        authenticate_request(make_request(), x_diag_token="test-token")
 
     assert exc.value.status_code == 503
 
@@ -216,7 +268,7 @@ def test_diag_allows_explicit_local_development_disable(monkeypatch):
     disable_diag_protection_for_local_dev(monkeypatch)
     monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
-    require_diag_access()
+    authenticate_request(make_request())
 
 
 def test_diag_disable_is_ignored_in_vps(monkeypatch):
@@ -224,9 +276,9 @@ def test_diag_disable_is_ignored_in_vps(monkeypatch):
     monkeypatch.setenv("DIAG_PROTECTION_DISABLED", "true")
 
     with pytest.raises(HTTPException) as exc:
-        require_diag_access()
+        authenticate_request(make_request())
 
-    assert exc.value.status_code == 503
+    assert exc.value.status_code == 401
 
 
 def test_diag_disable_is_ignored_in_default_lab(monkeypatch):
@@ -234,16 +286,16 @@ def test_diag_disable_is_ignored_in_default_lab(monkeypatch):
     monkeypatch.setenv("DIAG_PROTECTION_DISABLED", "true")
 
     with pytest.raises(HTTPException) as exc:
-        require_diag_access()
+        authenticate_request(make_request())
 
-    assert exc.value.status_code == 503
+    assert exc.value.status_code == 401
 
 
 def test_diag_requires_token_when_hash_configured(monkeypatch):
     monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", sha256_token("test-token"))
 
     with pytest.raises(HTTPException) as exc:
-        require_diag_access()
+        authenticate_request(make_request())
 
     assert exc.value.status_code == 401
 
@@ -252,7 +304,7 @@ def test_diag_rejects_invalid_token(monkeypatch):
     monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", sha256_token("test-token"))
 
     with pytest.raises(HTTPException) as exc:
-        require_diag_access(authorization="Bearer wrong-token")
+        authenticate_request(make_request(), credentials=bearer("wrong-token"))
 
     assert exc.value.status_code == 401
 
@@ -261,7 +313,7 @@ def test_diag_accepts_bearer_token(monkeypatch):
     monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", sha256_token("test-token"))
     monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
-    require_diag_access(authorization="Bearer test-token")
+    authenticate_request(make_request(), credentials=bearer("test-token"))
     data = diag()
 
     assert data["metadata"]["schema_version"] == APP_VERSION
@@ -271,7 +323,7 @@ def test_diag_rejects_bcrypt_hash(monkeypatch):
     monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", "bcrypt:unsupported")
 
     with pytest.raises(HTTPException) as exc:
-        require_diag_access(authorization="Bearer test-token")
+        authenticate_request(make_request(), credentials=bearer("test-token"))
 
     assert exc.value.status_code == 401
 
@@ -282,14 +334,14 @@ def test_diag_accepts_token_hash_from_secret_file(tmp_path, monkeypatch):
     monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH_FILE", str(hash_file))
     monkeypatch.setattr("app.main.collect_network_diagnostic", sample_report)
 
-    require_diag_access(authorization="Bearer test-token")
+    authenticate_request(make_request(), credentials=bearer("test-token"))
 
 
 def test_diag_export_json_rejects_missing_token(monkeypatch):
     monkeypatch.setenv("DIAG_ACCESS_TOKEN_HASH", sha256_token("test-token"))
 
     with pytest.raises(HTTPException) as exc:
-        require_diag_access()
+        authenticate_request(make_request())
 
     assert exc.value.status_code == 401
 
@@ -308,7 +360,46 @@ def test_diag_export_markdown_accepts_x_diag_token(
 
     monkeypatch.setattr("app.main.write_markdown_report", fake_write_markdown_report)
 
-    require_diag_access(x_diag_token="test-token")
+    request = make_request()
+    principal = authenticate_request(request, x_diag_token="test-token")
     data = export_diag_markdown()
 
-    assert data["path"] == str(tmp_path / "diagnostic.md")
+    assert principal.auth_method == "local-token"
+    assert request.state.auth_identity == "local-lab"
+    assert data["report_id"] == "diagnostic"
+
+
+def test_diag_rate_limit_rejects_sixth_request():
+    for second in range(5):
+        enforce_diag_rate_limit("identity:test", now=float(second))
+
+    with pytest.raises(HTTPException) as exc:
+        enforce_diag_rate_limit("identity:test", now=5.0)
+
+    assert exc.value.status_code == 429
+    assert exc.value.headers == {"Retry-After": "55"}
+
+
+def test_diagnostic_api_view_removes_raw_and_identifying_data():
+    data = diagnostic_api_view(sample_report())
+
+    assert "system" not in data
+    assert "private-host" not in str(data)
+    assert "sensitive raw output" not in str(data)
+
+
+def test_unhandled_http_error_returns_generic_response(monkeypatch):
+    disable_diag_protection_for_local_dev(monkeypatch)
+
+    def fail_diagnostic():
+        raise RuntimeError("internal diagnostic detail")
+
+    monkeypatch.setattr("app.main.collect_network_diagnostic", fail_diagnostic)
+
+    with TestClient(app) as client:
+        response = client.get("/diag")
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Internal server error."
+    assert "internal diagnostic detail" not in response.text
+    assert response.headers["cache-control"] == "no-store"

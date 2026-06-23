@@ -1,0 +1,2 @@
+# False positive verified: a placeholder Docker image tag, not a credential.
+204ae3d209df2bcc9f0e9d06422174473239da75:docs/vps/compose.vps.example.yaml:generic-api-key:11
