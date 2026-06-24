@@ -34,7 +34,7 @@ Règles personnelles :
 
 | Jalon | Sujet | Statut | Preuve |
 |---|---|---|---|
-| 1 | Création du dépôt | Fait | `README.md`, `AGENTS.md`, `docs/` |
+| 1 | Création du dépôt | Fait | `README.md`, `docs/` |
 | 2 | Diagnostic local | Fait | `scripts/diagnostic_local.sh` |
 | 3 | Mini API FastAPI | Fait | Endpoints `/health`, `/version`, `/diag` |
 | 4 | Docker Compose | Fait | `Dockerfile`, `compose.yaml` |
@@ -43,7 +43,6 @@ Règles personnelles :
 | 7 | Tests automatisés | Prévu | `pytest` |
 | 8 | CI GitHub Actions | Prévu | Workflow CI |
 | 9 | VPS | Prévu | Déploiement contrôlé |
-| 10 | OpenAI API / OpenClaw | Prévu | Résumé de rapports en lecture seule |
 
 ---
 
@@ -65,7 +64,6 @@ La documentation doit commencer tôt, car elle explique pourquoi les choix techn
 ### Preuves
 
 - `README.md`
-- `AGENTS.md`
 - `docs/securite.md`
 - `docs/journal-apprentissage.md`
 
@@ -315,7 +313,6 @@ Créer les premiers tests automatisés et préparer la CI GitHub Actions.
 - Ajouter une CI GitHub Actions.
 - Nettoyer le README si nécessaire.
 - Préparer une documentation VPS séparée.
-- Garder OpenAI API et OpenClaw en lecture seule au départ.
 
 ## Bilan du mois 1 — Stabilisation locale du projet
 

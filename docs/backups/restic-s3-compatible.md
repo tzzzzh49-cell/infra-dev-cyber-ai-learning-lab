@@ -34,8 +34,8 @@ export AWS_DEFAULT_REGION="<REGION_PLACEHOLDER>"
 
 restic init
 restic backup --exclude-file "$RESTIC_EXCLUDE_FILE" \
-  README.md ROADMAP.md AGENTS.md Makefile compose.yaml \
-  ansible app backup docs openclaw scripts
+  README.md ROADMAP.md Makefile compose.yaml \
+  ansible app backup docs scripts
 restic snapshots
 restic check
 RESTIC_RESTORE_TARGET=/tmp/infra-dev-cyber-ai-learning-lab-restic-s3-restore-drill
@@ -49,9 +49,9 @@ dépôt et une restauration partielle sans écraser le dépôt courant.
 
 Par défaut, les scripts locaux sélectionnent une base prudente :
 
-- `README.md`, `ROADMAP.md`, `AGENTS.md` et `Makefile` ;
+- `README.md`, `ROADMAP.md` et `Makefile` ;
 - `compose.yaml` et exemples `.env*.example` ;
-- `ansible/`, `app/`, `backup/`, `docs/`, `openclaw/` et `scripts/` quand ces chemins existent.
+- `ansible/`, `app/`, `backup/`, `docs/` et `scripts/` quand ces chemins existent.
 
 Les rapports dans `outputs/reports/` sont exclus par défaut. Les inclure seulement après revue manuelle et choix explicite hors dépôt.
 
@@ -60,7 +60,7 @@ Les rapports dans `outputs/reports/` sont exclus par défaut. Les inclure seulem
 Le fichier `backup/restic-excludes.txt` exclut notamment :
 
 - `.git`, `.venv`, `.runtime` et caches ;
-- `.env`, `.env.local`, `.env.vps`, `.env.backup`, `.env.ai` et variantes locales ;
+- `.env`, `.env.local`, `.env.vps`, `.env.backup` et variantes locales ;
 - clés privées, tokens et fichiers de passphrase ;
 - `outputs/raw`, `outputs/rendered`, `outputs/backups` et `outputs/reports`.
 
@@ -83,7 +83,7 @@ Résultat attendu :
 Après revue des chemins et exclusions :
 
 ```bash
-restic backup --exclude-file "$RESTIC_EXCLUDE_FILE" README.md ROADMAP.md AGENTS.md Makefile compose.yaml ansible app backup docs openclaw scripts
+restic backup --exclude-file "$RESTIC_EXCLUDE_FILE" README.md ROADMAP.md Makefile compose.yaml ansible app backup docs scripts
 ```
 
 Adapter la liste hors dépôt si certains chemins n'existent pas ou si des rapports revus doivent être inclus.

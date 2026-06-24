@@ -1,0 +1,172 @@
+services:
+  api:
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8000
+      - --no-proxy-headers
+      - --ssl-keyfile=/run/mtls/api.key
+      - --ssl-certfile=/run/mtls/api.crt
+      - --ssl-cert-reqs=2
+      - --ssl-ca-certs=/run/mtls/ca.crt
+    environment:
+      APP_ENV: vps
+      TRUSTED_PROXY_CIDRS: 172.30.0.2/32
+    volumes:
+      - type: bind
+        source: ${MTLS_DIR:-/etc/infra-lab/mtls}/ca.crt
+        target: /run/mtls/ca.crt
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MTLS_DIR:-/etc/infra-lab/mtls}/api.crt
+        target: /run/mtls/api.crt
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MTLS_DIR:-/etc/infra-lab/mtls}/api.key
+        target: /run/mtls/api.key
+        read_only: true
+        bind:
+          create_host_path: false
+    networks:
+      public_proxy:
+        ipv4_address: 172.30.0.4
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import ssl,urllib.request;c=ssl.create_default_context(cafile='/run/mtls/ca.crt');c.load_cert_chain('/run/mtls/api.crt','/run/mtls/api.key');urllib.request.urlopen('https://localhost:8000/health',context=c,timeout=3).read()"
+
+  oauth2-proxy:
+    profiles:
+      - public-proxy
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.3@sha256:10a1165743a192e1940b4708fb9647027185ce11a681a1c5519b442ff7f1f561
+    container_name: lab-oauth2-proxy
+    user: "65532:65532"
+    read_only: true
+    cap_drop:
+      - ALL
+    group_add:
+      - "10001"
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      OAUTH2_PROXY_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OAUTH2_PROXY_CLIENT_SECRET_FILE: /run/secrets/oidc_client_secret
+      OAUTH2_PROXY_COOKIE_SECRET_FILE: /run/secrets/oidc_cookie_secret
+      OAUTH2_PROXY_OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-}
+      OAUTH2_PROXY_REDIRECT_URL: ${OIDC_REDIRECT_URL:-https://<LAB_DOMAIN>/oauth2/callback}
+      OAUTH2_PROXY_ACR_VALUES: ${OIDC_ACR_VALUES:-}
+    command:
+      - --provider=oidc
+      - --http-address=unix:///run/oauth2/oauth2-proxy.sock,mode=0660
+      - --upstream=static://202
+      - --scope=openid profile email
+      - --code-challenge-method=S256
+      - --oidc-enabled-signing-alg=RS256
+      - --oidc-enabled-signing-alg=RS384
+      - --oidc-enabled-signing-alg=RS512
+      - --oidc-enabled-signing-alg=PS256
+      - --oidc-enabled-signing-alg=PS384
+      - --oidc-enabled-signing-alg=PS512
+      - --oidc-enabled-signing-alg=ES256
+      - --oidc-enabled-signing-alg=ES384
+      - --oidc-enabled-signing-alg=ES512
+      - --insecure-oidc-skip-issuer-verification=false
+      - --insecure-oidc-allow-unverified-email=false
+      - --insecure-oidc-skip-nonce=false
+      - --reverse-proxy=true
+      - --set-authorization-header=true
+      - --pass-authorization-header=true
+      - --pass-access-token=false
+      - --pass-basic-auth=false
+      - --pass-user-headers=false
+      - --skip-jwt-bearer-tokens=true
+      - --bearer-token-login-fallback=false
+      - --skip-provider-button=true
+      - --email-domain=*
+      - --cookie-name=__Host-lab_oidc
+      - --cookie-expire=15m
+      - --cookie-refresh=5m
+      - --cookie-secure=true
+      - --cookie-httponly=true
+      - --cookie-samesite=lax
+      - --cookie-csrf-per-request=true
+      - --cookie-csrf-per-request-limit=5
+      - --show-debug-on-error=false
+      - --whitelist-domain=${LAB_DOMAIN:-<LAB_DOMAIN>}
+    volumes:
+      - ${OIDC_CLIENT_SECRET_FILE:-/dev/null}:/run/secrets/oidc_client_secret:ro
+      - ${OIDC_COOKIE_SECRET_FILE:-/dev/null}:/run/secrets/oidc_cookie_secret:ro
+      - ${OAUTH2_SOCKET_DIR:-/var/lib/infra-lab/oauth2-proxy}:/run/oauth2
+    restart: unless-stopped
+
+  nginx:
+    profiles:
+      - public-proxy
+    image: owasp/modsecurity-crs:4.25.0-nginx-202605200705@sha256:cdac1390ba577d82038933e5c30fd2e8c83bf81a8369db35f5e49837f90605b2
+    container_name: lab-nginx
+    cap_drop:
+      - ALL
+    group_add:
+      - "10001"
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      api:
+        condition: service_healthy
+      oauth2-proxy:
+        condition: service_started
+    environment:
+      LAB_DOMAIN: ${LAB_DOMAIN:-<LAB_DOMAIN>}
+      MODSEC_RULE_ENGINE: "on"
+      BLOCKING_PARANOIA: "1"
+      ANOMALY_INBOUND: "5"
+      ANOMALY_OUTBOUND: "4"
+      PORT: "8080"
+      SSL_PORT: "8443"
+      SSL_CERT_FILE: /run/public-tls/fullchain.pem
+      SSL_CERT_KEY_FILE: /run/public-tls/privkey.pem
+    ports:
+      - "80:8080"
+      - "443:8443"
+    volumes:
+      - ./nginx/default.conf.template:/etc/nginx/templates/conf.d/default.conf.template:ro
+      - ./nginx/api_proxy.conf:/opt/infra-lab/nginx/api_proxy.conf:ro
+      - ./nginx/oauth2_proxy.conf:/opt/infra-lab/nginx/oauth2_proxy.conf:ro
+      - ${PUBLIC_TLS_CERT_FILE:-/etc/infra-lab/public-tls/fullchain.pem}:/run/public-tls/fullchain.pem:ro
+      - ${PUBLIC_TLS_KEY_FILE:-/etc/infra-lab/public-tls/privkey.pem}:/run/public-tls/privkey.pem:ro
+      - type: bind
+        source: ${MTLS_DIR:-/etc/infra-lab/mtls}/ca.crt
+        target: /run/mtls/ca.crt
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MTLS_DIR:-/etc/infra-lab/mtls}/nginx-client.crt
+        target: /run/mtls/nginx-client.crt
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MTLS_DIR:-/etc/infra-lab/mtls}/nginx-client.key
+        target: /run/mtls/nginx-client.key
+        read_only: true
+        bind:
+          create_host_path: false
+      - ${OAUTH2_SOCKET_DIR:-/var/lib/infra-lab/oauth2-proxy}:/run/oauth2:ro
+    networks:
+      public_proxy:
+        ipv4_address: 172.30.0.2
+    restart: unless-stopped
+
+networks:
+  public_proxy:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/28

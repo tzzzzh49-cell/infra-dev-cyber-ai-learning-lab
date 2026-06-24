@@ -22,9 +22,7 @@ The application is built progressively to:
 - expose a minimal API;
 - run read-only system and network diagnostics;
 - produce technical reports;
-- prepare a later VPS deployment;
-- prepare a future OpenAI API integration;
-- prepare controlled OpenClaw usage.
+- prepare a later VPS deployment.
 
 ## Current Architecture
 
@@ -111,23 +109,19 @@ Persistence is not active in v0.3.x. Compose prepares an inactive
 
 Before real use, the project needs a reviewed PostgreSQL dependency, migrations
 such as Alembic, retention rules and a dedicated or external storage strategy
-for reviewed AI reports. The `ai_reports` volume is reserved for that future
-work.
+for reviewed reports.
 
 ## CORS Future
 
-CORS middleware is not enabled today. If a local frontend or a separate AI
-service consumes the API later, allowed origins must be enumerated explicitly,
-for example through `CORS_ALLOWED_ORIGINS`. Wildcards must not be used in VPS
-mode.
+CORS middleware is not enabled today. If a local frontend consumes the API
+later, allowed origins must be enumerated explicitly, for example through
+`CORS_ALLOWED_ORIGINS`. Wildcards must not be used in VPS mode.
 
 ## Planned Evolution
 
 1. Ubuntu 26.04 LTS Server local validation.
 2. Quality checks with tests, linting and CI.
 3. VPS deployment with SSH hardening, firewall and HTTPS.
-4. OpenAI API usage for report summaries.
-5. Controlled OpenClaw usage with a strict allowlist.
 
 ## Architecture Principles
 
@@ -135,5 +129,4 @@ mode.
 - document every decision;
 - prioritize reproducibility;
 - limit privileges;
-- never automate destructive commands;
-- add AI features gradually and keep human validation.
+- never automate destructive commands.

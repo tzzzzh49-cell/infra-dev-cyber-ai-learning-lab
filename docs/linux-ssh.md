@@ -27,7 +27,7 @@ Il permet de gérer :
 - les logs ;
 - les logiciels installés.
 
-Dans mon projet, Linux sert de base pour faire tourner les outils comme Git, Python, Docker, Ansible, Codex CLI et plus tard OpenClaw.
+Dans mon projet, Linux sert de base pour faire tourner les outils comme Git, Python, Docker, Ansible et Codex CLI.
 
 ---
 

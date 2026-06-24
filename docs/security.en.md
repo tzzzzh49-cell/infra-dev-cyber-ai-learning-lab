@@ -117,6 +117,6 @@ unavailable, document that in the Pull Request.
 ## Secrets
 
 Never commit `.env` files with values, API keys, GitHub tokens, private SSH keys,
-passwords, OpenClaw secrets, Restic passphrases or diagnostic client tokens.
+passwords, Restic passphrases or diagnostic client tokens.
 
 Use example files with empty placeholders and private environment variables.

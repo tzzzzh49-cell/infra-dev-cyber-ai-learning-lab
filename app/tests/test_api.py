@@ -53,7 +53,13 @@ def command_result():
 
 def sample_report():
     return {
-        "metadata": {"schema_version": APP_VERSION},
+        "metadata": {
+            "schema_version": APP_VERSION,
+            "generated_at_utc": "2026-06-23T00:00:00+00:00",
+            "mode": "read-only",
+            "command_timeout_seconds": 3.0,
+            "private_metadata": "must not leave the API",
+        },
         "system": {"hostname": "private-host"},
         "network": {
             "interfaces": command_result(),
@@ -385,6 +391,7 @@ def test_diagnostic_api_view_removes_raw_and_identifying_data():
 
     assert "system" not in data
     assert "private-host" not in str(data)
+    assert "private_metadata" not in str(data)
     assert "sensitive raw output" not in str(data)
 
 

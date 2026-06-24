@@ -11,6 +11,7 @@ from starlette.requests import Request
 
 from app import auth
 from app.main import app
+from app.tests.test_api import sample_report
 
 ISSUER = "https://issuer.example.test"
 JWKS_URL = "https://issuer.example.test/jwks"
@@ -19,6 +20,18 @@ AUDIENCE = "lab-api"
 
 def make_request(client="192.0.2.10"):
     return Request({"type": "http", "headers": [], "client": (client, 1)})
+
+
+def make_forwarded_request(peer, verified_ip):
+    return Request(
+        {
+            "type": "http",
+            "headers": [
+                (b"x-verified-client-ip", verified_ip.encode("ascii")),
+            ],
+            "client": (peer, 1),
+        }
+    )
 
 
 def bearer(token):
@@ -69,6 +82,7 @@ def oidc_environment(monkeypatch, rsa_key):
     monkeypatch.setenv("OIDC_AUDIENCE", AUDIENCE)
     monkeypatch.setenv("OIDC_ROLES_CLAIM", "roles")
     monkeypatch.delenv("OIDC_MFA_ACR_VALUES", raising=False)
+    monkeypatch.delenv("TRUSTED_PROXY_CIDRS", raising=False)
     auth.AUTH_FAILURE_EVENTS.clear()
     auth.DIAG_RATE_EVENTS.clear()
     fake_key = SimpleNamespace(
@@ -79,6 +93,17 @@ def oidc_environment(monkeypatch, rsa_key):
         auth,
         "get_jwks_client",
         lambda _url: SimpleNamespace(get_signing_key_from_jwt=lambda _token: fake_key),
+    )
+
+
+def test_client_ip_trusts_only_the_configured_proxy(monkeypatch):
+    monkeypatch.setenv("TRUSTED_PROXY_CIDRS", "172.30.0.2/32")
+
+    assert auth.client_ip(make_forwarded_request("172.30.0.2", "198.51.100.7")) == (
+        "198.51.100.7"
+    )
+    assert auth.client_ip(make_forwarded_request("172.30.0.9", "198.51.100.7")) == (
+        "172.30.0.9"
     )
 
 
@@ -181,11 +206,7 @@ def test_verified_scope_allows_http_diagnostic_read(monkeypatch):
         "validate_oidc_token",
         lambda _token: principal("user", scopes={"diagnostic:read"}),
     )
-    monkeypatch.setattr("app.main.collect_diagnostic_serialized", lambda: {})
-    monkeypatch.setattr(
-        "app.main.diagnostic_api_view",
-        lambda _report: {"status": "ok"},
-    )
+    monkeypatch.setattr("app.main.collect_diagnostic_serialized", sample_report)
 
     with TestClient(app) as client:
         response = client.get(
@@ -194,7 +215,10 @@ def test_verified_scope_allows_http_diagnostic_read(monkeypatch):
         )
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json()["security"] == {
+        "read_only": True,
+        "destructive_commands_used": False,
+    }
 
 
 @pytest.mark.parametrize(

@@ -55,6 +55,9 @@ jobs:
       - name: Tests
         run: make test
 
+      - name: FastAPI routes match OpenAPI
+        run: make check-api-contract
+
       - name: Python security scan with Bandit
         run: python -m bandit -q -r app -x app/tests --severity-level medium --confidence-level medium
 
@@ -93,11 +96,6 @@ jobs:
         with:
           dockerfile: app/Dockerfile
 
-      - name: Hadolint Caddy runtime
-        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
-        with:
-          dockerfile: caddy/Dockerfile
-
   trivy:
     name: Trivy image scan
     runs-on: ubuntu-latest
@@ -118,6 +116,42 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'
+
+  dast:
+    name: OWASP ZAP API scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Install runtime dependencies
+        run: python -m pip install -r app/requirements.txt
+
+      - name: Scan the ephemeral local API
+        run: |
+          APP_ENV=test DIAG_PROTECTION_DISABLED=true \
+            python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 \
+            >/tmp/infra-lab-dast-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            curl -fsS http://127.0.0.1:8000/health >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/openapi.json >/dev/null
+          docker run --rm --network host \
+            --mount "type=bind,source=$PWD/.zap/rules.tsv,target=/zap/wrk/rules.tsv,readonly" \
+            ghcr.io/zaproxy/zaproxy@sha256:461415b7526ca60af0ddc15389419d05df243aed1b665b64d3a8c3ebd67c6056 \
+            zap-api-scan.py \
+            -t http://127.0.0.1:8000/openapi.json \
+            -f openapi -c /zap/wrk/rules.tsv -I -T 5 -s
 
   # check-full is intentionally not enabled by default because it is heavier
   # and may require a more complete runner environment. Run locally before merge:

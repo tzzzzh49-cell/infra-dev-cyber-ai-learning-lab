@@ -21,19 +21,17 @@ L’objectif est de construire progressivement une application capable de :
 - exposer une API minimale ;
 - lancer des diagnostics systèmes/réseaux en lecture seule ;
 - produire des rapports techniques ;
-- être déployée plus tard sur VPS ;
-- intégrer progressivement l’API OpenAI ;
-- intégrer OpenClaw de manière contrôlée.
+- être déployée plus tard sur VPS.
 
 ## Architecture actuelle
 
 ```mermaid
 flowchart TD
     user[Utilisateur local] --> make[Makefile]
-    browser[Utilisateur VPS] --> caddy[Caddy HTTPS]
-    caddy --> oauth[OAuth2 Proxy<br/>Authorization Code + PKCE]
+    browser[Utilisateur VPS] --> nginx[Nginx HTTPS<br/>ModSecurity + OWASP CRS]
+    nginx -. auth_request .-> oauth[OAuth2 Proxy<br/>Authorization Code + PKCE]
     oauth <--> idp[Fournisseur OIDC<br/>MFA et anti-bruteforce]
-    oauth --> api
+    nginx -- mTLS --> api
     make --> compose[Docker Compose]
     compose --> api[Application FastAPI]
     api --> main[app/main.py]
@@ -143,18 +141,14 @@ Avant activation réelle, il faudra ajouter :
 * une dépendance applicative PostgreSQL explicitement revue ;
 * une gestion de migrations, par exemple Alembic ;
 * une politique de rétention des rapports ;
-* un stockage dédié ou externe pour les rapports IA revus.
-
-Le volume `ai_reports` est réservé comme point de préparation. Aucun rapport IA
-n'est généré automatiquement dans l'état actuel.
+* un stockage dédié ou externe pour les rapports revus.
 
 ## CORS futur
 
 Aucun middleware CORS n'est activé aujourd'hui, car l'API est consommée
 localement et ne sert pas encore de backend public pour un front. Si un front
-local ou un service IA séparé consomme l'API, les origines devront être listées
-explicitement via une variable du type `CORS_ALLOWED_ORIGINS`, sans wildcard en
-mode VPS.
+local consomme l'API, les origines devront être listées explicitement via une
+variable du type `CORS_ALLOWED_ORIGINS`, sans wildcard en mode VPS.
 
 ### Makefile
 
@@ -194,10 +188,6 @@ Application FastAPI
 Diagnostics systèmes/réseaux en lecture seule
    ↓
 Rapports Markdown / JSON disponibles localement
-   ↓
-Résumé IA via OpenAI API plus tard
-   ↓
-Interaction contrôlée via OpenClaw plus tard
 ```
 
 ## Évolution prévue
@@ -216,19 +206,10 @@ Ajout de tests, lint et GitHub Actions.
 
 Déploiement sur VPS avec SSH sécurisé, firewall et HTTPS.
 
-### Étape 4 — OpenAI API
-
-Utilisation de l’API OpenAI pour résumer les rapports et proposer des pistes d’analyse.
-
-### Étape 5 — OpenClaw
-
-Utilisation d’OpenClaw avec allowlist stricte et commandes en lecture seule.
-
 ## Principes d’architecture
 
 * commencer simple ;
 * documenter chaque décision ;
 * privilégier la reproductibilité ;
 * limiter les droits ;
-* ne pas automatiser de commandes destructives ;
-* ajouter l’IA progressivement.
+* ne pas automatiser de commandes destructives.

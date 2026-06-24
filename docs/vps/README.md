@@ -26,10 +26,11 @@ Documents :
 
 Exemples de configuration :
 
-- [Caddyfile.example](Caddyfile.example)
 - [08 - Authentification OAuth2/OIDC](08-authentification-oidc.md)
 - [nginx.reverse-proxy.example.conf](nginx.reverse-proxy.example.conf)
 - [compose.vps.example.yaml](compose.vps.example.yaml)
+- [`compose.public.yaml`](../../compose.public.yaml) pour le proxy public réel ;
+- [`nginx/default.conf.template`](../../nginx/default.conf.template) pour le routage.
 
 Variables préparatoires :
 

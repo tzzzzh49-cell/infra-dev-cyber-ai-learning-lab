@@ -2,6 +2,25 @@
 
 set -euo pipefail
 
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+public_mode=false
+starts_services=false
+case "${COMPOSE_FILE:-}" in
+    *compose.public.yaml*) public_mode=true ;;
+esac
+for argument in "$@"; do
+    case "$argument" in
+        *compose.public.yaml*) public_mode=true ;;
+        up|start|restart|run) starts_services=true ;;
+    esac
+done
+
+if [ "$public_mode" = true ] && [ "$starts_services" = true ]; then
+    MTLS_DIR="${MTLS_DIR:-/etc/infra-lab/mtls}" \
+        "$PROJECT_ROOT/scripts/check_mtls_files.sh"
+fi
+
 find_compose_cmd() {
     if docker compose version >/dev/null 2>&1; then
         if docker ps >/dev/null 2>&1; then

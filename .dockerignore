@@ -27,9 +27,6 @@ app/tests/
 app/requirements-dev.txt
 
 docs/*
-!docs/vps/
-docs/vps/*
-!docs/vps/Caddyfile.example
 
 *.log
 *.bak

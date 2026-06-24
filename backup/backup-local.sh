@@ -68,7 +68,6 @@ select_backup_paths() {
     local candidates=(
         README.md
         ROADMAP.md
-        AGENTS.md
         Makefile
         compose.yaml
         .env.example
@@ -80,7 +79,6 @@ select_backup_paths() {
         docs
         k8s
         lab
-        openclaw
         scripts
         terraform
     )

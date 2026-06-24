@@ -1,0 +1,80 @@
+limit_req_zone $binary_remote_addr zone=global_per_ip:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=diag_per_ip:10m rate=2r/m;
+limit_req_status 429;
+
+server {
+    listen ${PORT} default_server;
+    server_name ${LAB_DOMAIN};
+    if ($host != "${LAB_DOMAIN}") {
+        return 421;
+    }
+    return 301 https://${LAB_DOMAIN}$request_uri;
+}
+
+server {
+    listen ${SSL_PORT} ssl default_server;
+    server_name ${LAB_DOMAIN};
+
+    ssl_certificate ${SSL_CERT_FILE};
+    ssl_certificate_key ${SSL_CERT_KEY_FILE};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:TLS:10m;
+    ssl_session_tickets off;
+
+    if ($host != "${LAB_DOMAIN}") {
+        return 421;
+    }
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+
+    limit_req zone=global_per_ip burst=20 nodelay;
+
+    location ^~ /oauth2/ {
+        add_header Cache-Control "no-store" always;
+        include /opt/infra-lab/nginx/oauth2_proxy.conf;
+        proxy_set_header X-Forwarded-Uri "";
+        proxy_pass http://unix:/run/oauth2/oauth2-proxy.sock:;
+    }
+
+    location = /_oauth2_auth {
+        internal;
+        include /opt/infra-lab/nginx/oauth2_proxy.conf;
+        proxy_set_header X-Forwarded-Uri $request_uri;
+        proxy_set_header Content-Length "";
+        proxy_pass_request_body off;
+        proxy_pass http://unix:/run/oauth2/oauth2-proxy.sock:/oauth2/auth;
+    }
+
+    location ~ ^/diag(?:/|$) {
+        limit_req zone=global_per_ip burst=20 nodelay;
+        limit_req zone=diag_per_ip burst=2 nodelay;
+        auth_request /_oauth2_auth;
+        error_page 401 = @oauth2_signin;
+        auth_request_set $oidc_authorization $upstream_http_authorization;
+        auth_request_set $auth_cookie $upstream_http_set_cookie;
+        add_header Cache-Control "no-store" always;
+        add_header Set-Cookie $auth_cookie always;
+        include /opt/infra-lab/nginx/api_proxy.conf;
+        proxy_set_header Authorization $oidc_authorization;
+        proxy_pass https://api:8000;
+    }
+
+    location @oauth2_signin {
+        return 302 /oauth2/sign_in?rd=https://${LAB_DOMAIN}$request_uri;
+    }
+
+    location ~ ^/(?:docs|redoc)(?:/|$) {
+        return 404;
+    }
+
+    location = /openapi.json {
+        return 404;
+    }
+
+    location / {
+        include /opt/infra-lab/nginx/api_proxy.conf;
+        proxy_set_header Authorization "";
+        proxy_pass https://api:8000;
+    }
+}

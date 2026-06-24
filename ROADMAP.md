@@ -28,7 +28,7 @@ Inclus :
 
 Limites de cette étape :
 - ne pas ajouter GitHub Actions ;
-- ne pas ajouter Caddy, Restic, PostgreSQL, OpenAI API, OpenClaw, Containerlab, déploiement VPS ou authentification ;
+- ne pas ajouter de reverse proxy, Restic, PostgreSQL, Containerlab, déploiement VPS ou authentification ;
 - ne pas ajouter de nouvelles grosses fonctionnalités applicatives.
 
 Note historique : la reproductibilité sur Ubuntu 24.04.4 LTS Desktop a ensuite été validée à 100 % et sert de référence passée, pas de cible active.
@@ -56,7 +56,6 @@ Objectif : stabiliser le dépôt avant la préparation v0.4.0 VPS.
 
 Inclus / livré :
 - CI GitHub Actions minimale sans secret ;
-- `AGENTS.md` complété avec règles de sécurité et workflow agents ;
 - tests API FastAPI renforcés ;
 - tests unitaires diagnostics complétés ;
 - documentation Ubuntu Desktop historique complétée ;
@@ -65,9 +64,7 @@ Inclus / livré :
 
 Limites :
 - pas de déploiement VPS réel ;
-- pas d'authentification applicative ;
-- pas d'intégration OpenAI API ;
-- pas d'intégration OpenClaw.
+- pas d'authentification applicative.
 
 ## v0.3.2 - Durcissement Docker, diagnostics configurables et documentation
 
@@ -91,8 +88,7 @@ Inclus / livré :
 Limites :
 - Postgres reste préparatoire via le profil Compose `future-persistence`, non lancé par défaut ;
 - aucune migration n'est active tant qu'une dépendance et un outil comme Alembic ne sont pas validés ;
-- aucun middleware CORS n'est activé tant qu'il n'existe pas de consommateur front ou IA séparé ;
-- OpenAI API et OpenClaw restent documentaires et non actifs.
+- aucun middleware CORS n'est activé tant qu'il n'existe pas de consommateur front séparé.
 
 ## v0.4.0 - Ubuntu Server, VPS et backups
 
@@ -102,36 +98,15 @@ Prévu / en préparation :
 - documentation de reproductibilité Ubuntu 26.04 LTS Server ;
 - journal de validation `docs/validations/ubuntu-26.04-server-vm.md` ;
 - checklist Server : clone, bootstrap, reconnexion Docker, `make check`, `make check-full`, `make run`, endpoints, exports et backups locaux ;
-- procédure VPS ordonnée : première connexion, utilisateur non-root, SSH, firewall, Docker, Compose, Caddy HTTPS, Cloudflare DNS et variables `.env.vps.example` ;
-- exemples sûrs `docs/vps/Caddyfile.example` et `docs/vps/compose.vps.example.yaml` ;
+- procédure VPS ordonnée : première connexion, utilisateur non-root, SSH, firewall, Docker, Compose, Nginx HTTPS, Cloudflare DNS et variables `.env.vps.example` ;
+- exemples sûrs `docs/vps/nginx.reverse-proxy.example.conf` et `docs/vps/compose.vps.example.yaml` ;
 - stratégie Restic local-first étendue vers S3-compatible avec placeholders uniquement ;
 - documentation init, backup, check et restore drill ;
 - politique mensuelle de mise à jour des dépendances ;
 - contrôles sécurité locaux et CI non secrets : Bandit, Hadolint et Trivy ;
-- préparation Postgres, migrations et stockage de rapports IA revus, sans activation automatique.
+- préparation Postgres, migrations et stockage de rapports revus, sans activation automatique.
 
 Limites :
 - pas de déploiement VPS réel ;
 - pas d'adresse IP, domaine, token, clé privée ou mot de passe réel ;
 - `/diag` reste protégé en mode `APP_ENV=vps` par `DIAG_ACCESS_TOKEN_HASH` ou `DIAG_ACCESS_TOKEN_HASH_FILE` et reverse proxy authentifié.
-
-## v0.5.0 - OpenAI API read-only
-
-Objectif : préparer une intégration OpenAI API limitée au résumé de rapports sans appel réel obligatoire.
-
-Prévu :
-- structure `docs/ai/` et `app/ai/` ;
-- fichier `.env.ai.example` sans clé réelle ;
-- flux documentaire rapport Markdown/JSON -> résumé -> risques -> checklist ;
-- budget limité et clé uniquement via variable d'environnement ;
-- aucune exécution de commande, aucune modification système, aucune lecture volontaire de secrets.
-
-## v0.6.0 - OpenClaw contrôlé
-
-Objectif : préparer OpenClaw comme couche documentaire et contrôlée, non active par défaut.
-
-Prévu :
-- structure `openclaw/` avec allowlist, runbooks et modèle de sécurité ;
-- mode lecture seule ;
-- refus explicite de `sudo`, suppressions, modifications réseau, actions Docker destructives et commandes automatiques sans validation humaine ;
-- sandbox et validation humaine avant tout futur usage.

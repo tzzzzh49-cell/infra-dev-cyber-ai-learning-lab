@@ -40,9 +40,10 @@ fi
 
 VALIDATION_TMP="${VALIDATION_TMP:-/tmp/infra-dev-cyber-ai-learning-lab}"
 export ANSIBLE_LOCAL_TEMP="${ANSIBLE_LOCAL_TEMP:-$VALIDATION_TMP/ansible-local}"
+export ANSIBLE_REMOTE_TMP="${ANSIBLE_REMOTE_TMP:-$VALIDATION_TMP/ansible-remote}"
 export BUILDX_CONFIG="${BUILDX_CONFIG:-$VALIDATION_TMP/buildx-config}"
 export PYTHONDONTWRITEBYTECODE="${PYTHONDONTWRITEBYTECODE:-1}"
-mkdir -p "$ANSIBLE_LOCAL_TEMP" "$BUILDX_CONFIG"
+mkdir -p "$ANSIBLE_LOCAL_TEMP" "$ANSIBLE_REMOTE_TMP" "$BUILDX_CONFIG"
 
 require_command() {
     local cmd="$1"
@@ -70,7 +71,27 @@ check_no_conflict_markers() {
     echo
     echo "==> Recherche de marqueurs de conflit Git"
 
-    if rg --line-number --glob '!/.git' --glob '!/.venv' --glob '!outputs' --glob '!*.pyc' '^(<<<<<<<|=======|>>>>>>>)' .; then
+    if rg --line-number \
+        --glob '!.git/**' \
+        --glob '!.venv/**' \
+        --glob '!.env' \
+        --glob '!.env.*' \
+        --glob '!.secrets' \
+        --glob '!.secrets/**' \
+        --glob '!.ssh' \
+        --glob '!.ssh/**' \
+        --glob '!backups' \
+        --glob '!backups/**' \
+        --glob '!outputs/backups' \
+        --glob '!outputs/backups/**' \
+        --glob '!outputs/raw' \
+        --glob '!outputs/raw/**' \
+        --glob '!private' \
+        --glob '!private/**' \
+        --glob '!secrets' \
+        --glob '!secrets/**' \
+        --glob '!*.pyc' \
+        '^(<<<<<<<|=======|>>>>>>>)' .; then
         echo "ERREUR : des marqueurs de conflit Git restent dans le dépôt." >&2
         exit 1
     fi
@@ -116,9 +137,9 @@ check_paths() {
         README.md
         README.en.md
         ROADMAP.md
-        AGENTS.md
         .github/dependabot.yml
         compose.yaml
+        compose.public.yaml
         app/Dockerfile
         app/main.py
         app/requirements.txt
@@ -128,8 +149,12 @@ check_paths() {
         scripts/bootstrap_fedora44_vm.sh
         scripts/bootstrap_ubuntu2604_server.sh
         scripts/compose.sh
+        scripts/check_openapi_routes.py
         scripts/diagnostic_local.sh
         scripts/generate_diag_token.py
+        scripts/check_mtls_files.sh
+        scripts/generate_mtls_files.sh
+        scripts/provision_public_proxy.sh
         scripts/run_lab.sh
         backup/init-local.sh
         backup/backup-local.sh
@@ -138,7 +163,6 @@ check_paths() {
         .env.example
         .env.vps.example
         .env.backup.example
-        .env.ai.example
         docs/README.md
         docs/api-examples.md
         docs/architecture.en.md
@@ -148,11 +172,11 @@ check_paths() {
         docs/validations/ubuntu-26.04-server-vm.md
         docs/vps/compose.vps.example.yaml
         docs/vps/nginx.reverse-proxy.example.conf
+        nginx/default.conf.template
+        nginx/api_proxy.conf
+        nginx/oauth2_proxy.conf
+        systemd/infra-lab-public-proxy.service.in
         docs/backups/restic-s3-compatible.md
-        docs/ai/README.md
-        app/ai/README.md
-        openclaw/security-model.md
-        openclaw/runbooks/summarize-report.md
     )
 
     for path in "${required_paths[@]}"; do
@@ -201,12 +225,16 @@ check_pytest() {
 
     PYTHONPATH=. "$PYTHON_CMD" -m pytest -p no:cacheprovider app/tests -v
     echo "OK   tests Python validés"
+
+    PYTHONPATH=. "$PYTHON_CMD" scripts/check_openapi_routes.py
+    echo "OK   contrat routes/OpenAPI validé"
 }
 
 check_compose() {
     echo
     echo "==> Vérification Docker Compose"
     ./scripts/compose.sh config >/dev/null
+    ./scripts/compose.sh -f compose.yaml -f compose.public.yaml --profile public-proxy config >/dev/null
     echo "OK   compose.yaml est valide"
 }
 
@@ -215,6 +243,10 @@ check_shell_scripts() {
     echo "==> Vérification ShellCheck"
     shellcheck scripts/*.sh backup/*.sh
     echo "OK   scripts Bash validés"
+
+    echo
+    echo "==> Test de génération mTLS sans groupe hôte 10001"
+    ./scripts/test_generate_mtls_files.sh
 }
 
 run_full_checks() {

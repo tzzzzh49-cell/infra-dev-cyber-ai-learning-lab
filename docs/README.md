@@ -13,7 +13,6 @@ Markdown stables des fichiers suivis.
 - [Reproductibilité](#reproductibilite)
 - [Diagnostics et API](#diagnostics-et-api)
 - [VPS et backups](#vps-et-backups)
-- [IA et OpenClaw](#ia-et-openclaw)
 
 ## Architecture
 
@@ -46,8 +45,3 @@ Markdown stables des fichiers suivis.
 - [Backups](backups/README.md)
 - [Restic local-first](backups/restic-local-first.md)
 - [Restic S3-compatible](backups/restic-s3-compatible.md)
-
-## IA et OpenClaw
-
-- [OpenAI API read-only](ai/README.md)
-- [Modèle OpenClaw contrôlé](../openclaw/security-model.md)
