@@ -187,57 +187,6 @@ L'API expose le mécanisme OIDC Bearer dans OpenAPI en local. En mode VPS,
 Swagger, ReDoc et le schéma OpenAPI sont désactivés. Nginx retire les en-têtes
 d'identité forgés par le client avant de transmettre la requête.
 
-## Règles pour OpenAI API
-
-Il n'existe pas encore d'intégration OpenAI active dans le projet.
-
-L’API OpenAI ne doit pas exécuter de commandes.
-
-Usage autorisé au début :
-
-* résumer un rapport ;
-* extraire des risques depuis un rapport déjà généré ;
-* proposer une checklist ;
-* classer les risques.
-
-Le flux préparatoire autorisé est :
-
-```text
-rapport Markdown/JSON -> résumé -> risques -> checklist humaine
-```
-
-La clé doit rester hors Git via variable d'environnement. `.env.ai.example` ne doit contenir aucune valeur réelle.
-
-Usage interdit au début :
-
-* décider seule d’une action ;
-* exécuter une commande ;
-* modifier la configuration système ;
-* lancer des actions réseau agressives.
-
-## Règles pour OpenClaw
-
-Il n'existe pas encore d'intégration OpenClaw active dans le projet.
-
-OpenClaw devra être limité par une allowlist et par une validation humaine.
-
-Dans une future intégration, OpenClaw pourra seulement aider à :
-
-* lire un rapport ;
-* préparer l'appel d'un runbook lecture seule ;
-* demander un résumé IA.
-
-OpenClaw ne devra pas pouvoir exécuter :
-
-* commandes automatiques sans validation humaine ;
-* commandes `sudo` ;
-* commandes de suppression ;
-* modifications réseau ;
-* actions Docker destructives ;
-* playbooks Ansible hors mode contrôle.
-
-La structure `openclaw/` reste documentaire et non active. Toute future activation devra respecter `openclaw/security-model.md`, `openclaw/allowlists/read-only.md` et les runbooks relus.
-
 ## Gestion des secrets
 
 Ne jamais commiter :
@@ -247,13 +196,49 @@ Ne jamais commiter :
 * tokens GitHub
 * clés SSH privées
 * mots de passe
-* secrets OpenClaw
 
 Utiliser plutôt :
 
 * `.env.example`
-* variables d’environnement
-* GitHub Secrets plus tard
+* GitHub Secrets pour les valeurs strictement nécessaires aux GitHub Actions ;
+* un coffre de production comme Vault ou AWS Secrets Manager, injecté sous
+  forme de fichier privé monté en lecture seule ;
+* des variables d'environnement uniquement pour les paramètres non secrets.
+
+Le jeton automatique `GITHUB_TOKEN` conserve les permissions minimales définies
+dans le workflow. Aucun secret de production ne doit être rendu disponible à
+une Pull Request provenant d'un fork.
+
+## Rotation et révocation
+
+Les certificats mTLS de service durent un an. `make mtls-check` bloque désormais
+un démarrage public lorsqu'un certificat expire dans moins de 30 jours. Planifier
+ce contrôle quotidien dans la supervision du VPS et effectuer la rotation dans
+une fenêtre de maintenance en conservant l'ancien jeu pour rollback.
+
+Pour les secrets OIDC, API et partenaires, définir dans le coffre une échéance
+de 90 jours maximum, ou la durée plus courte imposée par le fournisseur. Si un
+secret est compromis : le révoquer d'abord chez le fournisseur ou l'IdP, couper
+le rôle ou le compte concerné, créer une nouvelle valeur, redéployer, puis
+vérifier les journaux. Ne jamais copier l'ancienne ou la nouvelle valeur dans
+un ticket, une Pull Request ou un journal.
+
+Le renouvellement automatique sera confié au coffre ou au client ACME choisi en
+production. Le dépôt ne remplace pas automatiquement une CA mTLS : une rotation
+aveugle couperait la communication entre Nginx et l'API.
+
+## TLS public
+
+Nginx accepte uniquement TLS 1.2 et TLS 1.3. Après chaque déploiement ou
+renouvellement public, vérifier la chaîne sans afficher de clé privée :
+
+```bash
+openssl s_client -connect <LAB_DOMAIN>:443 -servername <LAB_DOMAIN> \
+  -verify_return_error </dev/null
+```
+
+Le certificat Let's Encrypt ou équivalent et son renouvellement restent gérés
+hors dépôt par le client ACME du VPS.
 
 ## Contrôles CI sécurité
 
@@ -263,13 +248,26 @@ La CI contient des contrôles non secrets :
 * Hadolint sur `app/Dockerfile` ;
 * Gitleaks sur l'historique Git pour détecter les secrets committés ;
 * Trivy sur l'image Docker construite en CI, bloquant sur les vulnérabilités élevées et critiques corrigibles ;
+* OWASP ZAP sur une instance locale éphémère, avec échec sur les familles
+  d'injection, SSRF, XXE et traversée de chemin configurées dans `.zap/rules.tsv` ;
 * Dependabot pour ouvrir des Pull Requests de mise à jour.
+
+Le scan ZAP est actif : il attaque uniquement l'API éphémère du runner CI, jamais
+une URL de production ou un service tiers.
 
 Les mainteneurs doivent surveiller les CVE des dépendances applicatives, de l'image de base et des GitHub Actions. Toute exception CVE doit être documentée avant merge.
 
 Les images sont épinglées à une version précise et les GitHub Actions à un SHA.
 Les tags d'images ne sont toutefois pas immuables : épingler aussi les digests
 après validation avant un déploiement de production.
+
+## Revue et protection de branche
+
+Dans les réglages GitHub de `master`, activer une règle qui exige une Pull
+Request, au moins une approbation, la réapprobation après nouveau commit et la
+réussite de tous les jobs de `.github/workflows/ci.yml`. Interdire aussi les
+force-push et la suppression de la branche. Ces réglages vivent sur GitHub et ne
+peuvent pas être imposés par un fichier du dépôt.
 
 ## Objectif sécurité à long terme
 
@@ -283,7 +281,7 @@ Détecte les contenus sensibles probables sans afficher les valeurs :
 find . \
   \( -path '*/.git' -o -path '*/.venv' -o -path '*/venv' -o -path '*/site-packages' -o -path '*/node_modules' -o -path '*/.ssh' -o -path '*/secrets' -o -path '*/.secrets' -o -path '*/outputs/backups' -o -path '*/outputs/raw' \) -prune -o \
   -type f -print \
-  | xargs -r grep -IlE 'BEGIN OPENSSH PRIVATE KEY|BEGIN RSA PRIVATE KEY|OPENAI_API_KEY[[:space:]]*=|GITHUB_TOKEN[[:space:]]*=|github_pat_|ghp_|sk-[A-Za-z0-9_-]{20,}|CLOUDFLARE_API_TOKEN[[:space:]]*=|TAILSCALE_AUTHKEY[[:space:]]*=|AWS_SECRET_ACCESS_KEY[[:space:]]*=|RESTIC_PASSWORD[[:space:]]*=|POSTGRES_PASSWORD[[:space:]]*=|DATABASE_URL[[:space:]]*=' 2>/dev/null || true
+  | xargs -r grep -IlE 'BEGIN OPENSSH PRIVATE KEY|BEGIN RSA PRIVATE KEY|GITHUB_TOKEN[[:space:]]*=|github_pat_|ghp_|sk-[A-Za-z0-9_-]{20,}|CLOUDFLARE_API_TOKEN[[:space:]]*=|TAILSCALE_AUTHKEY[[:space:]]*=|AWS_SECRET_ACCESS_KEY[[:space:]]*=|RESTIC_PASSWORD[[:space:]]*=|POSTGRES_PASSWORD[[:space:]]*=|DATABASE_URL[[:space:]]*=' 2>/dev/null || true
 ```
 
 La sortie contient uniquement des chemins de fichiers à examiner manuellement.

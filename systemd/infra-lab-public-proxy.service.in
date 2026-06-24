@@ -10,8 +10,9 @@ User=<SERVICE_USER>
 Group=<SERVICE_GROUP>
 SupplementaryGroups=docker
 WorkingDirectory=<PROJECT_ROOT>
-Environment=MTLS_DIR=/etc/infra-lab/mtls
+Environment=MTLS_DIR=<MTLS_DIR>
 Environment=OAUTH2_SOCKET_DIR=/var/lib/infra-lab/oauth2-proxy
+ExecStartPre=+<PROJECT_ROOT>/scripts/check_mtls_files.sh
 ExecStartPre=/usr/bin/docker compose -f compose.yaml -f compose.public.yaml --profile public-proxy config --quiet
 ExecStart=/usr/bin/docker compose -f compose.yaml -f compose.public.yaml --profile public-proxy up
 ExecStop=/usr/bin/docker compose -f compose.yaml -f compose.public.yaml --profile public-proxy stop

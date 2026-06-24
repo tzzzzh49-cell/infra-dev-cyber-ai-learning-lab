@@ -11,6 +11,7 @@ from starlette.requests import Request
 
 from app import auth
 from app.main import app
+from app.tests.test_api import sample_report
 
 ISSUER = "https://issuer.example.test"
 JWKS_URL = "https://issuer.example.test/jwks"
@@ -205,11 +206,7 @@ def test_verified_scope_allows_http_diagnostic_read(monkeypatch):
         "validate_oidc_token",
         lambda _token: principal("user", scopes={"diagnostic:read"}),
     )
-    monkeypatch.setattr("app.main.collect_diagnostic_serialized", lambda: {})
-    monkeypatch.setattr(
-        "app.main.diagnostic_api_view",
-        lambda _report: {"status": "ok"},
-    )
+    monkeypatch.setattr("app.main.collect_diagnostic_serialized", sample_report)
 
     with TestClient(app) as client:
         response = client.get(
@@ -218,7 +215,10 @@ def test_verified_scope_allows_http_diagnostic_read(monkeypatch):
         )
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json()["security"] == {
+        "read_only": True,
+        "destructive_commands_used": False,
+    }
 
 
 @pytest.mark.parametrize(

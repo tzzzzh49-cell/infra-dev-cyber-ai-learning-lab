@@ -6,6 +6,7 @@ from threading import Lock
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict
 
 from app.auth import client_ip, require_permissions
 from app.diagnostics import (
@@ -23,6 +24,67 @@ VPS_MODE = os.environ.get("APP_ENV", "").strip().lower() == "vps"
 DIAG_EXECUTION_LOCK = Lock()
 
 logger = configure_logging(__name__)
+
+
+class ApiResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class RootResponse(ApiResponse):
+    message: str
+    endpoints: list[str]
+
+
+class HealthResponse(ApiResponse):
+    status: str
+    service: str
+
+
+class VersionResponse(ApiResponse):
+    app: str
+    version: str
+
+
+class DiagnosticMetadataResponse(ApiResponse):
+    schema_version: str
+    generated_at_utc: str
+    mode: str
+    command_timeout_seconds: float
+
+
+class CommandStatusResponse(ApiResponse):
+    available: bool
+    ok: bool
+    timed_out: bool
+    duration_seconds: float
+    error_type: str | None
+
+
+class DiagnosticChecksResponse(ApiResponse):
+    interfaces: CommandStatusResponse
+    routes: CommandStatusResponse
+    dns: CommandStatusResponse
+    ports: CommandStatusResponse
+    disk: CommandStatusResponse
+    memory: CommandStatusResponse
+    docker: CommandStatusResponse
+
+
+class DiagnosticSecurityResponse(ApiResponse):
+    read_only: bool
+    destructive_commands_used: bool
+
+
+class DiagnosticResponse(ApiResponse):
+    metadata: DiagnosticMetadataResponse
+    checks: DiagnosticChecksResponse
+    security: DiagnosticSecurityResponse
+
+
+class ExportResponse(ApiResponse):
+    status: str
+    format: str
+    report_id: str
 
 app = FastAPI(
     title="Infra Dev Cyber AI Learning Lab API",
@@ -102,11 +164,17 @@ def command_status(section: dict) -> dict:
 
 def diagnostic_api_view(report: dict) -> dict:
     """Reduce a full local diagnostic to a safe HTTP status summary."""
+    metadata = report["metadata"]
     network = report["network"]
     resources = report["resources"]
     resolver = network["dns"]["resolver_commands"].get("selected") or {}
     return {
-        "metadata": report["metadata"],
+        "metadata": {
+            "schema_version": metadata["schema_version"],
+            "generated_at_utc": metadata["generated_at_utc"],
+            "mode": metadata["mode"],
+            "command_timeout_seconds": metadata["command_timeout_seconds"],
+        },
         "checks": {
             "interfaces": command_status(network["interfaces"]),
             "routes": command_status(network["routes"]),
@@ -129,7 +197,7 @@ diag_read_access = require_permissions("diagnostic:read")
 diag_export_access = require_permissions("diagnostic:export", require_mfa=True)
 
 
-@app.get("/")
+@app.get("/", response_model=RootResponse)
 def root():
     """Return the public API entrypoint and available endpoints."""
     return {
@@ -149,7 +217,7 @@ def root_head():
     return None
 
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResponse)
 def health():
     """Return a minimal health status."""
     return {
@@ -158,7 +226,7 @@ def health():
     }
 
 
-@app.get("/version")
+@app.get("/version", response_model=VersionResponse)
 def version():
     """Return the application name and version."""
     return {
@@ -167,13 +235,21 @@ def version():
     }
 
 
-@app.get("/diag", dependencies=[Depends(diag_read_access)])
+@app.get(
+    "/diag",
+    dependencies=[Depends(diag_read_access)],
+    response_model=DiagnosticResponse,
+)
 def diag():
     """Return a minimized read-only diagnostic status."""
     return diagnostic_api_view(collect_diagnostic_serialized())
 
 
-@app.post("/diag/export/json", dependencies=[Depends(diag_export_access)])
+@app.post(
+    "/diag/export/json",
+    dependencies=[Depends(diag_export_access)],
+    response_model=ExportResponse,
+)
 def export_diag_json():
     """Write a read-only diagnostic report as JSON."""
     report = collect_diagnostic_serialized()
@@ -185,7 +261,11 @@ def export_diag_json():
     }
 
 
-@app.post("/diag/export/markdown", dependencies=[Depends(diag_export_access)])
+@app.post(
+    "/diag/export/markdown",
+    dependencies=[Depends(diag_export_access)],
+    response_model=ExportResponse,
+)
 def export_diag_markdown():
     """Write a read-only diagnostic report as Markdown."""
     report = collect_diagnostic_serialized()

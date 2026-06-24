@@ -37,7 +37,21 @@ case "$SERVICE_USER:$SERVICE_GROUP" in
         ;;
 esac
 
-for command in docker openssl sed sudo systemctl ufw usermod; do
+case "$MTLS_DIR" in
+    /*) ;;
+    *)
+        echo "Erreur : MTLS_DIR doit être un chemin absolu." >&2
+        exit 2
+        ;;
+esac
+case "$MTLS_DIR" in
+    *[!A-Za-z0-9_./-]*)
+        echo "Erreur : MTLS_DIR contient des caractères non pris en charge." >&2
+        exit 2
+        ;;
+esac
+
+for command in docker sed sudo systemctl ufw usermod; do
     if ! command -v "$command" >/dev/null 2>&1; then
         echo "Erreur : commande manquante : $command" >&2
         exit 1
@@ -58,59 +72,8 @@ echo "==> Validation des privilèges sudo"
 sudo -v
 
 echo "==> Création des certificats mTLS internes"
-sudo install -d -o root -g 10001 -m 0750 "$MTLS_DIR"
-
-certificates=(ca.key ca.crt api.key api.crt nginx-client.key nginx-client.crt)
-existing=0
-for certificate in "${certificates[@]}"; do
-    if sudo test -e "$MTLS_DIR/$certificate"; then
-        existing=$((existing + 1))
-    fi
-done
-
-if [ "$existing" -ne 0 ] && [ "$existing" -ne "${#certificates[@]}" ]; then
-    echo "Erreur : état mTLS partiel dans $MTLS_DIR ; aucune clé n'a été écrasée." >&2
-    exit 1
-fi
-
-if [ "$existing" -eq 0 ]; then
-    sudo openssl req -x509 -newkey rsa:4096 -sha256 -nodes -days 3650 \
-        -subj "/CN=infra-lab-service-ca" \
-        -addext "basicConstraints=critical,CA:TRUE" \
-        -addext "keyUsage=critical,keyCertSign,cRLSign" \
-        -keyout "$MTLS_DIR/ca.key" -out "$MTLS_DIR/ca.crt"
-
-    sudo openssl req -new -newkey rsa:3072 -sha256 -nodes \
-        -subj "/CN=api" \
-        -addext "subjectAltName=DNS:api,DNS:localhost,IP:127.0.0.1" \
-        -addext "extendedKeyUsage=serverAuth,clientAuth" \
-        -keyout "$MTLS_DIR/api.key" -out "$MTLS_DIR/api.csr"
-    sudo openssl x509 -req -sha256 -days 365 \
-        -in "$MTLS_DIR/api.csr" \
-        -CA "$MTLS_DIR/ca.crt" -CAkey "$MTLS_DIR/ca.key" -CAcreateserial \
-        -copy_extensions copy -out "$MTLS_DIR/api.crt"
-
-    sudo openssl req -new -newkey rsa:3072 -sha256 -nodes \
-        -subj "/CN=nginx" \
-        -addext "extendedKeyUsage=clientAuth" \
-        -keyout "$MTLS_DIR/nginx-client.key" \
-        -out "$MTLS_DIR/nginx-client.csr"
-    sudo openssl x509 -req -sha256 -days 365 \
-        -in "$MTLS_DIR/nginx-client.csr" \
-        -CA "$MTLS_DIR/ca.crt" -CAkey "$MTLS_DIR/ca.key" \
-        -CAserial "$MTLS_DIR/ca.srl" -copy_extensions copy \
-        -out "$MTLS_DIR/nginx-client.crt"
-
-    sudo rm -f "$MTLS_DIR/api.csr" "$MTLS_DIR/nginx-client.csr"
-fi
-
-sudo chown root:root "$MTLS_DIR/ca.key"
-sudo chown root:10001 "$MTLS_DIR/api.key" "$MTLS_DIR/nginx-client.key"
-sudo chmod 0600 "$MTLS_DIR/ca.key"
-sudo chmod 0440 "$MTLS_DIR/api.key" "$MTLS_DIR/nginx-client.key"
-sudo chmod 0444 "$MTLS_DIR/ca.crt" "$MTLS_DIR/api.crt" "$MTLS_DIR/nginx-client.crt"
-sudo openssl verify -CAfile "$MTLS_DIR/ca.crt" \
-    "$MTLS_DIR/api.crt" "$MTLS_DIR/nginx-client.crt"
+sudo env MTLS_GENERATE_CONFIRM=yes MTLS_DIR="$MTLS_DIR" \
+    "$PROJECT_ROOT/scripts/generate_mtls_files.sh"
 
 echo "==> Préparation du socket privé OAuth2 Proxy"
 sudo install -d -o 65532 -g 10001 -m 2770 "$OAUTH2_SOCKET_DIR"
@@ -124,6 +87,7 @@ sed \
     -e "s|<SERVICE_USER>|$SERVICE_USER|g" \
     -e "s|<SERVICE_GROUP>|$SERVICE_GROUP|g" \
     -e "s|<PROJECT_ROOT>|$PROJECT_ROOT|g" \
+    -e "s|<MTLS_DIR>|$MTLS_DIR|g" \
     "$UNIT_TEMPLATE" >"$unit_tmp"
 sudo install -o root -g root -m 0644 "$unit_tmp" "/etc/systemd/system/$UNIT_NAME"
 sudo systemctl daemon-reload

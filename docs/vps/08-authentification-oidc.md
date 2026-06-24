@@ -75,10 +75,11 @@ bloque en complément une IP pendant cinq minutes après cinq JWT invalides.
 Après configuration de l'IdP et des fichiers secrets :
 
 ```bash
-docker compose -f compose.yaml -f compose.public.yaml --profile public-proxy config --quiet
-docker compose -f compose.yaml -f compose.public.yaml --profile public-proxy up -d
+make public-config
+sudo env MTLS_DIR=/etc/infra-lab/mtls make public-up
+PUBLIC_URL='https://<LAB_DOMAIN>' make public-health
 ```
 
 Le démarrage réel modifie l'état des services : le relire et le confirmer avant
-exécution. Sans configuration OIDC complète, les routes sensibles refusent
-l'accès.
+exécution. `public-up` refuse de démarrer si le jeu mTLS complet n'est pas
+valide. Sans configuration OIDC complète, les routes sensibles refusent l'accès.

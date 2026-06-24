@@ -38,7 +38,24 @@ def main() -> int:
             print(f"- {method.upper()} {path}")
         return 1
 
-    print("Toutes les routes actives sont documentées dans OpenAPI.")
+    missing_response_schemas = {
+        (path, method)
+        for path, method in active
+        if method != "head"
+        and not schema["paths"][path][method]
+        .get("responses", {})
+        .get("200", {})
+        .get("content", {})
+        .get("application/json", {})
+        .get("schema")
+    }
+    if missing_response_schemas:
+        print("Routes sans contrat de réponse JSON 200:")
+        for path, method in sorted(missing_response_schemas):
+            print(f"- {method.upper()} {path}")
+        return 1
+
+    print("Toutes les routes actives et leurs réponses sont documentées dans OpenAPI.")
     return 0
 
 

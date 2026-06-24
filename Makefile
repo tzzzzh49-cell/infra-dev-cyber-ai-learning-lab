@@ -1,16 +1,21 @@
-.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diag-json diag-md reports diagnostic diagnostic-local ansible-check check-api-contract shellcheck compose-config lint-python lint run setup-dev test clean
+.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diag-json diag-md reports diagnostic diagnostic-local ansible-check check-api-contract shellcheck compose-config mtls-check mtls-generate public-config public-up public-health public-down lint-python lint run setup-dev test clean
 
 APP_URL_FILE ?= .runtime/app_url
 DEFAULT_APP_URL ?= http://127.0.0.1:8000
 APP_URL ?= $(shell test -f "$(APP_URL_FILE)" && cat "$(APP_URL_FILE)" || printf '%s' "$(DEFAULT_APP_URL)")
 COMPOSE ?= ./scripts/compose.sh
 CURL ?= curl -fsS
+MTLS_DIR ?= /etc/infra-lab/mtls
+PUBLIC_COMPOSE = $(COMPOSE) -f compose.yaml -f compose.public.yaml --profile public-proxy
+PUBLIC_URL ?=
 PYTHON ?= python3
 VENV ?= .venv
 VENV_PYTHON := $(VENV)/bin/python
 VALIDATION_TMP ?= /tmp/infra-dev-cyber-ai-learning-lab
 ANSIBLE_LOCAL_TEMP ?= $(VALIDATION_TMP)/ansible-local
+ANSIBLE_REMOTE_TMP ?= $(VALIDATION_TMP)/ansible-remote
 BUILDX_CONFIG ?= $(VALIDATION_TMP)/buildx-config
+VALIDATION_DOCKER_CONFIG ?= $(VALIDATION_TMP)/docker-config
 
 define run_diag_curl
 	@token="$${DIAG_CLIENT_TOKEN:-$${DIAG_ACCESS_TOKEN:-}}"; \
@@ -33,6 +38,12 @@ help:
 	@echo "  make bootstrap-fedora  Prépare Fedora 44 avec BOOTSTRAP_CONFIRM=yes"
 	@echo "  make bootstrap-ubuntu  Prépare Ubuntu 26.04 avec BOOTSTRAP_CONFIRM=yes"
 	@echo "  make compose-config    Valide compose.yaml"
+	@echo "  make mtls-check        Vérifie le jeu mTLS hors dépôt"
+	@echo "  make mtls-generate     Génère le jeu mTLS après confirmation"
+	@echo "  make public-config     Valide la configuration Compose publique"
+	@echo "  make public-up         Vérifie mTLS puis démarre le mode public"
+	@echo "  make public-health     Teste PUBLIC_URL/health en HTTPS"
+	@echo "  make public-down       Arrête le mode public"
 	@echo "  make check-api-contract Vérifie les routes FastAPI contre OpenAPI"
 	@echo "  make shellcheck        Vérifie les scripts Bash"
 	@echo "  make lint-python       Vérifie le code Python avec ruff"
@@ -57,14 +68,18 @@ help:
 	@echo ""
 	@echo "Variable utile :"
 	@echo "  APP_URL=$(APP_URL)"
+	@echo "  MTLS_DIR=$(MTLS_DIR)"
+	@echo "  PUBLIC_URL=https://<LAB_DOMAIN>"
 
 check: check-fast
 
 check-fast: setup-dev
-	./scripts/check_reproducibility.sh
+	@mkdir -p "$(VALIDATION_DOCKER_CONFIG)"
+	DOCKER_CONFIG="$(VALIDATION_DOCKER_CONFIG)" COMPOSE_DISABLE_ENV_FILE=1 ./scripts/check_reproducibility.sh
 
 check-full: setup-dev
-	./scripts/check_reproducibility.sh --full
+	@mkdir -p "$(VALIDATION_DOCKER_CONFIG)"
+	DOCKER_CONFIG="$(VALIDATION_DOCKER_CONFIG)" COMPOSE_DISABLE_ENV_FILE=1 ./scripts/check_reproducibility.sh --full
 
 bootstrap: bootstrap-fedora
 
@@ -76,7 +91,27 @@ bootstrap-ubuntu:
 
 compose-config:
 	$(COMPOSE) config >/dev/null
-	$(COMPOSE) -f compose.yaml -f compose.public.yaml --profile public-proxy config >/dev/null
+	$(PUBLIC_COMPOSE) config >/dev/null
+
+mtls-check:
+	MTLS_DIR="$(MTLS_DIR)" ./scripts/check_mtls_files.sh
+
+mtls-generate:
+	MTLS_GENERATE_CONFIRM="$(MTLS_GENERATE_CONFIRM)" MTLS_DIR="$(MTLS_DIR)" ./scripts/generate_mtls_files.sh
+
+public-config:
+	$(PUBLIC_COMPOSE) config >/dev/null
+
+public-up:
+	MTLS_DIR="$(MTLS_DIR)" $(PUBLIC_COMPOSE) up -d --build
+
+public-health:
+	@test -n "$(PUBLIC_URL)" || { echo "Erreur : définis PUBLIC_URL=https://<LAB_DOMAIN>." >&2; exit 2; }
+	@$(CURL) "$(PUBLIC_URL)/health"
+	@echo ""
+
+public-down:
+	$(PUBLIC_COMPOSE) down
 
 check-api-contract: setup-dev
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. $(VENV_PYTHON) scripts/check_openapi_routes.py
@@ -135,8 +170,8 @@ diagnostic-local:
 	./scripts/diagnostic_local.sh
 
 ansible-check:
-	@mkdir -p "$(ANSIBLE_LOCAL_TEMP)"
-	ANSIBLE_LOCAL_TEMP="$(ANSIBLE_LOCAL_TEMP)" ansible-playbook -i ansible/inventory.yml ansible/playbooks/diagnostic.yml --check
+	@mkdir -p "$(ANSIBLE_LOCAL_TEMP)" "$(ANSIBLE_REMOTE_TMP)"
+	ANSIBLE_LOCAL_TEMP="$(ANSIBLE_LOCAL_TEMP)" ANSIBLE_REMOTE_TMP="$(ANSIBLE_REMOTE_TMP)" ansible-playbook -i ansible/inventory.yml ansible/playbooks/diagnostic.yml --check
 
 $(VENV_PYTHON):
 	$(PYTHON) -m venv $(VENV)

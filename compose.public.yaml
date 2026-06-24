@@ -14,9 +14,24 @@ services:
       APP_ENV: vps
       TRUSTED_PROXY_CIDRS: 172.30.0.2/32
     volumes:
-      - ${MTLS_DIR:-/etc/infra-lab/mtls}/ca.crt:/run/mtls/ca.crt:ro
-      - ${MTLS_DIR:-/etc/infra-lab/mtls}/api.crt:/run/mtls/api.crt:ro
-      - ${MTLS_DIR:-/etc/infra-lab/mtls}/api.key:/run/mtls/api.key:ro
+      - type: bind
+        source: ${MTLS_DIR:-/etc/infra-lab/mtls}/ca.crt
+        target: /run/mtls/ca.crt
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MTLS_DIR:-/etc/infra-lab/mtls}/api.crt
+        target: /run/mtls/api.crt
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MTLS_DIR:-/etc/infra-lab/mtls}/api.key
+        target: /run/mtls/api.key
+        read_only: true
+        bind:
+          create_host_path: false
     networks:
       public_proxy:
         ipv4_address: 172.30.0.4
@@ -126,9 +141,24 @@ services:
       - ./nginx/oauth2_proxy.conf:/opt/infra-lab/nginx/oauth2_proxy.conf:ro
       - ${PUBLIC_TLS_CERT_FILE:-/etc/infra-lab/public-tls/fullchain.pem}:/run/public-tls/fullchain.pem:ro
       - ${PUBLIC_TLS_KEY_FILE:-/etc/infra-lab/public-tls/privkey.pem}:/run/public-tls/privkey.pem:ro
-      - ${MTLS_DIR:-/etc/infra-lab/mtls}/ca.crt:/run/mtls/ca.crt:ro
-      - ${MTLS_DIR:-/etc/infra-lab/mtls}/nginx-client.crt:/run/mtls/nginx-client.crt:ro
-      - ${MTLS_DIR:-/etc/infra-lab/mtls}/nginx-client.key:/run/mtls/nginx-client.key:ro
+      - type: bind
+        source: ${MTLS_DIR:-/etc/infra-lab/mtls}/ca.crt
+        target: /run/mtls/ca.crt
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MTLS_DIR:-/etc/infra-lab/mtls}/nginx-client.crt
+        target: /run/mtls/nginx-client.crt
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MTLS_DIR:-/etc/infra-lab/mtls}/nginx-client.key
+        target: /run/mtls/nginx-client.key
+        read_only: true
+        bind:
+          create_host_path: false
       - ${OAUTH2_SOCKET_DIR:-/var/lib/infra-lab/oauth2-proxy}:/run/oauth2:ro
     networks:
       public_proxy:

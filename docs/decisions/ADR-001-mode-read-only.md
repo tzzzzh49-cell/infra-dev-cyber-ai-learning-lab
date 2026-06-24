@@ -58,7 +58,6 @@ shutdown
 - le projet est plus sûr ;
 - les erreurs sont moins dangereuses ;
 - la documentation est plus claire ;
-- l’intégration future d’OpenClaw sera mieux contrôlée ;
 - le projet montre une démarche cybersécurité défensive.
 
 ## Conséquences négatives

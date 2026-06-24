@@ -35,9 +35,8 @@ Fonctionnalités disponibles :
 - validation rapide du dépôt avec `make check` / `make check-fast` ;
 - validation complète de reproductibilité avec `make check-full` ;
 - CI GitHub Actions minimale sur `push` et `pull_request` vers `master` ;
-- CI renforcée avec Bandit, Gitleaks et Trivy bloquant sur les CVE élevées et critiques ;
+- CI renforcée avec Bandit, Gitleaks, Trivy et un scan DAST OWASP ZAP de l'API locale ;
 - Dependabot pour suivre les mises à jour Python, GitHub Actions et Docker ;
-- `AGENTS.md` documenté pour les agents IA ;
 - tests FastAPI centrés sur les routes, dépendances de sécurité et fonctions de diagnostic ;
 - diagnostic réseau avancé en lecture seule ;
 - protection locale par hash et protection VPS OAuth2/OIDC avec RBAC ;
@@ -56,15 +55,11 @@ Fonctionnalités disponibles :
 - image Docker multi-étapes avec runtime non-root ;
 - timeout et tentatives de diagnostic configurables via `DIAG_COMMAND_TIMEOUT` et `DIAG_COMMAND_RETRIES` ;
 - profil Compose préparatoire `future-persistence` pour Postgres, inactif par défaut ;
-- placeholders OpenAI API read-only sans appel réel obligatoire ;
-- runbooks OpenClaw documentaires non actifs ;
 - règles de sécurité en lecture seule.
 
 Fonctionnalités prévues plus tard :
 
-- déploiement VPS réel ;
-- intégration progressive OpenAI API ;
-- intégration contrôlée OpenClaw.
+- déploiement VPS réel.
 
 ## Cible prioritaire
 
@@ -189,6 +184,12 @@ hors environnements locaux.
 | `make bootstrap-fedora` | Installe les prérequis sur Fedora 44 VM après `BOOTSTRAP_CONFIRM=yes` |
 | `make bootstrap-ubuntu` | Installe les prérequis sur Ubuntu 26.04 LTS Server après `BOOTSTRAP_CONFIRM=yes` |
 | `make compose-config` | Valide `compose.yaml` |
+| `make mtls-check` | Vérifie les six fichiers mTLS hors dépôt |
+| `make mtls-generate` | Génère un jeu mTLS après confirmation explicite |
+| `make public-config` | Valide la fusion Compose locale + publique |
+| `make public-up` | Vérifie mTLS puis démarre le mode public |
+| `make public-health` | Teste `PUBLIC_URL/health` en HTTPS |
+| `make public-down` | Arrête le mode public |
 | `make check-api-contract` | Compare les routes FastAPI actives au schéma OpenAPI |
 | `make shellcheck` | Vérifie les scripts Bash |
 | `make lint-python` | Vérifie le code Python avec Ruff |
@@ -232,11 +233,96 @@ python3 scripts/generate_diag_token.py
 Stocker seulement le hash côté application locale. En VPS, suivre
 [`docs/vps/08-authentification-oidc.md`](docs/vps/08-authentification-oidc.md).
 
-Le profil public se valide avec les deux fichiers Compose :
+### Modes local et public
+
+Le mode local utilise seulement `compose.yaml`. L'API écoute en HTTP sur
+`127.0.0.1:8000` : elle reste accessible uniquement depuis la machine et ne
+nécessite ni Nginx, ni OAuth2 Proxy, ni mTLS.
 
 ```bash
-docker compose -f compose.yaml -f compose.public.yaml --profile public-proxy config
+make up
+make health
+make down
 ```
+
+Le mode public fusionne `compose.yaml` et `compose.public.yaml`. Nginx expose
+HTTPS, OAuth2 Proxy protège les routes sensibles et mTLS authentifie Nginx
+auprès de l'API. Ne contourne pas mTLS : sans certificat client, un autre
+conteneur pourrait joindre directement l'API et se faire passer pour le proxy.
+mTLS protège ce lien interne ; il ne remplace pas l'authentification OIDC/RBAC
+des utilisateurs.
+
+Le jeu complet contient six fichiers hors Git. `ca.key` sert uniquement à la
+signature et à la rotation ; elle n'est jamais montée dans un conteneur.
+
+```text
+/etc/infra-lab/mtls/ca.key
+/etc/infra-lab/mtls/ca.crt
+/etc/infra-lab/mtls/api.key
+/etc/infra-lab/mtls/api.crt
+/etc/infra-lab/mtls/nginx-client.key
+/etc/infra-lab/mtls/nginx-client.crt
+```
+
+`MTLS_DIR` permet de choisir un autre dossier privé. Le contrôleur refuse les
+fichiers absents, vides, symboliques, les clés trop ouvertes, les certificats
+invalides ou expirant dans moins de 30 jours, les mauvaises signatures, les
+couples clé/certificat incohérents et un certificat API sans SAN `DNS:api`.
+Le seuil se règle avec `MTLS_MIN_VALIDITY_DAYS`. Les fichiers générés sont
+`root:10001`, en mode `0640` pour les clés et `0644` pour les certificats.
+
+Si le dossier est partiel, l'archiver sans rien supprimer :
+
+```bash
+MTLS_DIR=/etc/infra-lab/mtls
+MTLS_ARCHIVE="${MTLS_DIR}.partial.$(date -u +%Y%m%dT%H%M%SZ)"
+sudo mv -- "$MTLS_DIR" "$MTLS_ARCHIVE"
+printf 'Jeu partiel archivé dans %s\n' "$MTLS_ARCHIVE"
+```
+
+Cette même commande est la procédure explicite avant rotation de la CA. Le
+générateur ne remplace jamais une CA ni un jeu partiel en place. Après archivage,
+générer le jeu cohérent avec confirmation :
+
+```bash
+sudo env MTLS_GENERATE_CONFIRM=yes MTLS_DIR=/etc/infra-lab/mtls make mtls-generate
+```
+
+Vérifier ensuite les six fichiers et afficher les dates des certificats :
+
+```bash
+sudo env MTLS_DIR=/etc/infra-lab/mtls make mtls-check
+for cert in ca.crt api.crt nginx-client.crt; do
+  sudo openssl x509 -in "/etc/infra-lab/mtls/$cert" \
+    -noout -subject -issuer -startdate -enddate
+done
+```
+
+Valider Compose ne démarre rien et ne nécessite pas les secrets :
+
+```bash
+make public-config
+```
+
+Après configuration du certificat TLS public et d'OIDC hors Git, démarrer puis
+tester l'URL publique. `public-up` est bloqué avant Docker si le jeu mTLS est
+incomplet ou incohérent ; les montages utilisent aussi `create_host_path: false`.
+
+```bash
+sudo env MTLS_DIR=/etc/infra-lab/mtls make public-up
+PUBLIC_URL='https://<LAB_DOMAIN>' make public-health
+sudo env MTLS_DIR=/etc/infra-lab/mtls make public-down
+```
+
+Checklist avant exposition Internet :
+
+- [ ] pare-feu actif, avec accès d'administration restreint et seulement 80/443 publics si nécessaires ;
+- [ ] port API 8000 lié uniquement à `127.0.0.1`, jamais à `0.0.0.0` ;
+- [ ] certificat TLS public valide sur Nginx et TLS 1.2/1.3 uniquement ;
+- [ ] dates mTLS surveillées et rotation planifiée avant expiration ;
+- [ ] logs Nginx/API surveillés, sans secret ni jeton ;
+- [ ] rate limiting Nginx actif et réponses 429 testées ;
+- [ ] OIDC, RBAC et MFA configurés pour les routes sensibles : mTLS seul ne suffit pas.
 
 Le script `scripts/provision_public_proxy.sh` prépare mTLS, systemd et UFW. Il
 est bloqué par défaut et ne doit être lancé avec `APPLY_CONFIRM=yes` qu'après
@@ -295,8 +381,6 @@ Ensuite, ouvrir une Pull Request sur GitHub pour relire et intégrer la branche.
 - [Validation Ubuntu 26.04 Server](docs/validations/ubuntu-26.04-server-vm.md)
 - [Préparation VPS v0.4.0](docs/vps/README.md)
 - [Backups](docs/backups/README.md)
-- [OpenAI API read-only](docs/ai/README.md)
-- [Modèle OpenClaw contrôlé](openclaw/security-model.md)
 - [Reproductibilité Ubuntu 26.04 Server](docs/reproductibilite-ubuntu-26.04-server.md)
 - [Ubuntu 26.04 Server EN](docs/reproducibility-ubuntu-26.04-server.en.md)
 - [Diagnostic réseau avancé v0.3.0](docs/diagnostic-reseau-v0.3.md)
