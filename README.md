@@ -6,7 +6,7 @@ Administrateur systèmes/réseaux junior en construction, orienté Linux, Docker
 
 Je construis [`infra-dev-cyber-ai-learning-lab`](https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab), un lab d'infrastructure sécurisé, reproductible et documenté.
 
-Le projet n'est pas présenté comme un simple projet IA : il sert surtout à démontrer une démarche d'exploitation d'infrastructure, avec des diagnostics système/réseau en lecture seule et des procédures rejouables.
+Le projet sert surtout à démontrer une démarche d'exploitation d'infrastructure, avec des diagnostics système/réseau et des procédures rejouables.
 
 Déjà visible dans le dépôt :
 
@@ -68,16 +68,6 @@ Priorités actuelles :
 - renforcer les procédures de sauvegarde/restauration ;
 - garder `/diag` protégé avant toute exposition publique ;
 - améliorer les runbooks d'exploitation.
-
-## Ce que je ne fais pas encore
-
-- Pas d'automatisation destructive.
-- Pas de secrets, tokens, clés privées ou adresses sensibles dans les dépôts.
-- Pas d'exposition publique de `/diag` sans authentification.
-- Pas de promesse de haute disponibilité.
-- Pas d'annonce de VPS réel, domaine public ou PostgreSQL finalisés tant que ce n'est pas vérifié dans le dépôt.
-- Pas de prétention Kubernetes, Terraform ou cloud public enterprise dans ce portfolio.
-- IA limitée à l'aide à l'analyse et à la documentation.
 
 ## Objectif professionnel
 
