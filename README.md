@@ -1,5 +1,7 @@
 # Profil
 
+[![CI](https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab/actions/workflows/ci.yml)
+
 Administrateur systèmes/réseaux junior en construction, orienté Linux, Docker, sécurité défensive, automatisation et documentation d'exploitation.
 
 ## Projet principal
