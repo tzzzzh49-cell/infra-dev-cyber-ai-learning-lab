@@ -8,7 +8,7 @@ Objectif : préparer les règles d'exposition d'un futur VPS sans appliquer de c
 - HTTP et HTTPS sont ouverts uniquement pour Nginx.
 - L'API FastAPI ne doit pas être exposée directement sur une interface publique.
 - Le port applicatif reste lié à `127.0.0.1`.
-- `/diag`, `/diag/export/json` et `/diag/export/markdown` restent protégés par authentification reverse proxy et hash applicatif `DIAG_ACCESS_TOKEN_HASH`.
+- `/diag`, `/diag/export/json` et `/diag/export/markdown` restent protégés par OAuth2/OIDC côté reverse proxy et par RBAC côté API.
 
 ## Ports à documenter hors dépôt
 

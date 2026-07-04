@@ -40,6 +40,10 @@ make check
 ## 4) Build et démarrage
 
 ```bash
+python3 scripts/generate_diag_token.py
+export APP_ENV=lab
+export DIAG_CLIENT_TOKEN='<JETON_AFFICHE_PAR_LE_SCRIPT>'
+export DIAG_ACCESS_TOKEN_HASH='<HASH_AFFICHE_PAR_LE_SCRIPT>'
 make build
 make up
 ```
@@ -67,6 +71,9 @@ make down
 ```
 
 ## Validation finale du mois 1
+
+Cette section est historique (`v0.1.0`). Pour rejouer la version actuelle,
+utiliser les étapes ci-dessus avec le jeton local.
 
 Date : 2026-05-26
 Environnement : Fedora 44 Workstation VM  

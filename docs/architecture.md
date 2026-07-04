@@ -125,10 +125,11 @@ secrets locaux ne sont pas montés dans le conteneur.
 le service revient après un redémarrage Docker, mais un arrêt explicite par
 `make down` ou `docker compose down` reste respecté.
 
-Les logs applicatifs restent dirigés vers stdout/stderr. Docker ou le futur VPS
-peuvent ensuite les collecter avec le driver de logs standard, un sidecar ou un
-agent externe. Le projet ne doit pas écrire de fichiers de logs applicatifs
-persistants contenant des données sensibles.
+Les logs applicatifs vont vers stdout/stderr et, si `APP_LOG_FILE` est
+accessible, vers un fichier rotatif comme `outputs/logs/app.log`. Docker ou le
+futur VPS peuvent collecter stdout/stderr avec le driver de logs standard, un
+sidecar ou un agent externe. Les fichiers générés dans `outputs/logs` restent
+hors Git.
 
 ## Persistance préparatoire
 

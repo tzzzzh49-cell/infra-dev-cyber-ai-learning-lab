@@ -27,22 +27,16 @@ The application is built progressively to:
 ## Current Architecture
 
 ```text
-User
-   ↓
-Makefile
-   ↓
-Docker Compose
-   ↓
-FastAPI application
-   ↓
-app/main.py
-   ↓
-app/diagnostics.py
-   ↓
-Endpoints: /health, /version, /diag, /diag/export/json, /diag/export/markdown
-   ↓
-Local reports: outputs/reports/*.json and outputs/reports/*.md
+Local user -> Makefile -> Docker Compose -> FastAPI
+VPS user -> Nginx HTTPS + ModSecurity -> OAuth2 Proxy -> FastAPI over mTLS
+FastAPI -> app/auth.py -> app/diagnostics.py
+Diagnostics -> outputs/reports/*.json and outputs/reports/*.md
+Logs -> stdout/stderr and outputs/logs/app.log when writable
 ```
+
+In local lab mode, diagnostic routes use a hashed shared token. In VPS mode,
+the API rejects shared local tokens and revalidates a signed OIDC JWT before
+applying RBAC permissions.
 
 ## Components
 
@@ -55,7 +49,7 @@ Current endpoints:
 
 - `/health`: checks that the application responds;
 - `/version`: returns the application version;
-- `/diag`: returns a structured read-only system/network diagnostic;
+- `/diag`: returns a minimized read-only system/network status;
 - `/diag/export/json`: writes a local JSON report;
 - `/diag/export/markdown`: writes a local Markdown report.
 
@@ -98,9 +92,9 @@ secrets are not mounted into the container.
 `restart: unless-stopped` models a VPS-friendly runtime: the service comes back
 after a Docker restart, while explicit operator shutdown remains respected.
 
-Application logs go to stdout/stderr. On a VPS, Docker logging, a sidecar or an
-external agent should collect them without keeping sensitive local log files in
-the repository.
+Application logs go to stdout/stderr and, when `APP_LOG_FILE` is writable, to a
+rotating file such as `outputs/logs/app.log`. Generated log files stay outside
+Git.
 
 ## Prepared Persistence
 

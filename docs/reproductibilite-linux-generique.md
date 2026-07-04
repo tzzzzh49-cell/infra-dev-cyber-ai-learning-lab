@@ -15,10 +15,12 @@ Aucune autre distribution Linux n'est déclarée compatible à ce stade.
 1. Cloner le dépôt.
 2. Exécuter le bootstrap adapté à la distribution.
 3. Vérifier rapidement l'environnement (`make check`).
-4. Construire et lancer (`make build` puis `make up`) ou utiliser `make run`.
-5. Tester les endpoints (`make health`, `make version`, `make diag`).
-6. Lancer la validation complète si nécessaire (`make check-full`).
-7. Arrêter proprement (`make down`).
+4. Générer un jeton local puis définir `APP_ENV=lab`, `DIAG_CLIENT_TOKEN` et
+   `DIAG_ACCESS_TOKEN_HASH`.
+5. Construire et lancer (`make build` puis `make up`) ou utiliser `make run`.
+6. Tester les endpoints (`make health`, `make version`, `make diag`).
+7. Lancer la validation complète si nécessaire (`make check-full`).
+8. Arrêter proprement (`make down`).
 
 ## Bootstrap selon distribution
 

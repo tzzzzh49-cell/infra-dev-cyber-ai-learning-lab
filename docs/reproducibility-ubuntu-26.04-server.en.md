@@ -74,11 +74,16 @@ not run during real validation, document why in the validation journal.
 ## 5) Start The Application
 
 ```bash
+python3 scripts/generate_diag_token.py
+export APP_ENV=lab
+export DIAG_CLIENT_TOKEN='<DISPLAYED_TOKEN>'
+export DIAG_ACCESS_TOKEN_HASH='<DISPLAYED_HASH>'
 make run
 ```
 
 Expected result: the image builds, Compose starts the API and `/health` answers
-on `http://127.0.0.1:8000` by default.
+on `http://127.0.0.1:8000` by default. Diagnostic routes are available with the
+generated local token.
 
 ## 6) Endpoints To Check
 
@@ -88,8 +93,8 @@ make version
 make diag
 ```
 
-`make diag` must return a structured read-only diagnostic with `metadata`,
-`system`, `network`, `resources`, `docker` and `security`.
+`make diag` must return a minimized read-only HTTP view with `metadata`,
+`checks` and `security`, without raw command output.
 
 ## 7) Diagnostic Exports
 
@@ -140,6 +145,7 @@ working tree.
 - [ ] `make lint` passed;
 - [ ] `make compose-config` passed;
 - [ ] `make check-full` passed or was explicitly documented as skipped;
+- [ ] local token generated and `APP_ENV=lab` set for local API checks;
 - [ ] API starts on `127.0.0.1`;
 - [ ] `/health`, `/version` and `/diag` checked;
 - [ ] JSON and Markdown exports created;
@@ -152,7 +158,10 @@ working tree.
 - Do not add real secrets to examples, scripts, reports or commits.
 - Do not expose `/diag` or exports publicly without authentication and HTTPS
   reverse proxy protection.
-- Prefer `DIAG_ACCESS_TOKEN_HASH` over storing a clear application token.
+- In local lab mode, prefer `DIAG_ACCESS_TOKEN_HASH` over storing a clear
+  application token.
+- In VPS mode, local shared tokens are refused; use OIDC/RBAC as documented in
+  `docs/vps/08-authentification-oidc.md`.
 - `DIAG_COMMAND_TIMEOUT` defaults to `3` seconds; only raise it for a documented
   slow environment.
 - Protected API call examples are in `docs/api-examples.md`.

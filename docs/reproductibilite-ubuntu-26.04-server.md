@@ -72,6 +72,10 @@ Cette commande ajoute le build Docker et le playbook Ansible en mode check. Si e
 ## 5) Démarrage applicatif
 
 ```bash
+python3 scripts/generate_diag_token.py
+export APP_ENV=lab
+export DIAG_CLIENT_TOKEN='<JETON_AFFICHE_PAR_LE_SCRIPT>'
+export DIAG_ACCESS_TOKEN_HASH='<HASH_AFFICHE_PAR_LE_SCRIPT>'
 make run
 ```
 
@@ -80,6 +84,7 @@ Résultat attendu :
 - image Docker construite ;
 - API démarrée via Docker Compose ;
 - `/health` disponible sur l'URL locale indiquée par `.runtime/app_url`, par défaut `http://127.0.0.1:8000`.
+- routes `/diag` accessibles avec le jeton local généré.
 
 ## 6) Endpoints à vérifier
 
@@ -93,7 +98,7 @@ Résultats attendus :
 
 - `make health` retourne `status=ok` ;
 - `make version` retourne la version applicative ;
-- `make diag` retourne un diagnostic structuré en lecture seule avec `metadata`, `system`, `network`, `resources`, `docker` et `security`.
+- `make diag` retourne une vue HTTP minimisée avec `metadata`, `checks` et `security`, sans sortie brute de commande.
 
 ## 7) Exports de diagnostic
 
@@ -158,6 +163,7 @@ make down
 - [ ] `make lint` réussi ;
 - [ ] `make compose-config` réussi ;
 - [ ] `make check-full` réussi ou écart documenté ;
+- [ ] jeton local généré et `APP_ENV=lab` défini pour les tests locaux ;
 - [ ] `make run` démarre l'API sur `127.0.0.1` ;
 - [ ] `make health` retourne `status=ok` ;
 - [ ] `make version` retourne la version applicative ;
@@ -174,4 +180,5 @@ make down
 - Le diagnostic reste strictement en lecture seule.
 - Aucun secret réel ne doit être ajouté aux exemples, scripts, rapports ou commits.
 - `/diag`, `/diag/export/json` et `/diag/export/markdown` ne doivent pas être exposés publiquement sans authentification et reverse proxy HTTPS.
-- `/diag` est protégé par défaut ; `DIAG_ACCESS_TOKEN_HASH` ou `DIAG_ACCESS_TOKEN_HASH_FILE` doit être fourni hors Git pour autoriser l'accès.
+- En local, `/diag` est protégé par défaut ; `APP_ENV=lab` et un hash via `DIAG_ACCESS_TOKEN_HASH` ou `DIAG_ACCESS_TOKEN_HASH_FILE` doivent être fournis hors Git.
+- En VPS, le jeton local est refusé : utiliser OIDC/RBAC comme décrit dans `docs/vps/08-authentification-oidc.md`.

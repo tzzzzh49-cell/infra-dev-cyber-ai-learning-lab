@@ -19,9 +19,12 @@ services:
     environment:
       APP_ENV: vps
       APP_LOG_FILE: /workspace/outputs/logs/app.log
-      DIAG_ACCESS_TOKEN_HASH: ${DIAG_ACCESS_TOKEN_HASH:?set DIAG_ACCESS_TOKEN_HASH from a secrets manager}
-      DIAG_ACCESS_TOKEN_HASH_FILE: ${DIAG_ACCESS_TOKEN_HASH_FILE:-}
       DIAG_PROTECTION_DISABLED: "false"
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-https://<IDP>/...}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL:-https://<IDP>/.../jwks}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-<AUDIENCE>}
+      OIDC_ROLES_CLAIM: ${OIDC_ROLES_CLAIM:-roles}
+      OIDC_MFA_ACR_VALUES: ${OIDC_MFA_ACR_VALUES:-}
     volumes:
       - ../../outputs/reports:/workspace/outputs/reports:Z
       - ../../outputs/logs:/workspace/outputs/logs:Z
