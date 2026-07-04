@@ -73,16 +73,20 @@ Sensitive routes:
 
 Expected behavior:
 
-- diagnostic routes require a token by default in every environment;
-- the API expects `DIAG_ACCESS_TOKEN_HASH` or `DIAG_ACCESS_TOKEN_HASH_FILE`;
-- the only accepted hash format is `sha256:<hash>`, with a high-entropy random token;
-- VPS requests require a signed OIDC bearer JWT validated again by the API;
+- diagnostic routes require authentication by default;
+- local lab mode expects `APP_ENV=lab` plus `DIAG_ACCESS_TOKEN_HASH` or
+  `DIAG_ACCESS_TOKEN_HASH_FILE`;
+- the only accepted local hash format is `sha256:<hash>`, with a high-entropy
+  random token kept on the client side;
+- VPS mode refuses shared local tokens and requires a signed OIDC bearer JWT
+  validated again by the API;
 - `DIAG_PROTECTION_DISABLED=true` is honored only for explicit local
   development environments;
-- if no token hash is configured, diagnostic routes fail closed.
+- if no local token hash is configured in lab mode, diagnostic routes fail
+  closed.
 
 Use `scripts/generate_diag_token.py` to generate a client token and export only
-`DIAG_ACCESS_TOKEN_HASH` to the application.
+`DIAG_ACCESS_TOKEN_HASH` to the local lab application.
 
 ## Timeouts And Retries
 
@@ -97,10 +101,9 @@ Server exports keep the 20 newest files for each format.
 
 ## Logs
 
-Application logs go to stdout/stderr. On a VPS, collect them with Docker
-logging, a sidecar or an external agent. Do not persist local application log
-files in the repository, because diagnostic logs can contain sensitive host
-information.
+Application logs go to stdout/stderr and, when `APP_LOG_FILE` is writable, to a
+rotating file such as `outputs/logs/app.log`. Do not commit generated logs,
+because diagnostic logs can contain sensitive host information.
 
 ## Dependency Updates
 

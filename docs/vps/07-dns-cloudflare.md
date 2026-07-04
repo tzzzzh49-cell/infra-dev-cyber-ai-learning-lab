@@ -32,7 +32,7 @@ Utiliser uniquement des placeholders dans le dépôt :
 - L'API FastAPI reste liée à `127.0.0.1:8000`.
 - Le trafic public arrive uniquement sur Nginx en HTTPS.
 - `/health` peut rester accessible pour contrôle léger.
-- `/diag`, `/diag/export/json` et `/diag/export/markdown` doivent rester protégés par authentification reverse proxy et par `DIAG_ACCESS_TOKEN_HASH` côté application.
+- `/diag`, `/diag/export/json` et `/diag/export/markdown` doivent rester protégés par OAuth2/OIDC côté reverse proxy et par RBAC côté application.
 
 ## Points à valider hors dépôt
 

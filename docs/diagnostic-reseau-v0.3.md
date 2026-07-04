@@ -106,6 +106,10 @@ Les exports sont écrits dans `outputs/reports` :
 ## Procédure d'utilisation
 
 ```bash
+python3 scripts/generate_diag_token.py
+export APP_ENV=lab
+export DIAG_CLIENT_TOKEN='<JETON_AFFICHE_PAR_LE_SCRIPT>'
+export DIAG_ACCESS_TOKEN_HASH='<HASH_AFFICHE_PAR_LE_SCRIPT>'
 make run
 make diag
 make diag-json
@@ -117,28 +121,38 @@ make down
 
 Détail :
 
-1. `make run` construit et démarre l'application localement.
-2. `make diag` interroge `GET /diag`.
-3. `make diag-json` appelle `POST /diag/export/json`.
-4. `make diag-md` appelle `POST /diag/export/markdown`.
-5. `make diagnostic-local` génère un rapport Markdown local et tente de sauvegarder la réponse JSON de `/diag` si l'API est disponible.
-6. `make reports` liste les fichiers présents dans `outputs/reports` sans échouer si le dossier est absent.
-7. `make down` arrête l'application.
+1. Le script génère un jeton client et son hash `sha256`.
+2. `APP_ENV=lab` active le mode lab local. En `APP_ENV=vps`, le jeton partagé
+   est refusé et l'API attend OIDC.
+3. `make run` construit et démarre l'application localement.
+4. `make diag` interroge `GET /diag` et retourne une vue HTTP minimisée
+   (`metadata`, `checks`, `security`), sans sortie brute de commande.
+5. `make diag-json` appelle `POST /diag/export/json`.
+6. `make diag-md` appelle `POST /diag/export/markdown`.
+7. `make diagnostic-local` génère un rapport Markdown local et tente de sauvegarder la réponse JSON de `/diag` si l'API est disponible.
+8. `make reports` liste les fichiers présents dans `outputs/reports` sans échouer si le dossier est absent.
+9. `make down` arrête l'application.
 
 ## Protection des routes sensibles
 
-`/diag`, `/diag/export/json` et `/diag/export/markdown` exigent un jeton par défaut dans tous les environnements.
+`/diag`, `/diag/export/json` et `/diag/export/markdown` exigent une
+authentification par défaut.
 
-Configuration attendue :
+Configuration attendue en lab local :
 
 - générer un jeton aléatoire avec `python3 scripts/generate_diag_token.py` ;
-- stocker `DIAG_ACCESS_TOKEN_HASH` dans un gestionnaire de secrets ou monter un fichier via `DIAG_ACCESS_TOKEN_HASH_FILE` ;
+- définir `APP_ENV=lab` ;
+- fournir le hash via `DIAG_ACCESS_TOKEN_HASH` ou monter un fichier via `DIAG_ACCESS_TOKEN_HASH_FILE` ;
 - appeler les routes sensibles avec `Authorization: Bearer <token>` ou `X-Diag-Token: <token>` ;
 - garder l'API liée à `127.0.0.1` derrière un reverse proxy HTTPS authentifié.
 
+En VPS (`APP_ENV=vps`), le jeton partagé local est refusé. Les routes sensibles
+attendent un JWT OIDC signé, avec permission `diagnostic:read` pour `/diag` et
+`diagnostic:export` plus MFA pour les exports.
+
 Pour un développement strictement local, `DIAG_PROTECTION_DISABLED=true` peut désactiver la protection seulement si `APP_ENV` vaut `local`, `dev`, `development` ou `test`. Cette variable est ignorée en VPS/production.
 
-Si aucun hash n'est configuré, les routes de diagnostic renvoient une erreur et ne publient pas le diagnostic.
+En lab local, si aucun hash n'est configuré, les routes de diagnostic renvoient une erreur et ne publient pas le diagnostic.
 
 ## Notes de sécurité
 

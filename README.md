@@ -19,7 +19,9 @@ Déjà visible dans le dépôt :
 - CI GitHub Actions avec contrôles qualité et sécurité ;
 - image Docker durcie avec utilisateur non-root ;
 - documentation sécurité, architecture, VPS et sauvegardes ;
-- scripts Restic local-first et restauration de test locale.
+- scripts Restic local-first et restauration de test locale ;
+- protection locale de `/diag` par hash de jeton et protection VPS préparée
+  par OIDC/RBAC.
 
 En cours ou préparé :
 
@@ -31,6 +33,29 @@ En cours ou préparé :
 - IA utilisée comme aide à l'analyse, sans exécution automatique de commandes dangereuses.
 
 Documentation technique : [`docs/README.md`](docs/README.md).
+
+## Démarrage local rapide
+
+Un hash est une empreinte du jeton : l'application reçoit le hash, le client
+garde le jeton en clair. Ne commiter ni l'un ni l'autre.
+
+```bash
+make check
+python3 scripts/generate_diag_token.py
+export APP_ENV=lab
+export DIAG_CLIENT_TOKEN='<JETON_AFFICHE_PAR_LE_SCRIPT>'
+export DIAG_ACCESS_TOKEN_HASH='<HASH_AFFICHE_PAR_LE_SCRIPT>'
+make run
+make health
+make diag
+make diag-json
+make diag-md
+make reports
+make down
+```
+
+En mode VPS (`APP_ENV=vps`), le jeton local est refusé : les routes `/diag`
+attendent un JWT OIDC validé par l'API.
 
 ## Compétences mises en pratique
 
