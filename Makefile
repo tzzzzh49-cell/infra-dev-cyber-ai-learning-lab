@@ -1,4 +1,4 @@
-.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diag-json diag-md reports diagnostic diagnostic-local ansible-check check-api-contract shellcheck compose-config mtls-check mtls-generate public-config public-up public-health public-down lint-python lint run setup-dev test clean
+.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diag-json diag-md reports diagnostic diagnostic-local ansible-check check-api-contract shellcheck compose-config migration-check migration-check-public mtls-check mtls-generate public-config public-up public-health public-down lint-python lint run setup-dev test clean
 
 APP_URL_FILE ?= .runtime/app_url
 DEFAULT_APP_URL ?= http://127.0.0.1:8000
@@ -38,6 +38,8 @@ help:
 	@echo "  make bootstrap-fedora  Prépare Fedora 44 avec BOOTSTRAP_CONFIRM=yes"
 	@echo "  make bootstrap-ubuntu  Prépare Ubuntu 26.04 avec BOOTSTRAP_CONFIRM=yes"
 	@echo "  make compose-config    Valide compose.yaml"
+	@echo "  make migration-check   Vérifie la préparation migration sans démarrer"
+	@echo "  make migration-check-public Vérifie aussi les fichiers runtime publics"
 	@echo "  make mtls-check        Vérifie le jeu mTLS hors dépôt"
 	@echo "  make mtls-generate     Génère le jeu mTLS après confirmation"
 	@echo "  make public-config     Valide la configuration Compose publique"
@@ -92,6 +94,12 @@ bootstrap-ubuntu:
 compose-config:
 	$(COMPOSE) config >/dev/null
 	$(PUBLIC_COMPOSE) config >/dev/null
+
+migration-check:
+	COMPOSE_DISABLE_ENV_FILE=1 ./scripts/migration_preflight.sh
+
+migration-check-public:
+	COMPOSE_DISABLE_ENV_FILE=1 ./scripts/migration_preflight.sh --public
 
 mtls-check:
 	MTLS_DIR="$(MTLS_DIR)" ./scripts/check_mtls_files.sh

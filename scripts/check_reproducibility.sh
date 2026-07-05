@@ -154,6 +154,7 @@ check_paths() {
         scripts/generate_diag_token.py
         scripts/check_mtls_files.sh
         scripts/generate_mtls_files.sh
+        scripts/migration_preflight.sh
         scripts/provision_public_proxy.sh
         scripts/run_lab.sh
         backup/init-local.sh
@@ -171,6 +172,7 @@ check_paths() {
         docs/reproductibilite-ubuntu-26.04-server.md
         docs/validations/ubuntu-26.04-server-vm.md
         docs/vps/compose.vps.example.yaml
+        docs/vps/09-migration-nouveau-vps.md
         docs/vps/nginx.reverse-proxy.example.conf
         nginx/default.conf.template
         nginx/api_proxy.conf
