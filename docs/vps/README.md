@@ -23,10 +23,11 @@ Documents :
 5. [Déploiement Compose](05-deploiement-compose.md)
 6. [HTTPS et reverse proxy](06-https-reverse-proxy.md)
 7. [DNS et Cloudflare](07-dns-cloudflare.md)
+8. [Authentification OAuth2/OIDC](08-authentification-oidc.md)
+9. [Migration vers un nouveau VPS](09-migration-nouveau-vps.md)
 
 Exemples de configuration :
 
-- [08 - Authentification OAuth2/OIDC](08-authentification-oidc.md)
 - [nginx.reverse-proxy.example.conf](nginx.reverse-proxy.example.conf)
 - [compose.vps.example.yaml](compose.vps.example.yaml)
 - [`compose.public.yaml`](../../compose.public.yaml) pour le proxy public réel ;

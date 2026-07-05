@@ -42,6 +42,7 @@ Markdown stables des fichiers suivis.
 ## VPS et backups
 
 - [Préparation VPS v0.4.0](vps/README.md)
+- [Migration vers un nouveau VPS](vps/09-migration-nouveau-vps.md)
 - [Backups](backups/README.md)
 - [Restic local-first](backups/restic-local-first.md)
 - [Restic S3-compatible](backups/restic-s3-compatible.md)
