@@ -109,7 +109,7 @@ services:
   nginx:
     profiles:
       - public-proxy
-    image: owasp/modsecurity-crs:4.25.0-nginx-202605200705@sha256:cdac1390ba577d82038933e5c30fd2e8c83bf81a8369db35f5e49837f90605b2
+    image: owasp/modsecurity-crs:4-nginx-202608131208@sha256:60af5abe3175856b8945d8827ab3f52e3906d66ebbb2c8617f45a771b38facad
     container_name: lab-nginx
     cap_drop:
       - ALL
