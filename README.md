@@ -3,8 +3,7 @@
 [![CI](https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab/actions/workflows/ci.yml)
 
 Ce dépôt permet d'apprendre en construisant un lab d'infrastructure sécurisé et
-de produire des preuves GitHub vérifiables. La promesse publique reste simple :
-**« J'apprends avec rigueur. »**
+de produire des preuves GitHub vérifiables.
 
 ## Commencer ici
 
