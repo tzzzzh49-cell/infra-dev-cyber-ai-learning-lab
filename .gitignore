@@ -16,6 +16,7 @@ venv/
 !.env.example
 !.env.*.example
 .runtime/
+.learning/
 
 # Secrets et identifiants locaux
 secrets

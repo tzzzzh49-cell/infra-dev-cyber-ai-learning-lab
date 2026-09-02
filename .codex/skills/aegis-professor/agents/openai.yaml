@@ -1,0 +1,7 @@
+interface:
+  display_name: "Professeur Aegis"
+  short_description: "Tutorat guidé fondé uniquement sur le guide"
+  default_prompt: "Utilise $aegis-professor pour reprendre ma journée active à partir du guide."
+
+policy:
+  allow_implicit_invocation: false

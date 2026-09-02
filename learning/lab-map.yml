@@ -1,0 +1,302 @@
+schema_version: 1
+guide:
+  active_manifest: curriculum/active.json
+  active_version: "2.1.0"
+
+# Ce fichier décrit ce qui existe aujourd'hui. Il n'accorde aucun crédit :
+# chaque capacité devra être reconstruite, testée et expliquée au jour prévu.
+status_values:
+  mapped: tous les livrables cités dans l'entrée ont un candidat existant
+  partial: certains candidats existent, mais le livrable du guide est incomplet
+  placeholder_only: seule une préparation non activée existe
+  missing: aucun candidat vérifié dans le dépôt
+  archived_noncanonical: document historique conservé, interdit comme source créditable
+
+mapping_contract:
+  canonical_learning_source: curriculum/v2.1.0/Guide_370_jours_RNCP41996_Secure_AI_Ops_pas_a_pas.md
+  current_paths_are_candidates_only: true
+  formal_credit_requires_rebuild_and_explanation: true
+  missing_items_are_not_inferred: true
+
+mappings:
+  - id: phase-00-current-architecture
+    guide_phase: 0
+    guide_deliverables:
+      - architecture existante
+    repository_paths:
+      - docs/architecture.md
+      - docs/decisions/ADR-001-mode-read-only.md
+    status: partial
+    remains_to_complete:
+      - Vérifier les documents contre l'état réel du poste Fedora, de la VM Ubuntu et du VPS.
+      - Produire les livrables formels de la phase 0 sans créditer automatiquement l'existant.
+
+  - id: phase-00-baseline-inventory-governance
+    guide_phase: 0
+    guide_paths:
+      - docs/cadrage/baseline.md
+      - inventory/baseline.json
+    guide_deliverables:
+      - expression de besoin
+      - budget
+      - matrice RNCP
+      - registre des risques
+      - backlog
+    repository_paths: []
+    status: missing
+    remains_to_complete:
+      - Créer ces livrables pendant les journées activées de la phase 0.
+
+  - id: phase-01-system-administration
+    guide_phase: 1
+    guide_deliverables:
+      - cloud-init
+      - fichiers systemd
+      - règles de pare-feu
+      - scripts Bash et Python testés
+      - quatre runbooks
+      - comparaison Linux et Windows
+    repository_paths:
+      - scripts/bootstrap_fedora44_vm.sh
+      - scripts/bootstrap_ubuntu2604_server.sh
+      - systemd/infra-lab-public-proxy.service.in
+      - docs/vps/03-firewall.md
+      - docs/vps/
+    status: partial
+    remains_to_complete:
+      - Aucun livrable cloud-init ou Windows n'a été vérifié.
+      - Refaire et expliquer les candidats au jour correspondant.
+
+  - id: phase-02-network-diagnostics
+    guide_phase: 2
+    guide_deliverables:
+      - topologies Containerlab
+      - plan d'adressage
+      - matrice de flux
+      - configurations
+      - captures annotées
+      - tests automatisés
+      - dossier de recette
+    repository_paths:
+      - app/diagnostics.py
+      - scripts/diagnostic_local.sh
+      - ansible/playbooks/diagnostic.yml
+      - docs/diagnostic-reseau-v0.3.md
+    status: partial
+    remains_to_complete:
+      - Containerlab, le plan d'adressage, la matrice de flux et le dossier de recette n'ont pas été trouvés.
+
+  - id: phase-03-virtualization
+    guide_phase: 3
+    guide_deliverables:
+      - définitions libvirt
+      - images cloud-init
+      - réseaux virtuels
+      - plan de capacité
+      - ADR local ou VPS
+      - analyse des SPOF
+      - procédure de migration
+    repository_paths:
+      - docs/reproductibilite-fedora-44-vm.md
+      - docs/reproductibilite-ubuntu-26.04-server.md
+      - docs/vps/
+    status: partial
+    remains_to_complete:
+      - Les définitions libvirt, cloud-init, le plan de capacité, l'analyse des SPOF et la migration n'ont pas été trouvés.
+
+  - id: phase-04-identity-access
+    guide_phase: 4
+    guide_deliverables:
+      - matrice RBAC
+      - procédures joiner-mover-leaver
+      - flux d'authentification
+      - tests OIDC et MFA
+      - rapport de PoC MDM
+    repository_paths:
+      - app/auth.py
+      - nginx/oauth2_proxy.conf
+      - docs/vps/08-authentification-oidc.md
+      - app/tests/test_auth.py
+    status: partial
+    remains_to_complete:
+      - La matrice RBAC, les procédures de cycle de vie et le PoC MDM n'ont pas été trouvés.
+
+  - id: phase-05-postgresql
+    guide_phase: 5
+    guide_deliverables:
+      - schéma et migrations
+      - matrice de rôles
+      - TLS
+      - rapport de performance
+      - réplication
+      - dumps restaurés
+      - runbooks DBA
+    repository_paths:
+      - compose.yaml
+    status: placeholder_only
+    remains_to_complete:
+      - Le service PostgreSQL est sous le profil inactif future-persistence.
+      - Aucun schéma, migration, TLS, réplication, test de restauration ou runbook DBA n'a été trouvé.
+
+  - id: phase-06-automation-iac
+    guide_phase: 6
+    guide_deliverables:
+      - rôles Ansible
+      - inventaires lab et préproduction
+      - gestion de secrets
+      - pipeline CI
+      - rapport de patching
+      - preuves d'idempotence
+    repository_paths:
+      - ansible/inventory.yml
+      - ansible/group_vars/all.yml
+      - ansible/playbooks/diagnostic.yml
+      - .github/workflows/ci.yml
+    status: partial
+    remains_to_complete:
+      - Aucun rôle Ansible, inventaire de préproduction, rapport de patching ou preuve d'idempotence n'a été trouvé.
+
+  - id: phase-07-secure-application-containers
+    guide_phase: 7
+    guide_deliverables:
+      - Dockerfile multi-stage
+      - Compose durci
+      - NGINX
+      - OpenAPI
+      - tests d'intégration
+      - modèle de menace
+      - SBOM
+      - runbooks de rollback
+    repository_paths:
+      - app/Dockerfile
+      - compose.yaml
+      - nginx/
+      - app/main.py
+      - app/tests/
+      - docs/api-examples.md
+    status: partial
+    remains_to_complete:
+      - Le modèle de menace, la SBOM et les runbooks de rollback n'ont pas été trouvés.
+      - Les éléments existants restent à reconstruire et expliquer lors de la phase 7.
+
+  - id: phase-08-observability-itsm
+    guide_phase: 8
+    guide_deliverables:
+      - SLI et SLO
+      - Zabbix
+      - tableaux Grafana
+      - télémétrie applicative
+      - inventaire et tickets GLPI
+      - base de connaissances
+      - postmortem
+    repository_paths:
+      - app/logging_config.py
+      - outputs/logs/
+    status: partial
+    remains_to_complete:
+      - Aucun SLI/SLO, Zabbix, Grafana, GLPI ou postmortem n'a été trouvé.
+
+  - id: phase-09-security-risk-detection
+    guide_phase: 9
+    guide_deliverables:
+      - PSSI
+      - analyse de risques
+      - plan de traitement
+      - registre d'exceptions
+      - rapport de hardening
+      - règles de détection
+      - sensibilisation
+    repository_paths:
+      - docs/securite.md
+      - docs/vps/02-securisation-ssh.md
+      - scripts/check_mtls_files.sh
+      - scripts/generate_mtls_files.sh
+    status: partial
+    remains_to_complete:
+      - La PSSI formelle, l'analyse de risques, le plan de traitement, le registre d'exceptions et les règles de détection n'ont pas été trouvés.
+
+  - id: phase-10-business-continuity-backups
+    guide_phase: 10
+    guide_deliverables:
+      - BIA
+      - PCA et PRA
+      - scripts Restic
+      - unités systemd
+      - politique 7/4/12
+      - copie locale
+      - dépôt B2
+      - rapports de drills
+    repository_paths:
+      - backup/backup-local.sh
+      - backup/init-local.sh
+      - backup/restore-test-local.sh
+      - backup/restic-excludes.txt
+      - docs/backups/
+    status: partial
+    remains_to_complete:
+      - Aucun BIA, PCA/PRA formel, unité systemd de sauvegarde, politique 7/4/12 ou rapport de drill n'a été trouvé.
+      - La documentation B2 est préparatoire et ne prouve pas un dépôt réel.
+
+  - id: phase-11-kubernetes
+    guide_phase: 11
+    guide_deliverables:
+      - cluster k3d
+      - cluster K3s sur VM
+      - manifests ou chart
+      - RBAC
+      - NetworkPolicy
+      - quotas
+      - probes
+      - runbooks
+      - ADR Compose ou K3s
+    repository_paths: []
+    status: missing
+    remains_to_complete:
+      - Aucun artefact Kubernetes n'a été trouvé.
+
+  - id: phase-12-secureops-agent
+    guide_phase: 12
+    guide_deliverables:
+      - outils typés
+      - RAG avec provenance
+      - traces
+      - politiques
+      - proposition de diff
+      - approbations
+      - 25 évaluations
+      - rapport d'ablation
+    repository_paths: []
+    status: missing
+    remains_to_complete:
+      - Aucun artefact d'agent IA SecureOps répondant à ces livrables n'a été trouvé.
+
+  - id: phase-13-capstone
+    guide_phase: 13
+    guide_deliverables:
+      - dossier par bloc
+      - index des preuves
+      - architecture finale
+      - rapport de crise
+      - README portfolio
+      - résumé anglais
+      - supports de soutenance
+    repository_paths:
+      - docs/architecture.md
+      - docs/architecture.en.md
+      - README.md
+      - README.en.md
+    status: partial
+    remains_to_complete:
+      - Aucun dossier par bloc, index final des preuves, rapport de crise ou support de soutenance n'a été trouvé.
+      - Les documents actuels sont des candidats techniques, pas des livrables de capstone validés.
+
+  - id: historical-learning-documents
+    guide_phase: null
+    guide_deliverables: []
+    repository_paths:
+      - docs/archive/legacy-learning/ROADMAP.md
+      - docs/archive/legacy-learning/journal-apprentissage.md
+      - docs/archive/legacy-learning/linux-ssh.md
+    status: archived_noncanonical
+    remains_to_complete:
+      - Ne pas utiliser ces documents comme source d'apprentissage ou comme preuve créditable.

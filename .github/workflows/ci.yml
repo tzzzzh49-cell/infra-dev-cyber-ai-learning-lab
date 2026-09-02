@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -46,6 +48,14 @@ jobs:
       - name: Python lint
         run: make lint-python
 
+      - name: Learning contract and guide integrity
+        run: make learn-check
+
+      - name: Generated learning roadmap is current
+        run: |
+          make learn-roadmap
+          git diff --exit-code -- learning/roadmap.md
+
       - name: ShellCheck
         run: make shellcheck
 
@@ -59,7 +69,7 @@ jobs:
         run: make check-api-contract
 
       - name: Python security scan with Bandit
-        run: python -m bandit -q -r app -x app/tests --severity-level medium --confidence-level medium
+        run: python -m bandit -q -r app tools -x app/tests --severity-level medium --confidence-level medium
 
   secret-scan:
     name: Gitleaks secret scan

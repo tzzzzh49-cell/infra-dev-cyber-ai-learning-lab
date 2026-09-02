@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "repo://learning/schemas/state.schema.json",
+  "title": "Aegis learning state",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "active_day",
+    "next_day",
+    "completed_days",
+    "consolidation_queue",
+    "total_days",
+    "days",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "active_day": {"type": ["string", "null"], "pattern": "^J[0-9]{3}$"},
+    "next_day": {"type": ["string", "null"], "pattern": "^J[0-9]{3}$"},
+    "completed_days": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^J[0-9]{3}$"}
+    },
+    "consolidation_queue": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^J3(?:7[1-9]|8[0-9]|90)$"}
+    },
+    "total_days": {"const": 390},
+    "days": {"type": "object"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "suspended_day": {"type": "string", "pattern": "^J[0-9]{3}$"},
+    "pending_phase_tag": {"type": "string", "pattern": "^phase-(0[0-9]|1[0-3])$"},
+    "pending_phase_commit": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"}
+  }
+}

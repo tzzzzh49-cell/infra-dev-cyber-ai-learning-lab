@@ -34,7 +34,7 @@ export AWS_DEFAULT_REGION="<REGION_PLACEHOLDER>"
 
 restic init
 restic backup --exclude-file "$RESTIC_EXCLUDE_FILE" \
-  README.md ROADMAP.md Makefile compose.yaml \
+  README.md Makefile compose.yaml curriculum learning \
   ansible app backup docs scripts
 restic snapshots
 restic check
@@ -49,7 +49,7 @@ dépôt et une restauration partielle sans écraser le dépôt courant.
 
 Par défaut, les scripts locaux sélectionnent une base prudente :
 
-- `README.md`, `ROADMAP.md` et `Makefile` ;
+- `README.md`, `Makefile`, `curriculum/` et `learning/` ;
 - `compose.yaml` et exemples `.env*.example` ;
 - `ansible/`, `app/`, `backup/`, `docs/` et `scripts/` quand ces chemins existent.
 
@@ -83,7 +83,7 @@ Résultat attendu :
 Après revue des chemins et exclusions :
 
 ```bash
-restic backup --exclude-file "$RESTIC_EXCLUDE_FILE" README.md ROADMAP.md Makefile compose.yaml ansible app backup docs scripts
+restic backup --exclude-file "$RESTIC_EXCLUDE_FILE" README.md Makefile compose.yaml ansible app backup curriculum docs learning scripts
 ```
 
 Adapter la liste hors dépôt si certains chemins n'existent pas ou si des rapports revus doivent être inclus.

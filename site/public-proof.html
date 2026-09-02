@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Preuve publique {{DAY_ID}}</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: system-ui, sans-serif;
+      line-height: 1.55;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 52rem;
+      padding: 2rem 1rem 4rem;
+    }
+    header, section {
+      border-bottom: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+      padding: 1rem 0;
+    }
+    .claim {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    code {
+      overflow-wrap: anywhere;
+    }
+    dt {
+      font-weight: 700;
+      margin-top: .75rem;
+    }
+    dd {
+      margin-left: 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="claim">J’apprends avec rigueur.</p>
+    <h1>Preuve publique {{DAY_ID}}</h1>
+    <p>Progression&nbsp;: <strong>{{PROGRESS_LABEL}}</strong></p>
+    <p>Cette progression compte les journées conformes. Ce n’est pas un score de maîtrise.</p>
+  </header>
+  <main>
+    <section aria-labelledby="summary-fr-title">
+      <h2 id="summary-fr-title">Résumé public</h2>
+      {{SUMMARY_FR}}
+    </section>
+    <section lang="en" aria-labelledby="summary-en-title">
+      <h2 id="summary-en-title">Approved English summary</h2>
+      {{SUMMARY_EN}}
+    </section>
+    <section aria-labelledby="assertions-title">
+      <h2 id="assertions-title">Assertions vérifiables</h2>
+      <ul>{{ASSERTIONS}}</ul>
+    </section>
+    {{CORRECTED_LESSON}}
+    <section aria-labelledby="digests-title">
+      <h2 id="digests-title">Empreintes</h2>
+      <dl>{{DIGESTS}}</dl>
+    </section>
+    <section aria-labelledby="verification-title">
+      <h2 id="verification-title">Vérifier la signature</h2>
+      <p>Le manifeste couvre les empreintes de la preuve et du registre append-only.</p>
+      <pre><code>printf 'aegis-learning-proof %s\n' "$(cat signer.pub)" &gt; allowed-signers
+ssh-keygen -Y verify -f allowed-signers -I aegis-learning-proof -n aegis-learning-manifest -s manifest.json.sig &lt; manifest.json</code></pre>
+    </section>
+  </main>
+  <footer>
+    <p>© 2026 — Tous droits réservés.</p>
+  </footer>
+</body>
+</html>

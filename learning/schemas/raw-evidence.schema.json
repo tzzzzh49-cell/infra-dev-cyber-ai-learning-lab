@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "repo://learning/schemas/raw-evidence.schema.json",
+  "title": "Aegis private raw-evidence receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "sha256",
+    "copies",
+    "retention",
+    "verified_at"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "id": {"type": "string", "pattern": "^j[0-9]{3}-[0-9a-f]{32}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "copies": {"const": 2},
+    "retention": {"const": "one-year-after-pathway-completion"},
+    "verified_at": {"type": "string", "format": "date-time"}
+  }
+}

@@ -1,4 +1,4 @@
-.PHONY: help check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diag-json diag-md reports diagnostic diagnostic-local ansible-check check-api-contract shellcheck compose-config mtls-check mtls-generate public-config public-up public-health public-down lint-python lint run setup-dev test clean
+.PHONY: help help-dev learn learn-doctor learn-check learn-roadmap check check-fast check-full bootstrap bootstrap-fedora bootstrap-ubuntu build up down logs health version diag diag-json diag-md reports diagnostic diagnostic-local ansible-check check-api-contract shellcheck compose-config mtls-check mtls-generate public-config public-up public-health public-down lint-python lint run setup-dev test clean
 
 APP_URL_FILE ?= .runtime/app_url
 DEFAULT_APP_URL ?= http://127.0.0.1:8000
@@ -28,9 +28,22 @@ define run_diag_curl
 endef
 
 help:
+	@echo "Pour commencer ou reprendre l'apprentissage :"
+	@echo ""
+	@echo "  make learn"
+	@echo ""
+	@echo "Le premier lancement vérifie automatiquement les prérequis."
+	@echo "Pour les commandes techniques du lab : make help-dev"
+
+help-dev:
 	@echo "Commandes disponibles :"
 	@echo ""
-	@echo "  make help              Affiche cette aide"
+	@echo "  make help              Affiche l'entrée apprenant"
+	@echo "  make help-dev          Affiche cette aide technique"
+	@echo "  make learn             Démarre ou reprend la journée active"
+	@echo "  make learn-doctor      Vérifie tous les prérequis"
+	@echo "  make learn-check       Valide les contrats de preuve"
+	@echo "  make learn-roadmap     Régénère la roadmap depuis le guide actif"
 	@echo "  make check             Vérification rapide du dépôt"
 	@echo "  make check-fast        Alias de make check"
 	@echo "  make check-full        Vérification complète avec build Docker et Ansible"
@@ -71,9 +84,21 @@ help:
 	@echo "  MTLS_DIR=$(MTLS_DIR)"
 	@echo "  PUBLIC_URL=https://<LAB_DOMAIN>"
 
+learn:
+	$(PYTHON) tools/learn.py run
+
+learn-doctor:
+	$(PYTHON) tools/learn.py doctor
+
+learn-check:
+	$(PYTHON) tools/learn.py validate
+
+learn-roadmap:
+	$(PYTHON) tools/learn.py roadmap
+
 check: check-fast
 
-check-fast: setup-dev
+check-fast: learn-check setup-dev
 	@mkdir -p "$(VALIDATION_DOCKER_CONFIG)"
 	DOCKER_CONFIG="$(VALIDATION_DOCKER_CONFIG)" COMPOSE_DISABLE_ENV_FILE=1 ./scripts/check_reproducibility.sh
 
@@ -120,7 +145,7 @@ shellcheck:
 	shellcheck scripts/*.sh backup/*.sh
 
 lint-python: setup-dev
-	PYTHONDONTWRITEBYTECODE=1 $(VENV_PYTHON) -m ruff check --no-cache app
+	PYTHONDONTWRITEBYTECODE=1 $(VENV_PYTHON) -m ruff check --no-cache app tools
 
 lint: lint-python shellcheck compose-config
 
