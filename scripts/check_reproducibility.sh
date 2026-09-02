@@ -136,7 +136,9 @@ check_paths() {
     local required_paths=(
         README.md
         README.en.md
-        ROADMAP.md
+        learning/roadmap.md
+        curriculum/active.json
+        learning/lab-map.yml
         .github/dependabot.yml
         compose.yaml
         compose.public.yaml

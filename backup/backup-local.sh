@@ -67,7 +67,8 @@ select_backup_paths() {
     local candidate
     local candidates=(
         README.md
-        ROADMAP.md
+        learning
+        curriculum
         Makefile
         compose.yaml
         .env.example

@@ -1,0 +1,1148 @@
+name: Publish signed learning proof
+
+on:
+  workflow_dispatch:
+    inputs:
+      day_id:
+        description: Validated day to publish, for example J001
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: learning-proof-publication
+  cancel-in-progress: false
+
+env:
+  PUBLISHER_SHA256: 35690b4b94f4f0520d8ed9decdf6b16f2f2af8a17d01ae9407de8d658cfbe9a3
+  LEARN_CORE_SHA256: bdbd86aaa74e057e20e4d5a2243bcbea0d41afc7739f6b7b0548f86da813cd93
+  PUBLIC_TEMPLATE_SHA256: 481e7c495cf636cbe640cb063b8b66a9cb3c0475a5a0d276b1fb8edbacb381eb
+
+jobs:
+  build:
+    name: Build data-only bundle without target secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      default_branch: ${{ steps.boundary.outputs.default_branch }}
+      public_base: ${{ steps.bundle.outputs.public_base }}
+      sequence: ${{ steps.bundle.outputs.sequence }}
+      tag: ${{ steps.bundle.outputs.tag }}
+    steps:
+      - name: Validate source and repository boundary
+        id: boundary
+        env:
+          DAY_ID: ${{ inputs.day_id }}
+          SOURCE_REF: ${{ github.ref }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          PUBLIC_REPOSITORY: ${{ vars.PUBLIC_PROOF_REPOSITORY }}
+          SOURCE_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$SOURCE_REF" = "refs/heads/master"
+          case "$DAY_ID" in
+            J[0-9][0-9][0-9]) ;;
+            *) echo "Invalid day identifier" >&2; exit 2 ;;
+          esac
+          [[ "$PUBLIC_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
+          test "${SOURCE_REPOSITORY,,}" != "${PUBLIC_REPOSITORY,,}"
+          source_visibility="$(
+            GH_TOKEN="$SOURCE_TOKEN" gh repo view "$SOURCE_REPOSITORY" \
+              --json visibility --jq .visibility
+          )"
+          target_metadata="$(
+            GH_TOKEN="$SOURCE_TOKEN" gh repo view "$PUBLIC_REPOSITORY" \
+              --json visibility,defaultBranchRef
+          )"
+          test "$source_visibility" = "PRIVATE"
+          test "$(jq -r .visibility <<< "$target_metadata")" = "PUBLIC"
+          default_branch="$(
+            jq -r '.defaultBranchRef.name // empty' <<< "$target_metadata"
+          )"
+          git check-ref-format --branch "$default_branch" >/dev/null
+          printf 'default_branch=%s\n' "$default_branch" >> "$GITHUB_OUTPUT"
+
+      - name: Check out private source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          path: source
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify successful source CI for this revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          successful_runs="$(
+            gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow ci.yml \
+              --commit "$SOURCE_REVISION" \
+              --limit 10 \
+              --json conclusion \
+              --jq 'map(select(.conclusion == "success")) | length'
+          )"
+          test "$successful_runs" -ge 1
+
+      - name: Pin and isolate publisher inputs
+        run: |
+          set -euo pipefail
+          test ! -L source/tools/learning_publish.py
+          test ! -L source/tools/learn.py
+          test ! -L source/site/public-proof.html
+          test "$(sha256sum source/tools/learning_publish.py | cut -d ' ' -f 1)" \
+            = "$PUBLISHER_SHA256"
+          test "$(sha256sum source/tools/learn.py | cut -d ' ' -f 1)" \
+            = "$LEARN_CORE_SHA256"
+          test "$(sha256sum source/site/public-proof.html | cut -d ' ' -f 1)" \
+            = "$PUBLIC_TEMPLATE_SHA256"
+          trusted="$RUNNER_TEMP/trusted-publisher"
+          mkdir -p "$trusted"
+          chmod 700 "$trusted"
+          install -m 0444 source/tools/learning_publish.py "$trusted/learning_publish.py"
+          install -m 0444 source/tools/learn.py "$trusted/learn.py"
+          install -m 0444 source/site/public-proof.html "$trusted/public-proof.html"
+          test "$(sha256sum "$trusted/learning_publish.py" | cut -d ' ' -f 1)" \
+            = "$PUBLISHER_SHA256"
+          test "$(sha256sum "$trusted/learn.py" | cut -d ' ' -f 1)" \
+            = "$LEARN_CORE_SHA256"
+          test "$(sha256sum "$trusted/public-proof.html" | cut -d ' ' -f 1)" \
+            = "$PUBLIC_TEMPLATE_SHA256"
+
+      - name: Clone public base without a target credential
+        env:
+          PUBLIC_REPOSITORY: ${{ vars.PUBLIC_PROOF_REPOSITORY }}
+          PUBLIC_DEFAULT_BRANCH: ${{ steps.boundary.outputs.default_branch }}
+        run: |
+          set -euo pipefail
+          git clone --quiet --no-tags --single-branch \
+            --branch "$PUBLIC_DEFAULT_BRANCH" \
+            "https://github.com/$PUBLIC_REPOSITORY.git" public-proof
+          test -z "$(
+            git -C public-proof config --local --get-regexp \
+              '^(credential\.|http\..*\.extraheader|include\.)' || true
+          )"
+
+      - name: Build allowlisted unsigned bundle
+        env:
+          DAY_ID: ${{ inputs.day_id }}
+          SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test ! -L public-proof/docs
+          mkdir -p public-proof/docs
+          existing_allowed="$RUNNER_TEMP/existing-allowed-signers"
+          historical_ledger="$(
+            git -C public-proof log --all -n 1 --format=%H -- \
+              docs/ledger.jsonl
+          )"
+          bundle_present=false
+          for artifact in \
+            index.html ledger.jsonl manifest.json manifest.sha256 \
+            public-proof.json public-proof.sha256 signature-request.json \
+            manifest.json.sig signer.pub; do
+            if [ -e "public-proof/docs/$artifact" ] || \
+              [ -L "public-proof/docs/$artifact" ]; then
+              bundle_present=true
+              break
+            fi
+          done
+          if [ "$bundle_present" = true ] || [ -n "$historical_ledger" ]; then
+            for required in \
+              ledger.jsonl manifest.json signer.pub manifest.json.sig; do
+              test -f "public-proof/docs/$required"
+              test ! -L "public-proof/docs/$required"
+            done
+            printf 'aegis-learning-proof %s\n' \
+              "$(cat public-proof/docs/signer.pub)" > "$existing_allowed"
+            ssh-keygen -Y verify \
+              -f "$existing_allowed" \
+              -I aegis-learning-proof \
+              -n aegis-learning-manifest \
+              -s public-proof/docs/manifest.json.sig \
+              < public-proof/docs/manifest.json
+          fi
+          rm -f public-proof/docs/manifest.json.sig public-proof/docs/signer.pub
+          rm -f "$existing_allowed"
+          trusted="$RUNNER_TEMP/trusted-publisher"
+          isolated_home="$RUNNER_TEMP/publisher-home"
+          mkdir -p "$isolated_home"
+          run_publisher() {
+            env -i \
+              HOME="$isolated_home" \
+              LANG=C.UTF-8 \
+              PATH=/usr/local/bin:/usr/bin:/bin \
+              python3 -B -I -c '
+                import runpy, sys
+                trusted = sys.argv.pop(1)
+                script = sys.argv.pop(1)
+                sys.path.insert(0, trusted)
+                runpy.run_path(script, run_name="__main__")
+              ' "$trusted" "$trusted/learning_publish.py" "$@"
+          }
+          run_publisher \
+            --learner "source/learning/days/$DAY_ID/learner.md" \
+            --proof "source/learning/days/$DAY_ID/.proof/proof.json" \
+            --review "source/learning/days/$DAY_ID/.proof/review.json" \
+            --curriculum source/curriculum/active.json \
+            --template "$trusted/public-proof.html" \
+            --source-revision "$SOURCE_REVISION" \
+            --output public-proof/docs
+          run_publisher \
+            --learner "source/learning/days/$DAY_ID/learner.md" \
+            --proof "source/learning/days/$DAY_ID/.proof/proof.json" \
+            --review "source/learning/days/$DAY_ID/.proof/review.json" \
+            --curriculum source/curriculum/active.json \
+            --template "$trusted/public-proof.html" \
+            --source-revision "$SOURCE_REVISION" \
+            --output public-proof/docs \
+            --check
+
+      - name: Export strict data-only artifact
+        id: bundle
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          export_dir="$RUNNER_TEMP/unsigned-proof"
+          mkdir -p "$export_dir"
+          chmod 700 "$export_dir"
+          unsigned=(
+            index.html ledger.jsonl manifest.json manifest.sha256
+            public-proof.json public-proof.sha256 signature-request.json
+          )
+          artifacts='{}'
+          for name in "${unsigned[@]}"; do
+            source_path="public-proof/docs/$name"
+            test -f "$source_path"
+            test ! -L "$source_path"
+            install -m 0444 "$source_path" "$export_dir/$name"
+            digest="sha256:$(sha256sum "$source_path" | cut -d ' ' -f 1)"
+            size="$(stat -c %s "$source_path")"
+            artifacts="$(
+              jq -cn \
+                --argjson current "$artifacts" \
+                --arg name "$name" \
+                --arg digest "$digest" \
+                --argjson size "$size" \
+                '$current + {($name): {sha256: $digest, size: $size}}'
+            )"
+          done
+          public_base="$(git -C public-proof rev-parse 'HEAD^{commit}')"
+          sequence="$(tail -n 1 "$export_dir/ledger.jsonl" | jq -er .sequence)"
+          tag="$(printf 'aegis-proof-v1-%06d' "$sequence")"
+          jq -cS -n \
+            --arg source_revision "$SOURCE_REVISION" \
+            --arg public_base "$public_base" \
+            --arg publisher_sha256 "sha256:$PUBLISHER_SHA256" \
+            --arg learn_core_sha256 "sha256:$LEARN_CORE_SHA256" \
+            --arg public_template_sha256 "sha256:$PUBLIC_TEMPLATE_SHA256" \
+            --argjson sequence "$sequence" \
+            --arg tag "$tag" \
+            --argjson artifacts "$artifacts" '
+              {
+                schema_version: 1,
+                kind: "aegis-unsigned-proof-bundle",
+                source_revision: $source_revision,
+                public_base: $public_base,
+                sequence: $sequence,
+                tag: $tag,
+                tools: {
+                  learning_publish: $publisher_sha256,
+                  learn: $learn_core_sha256,
+                  public_template: $public_template_sha256
+                },
+                artifacts: $artifacts
+              }
+            ' > "$export_dir/bundle-receipt.json"
+          {
+            printf 'public_base=%s\n' "$public_base"
+            printf 'sequence=%s\n' "$sequence"
+            printf 'tag=%s\n' "$tag"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload unsigned data artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: unsigned-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/unsigned-proof
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 1
+          compression-level: 0
+
+  sign:
+    name: Sign data on a fresh runner
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download unsigned data only
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: unsigned-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/unsigned-proof
+
+      - name: Validate unsigned artifact without a secret
+        run: |
+          set -euo pipefail
+          incoming="$RUNNER_TEMP/unsigned-proof"
+          expected="$(
+            printf '%s\n' \
+              bundle-receipt.json index.html ledger.jsonl manifest.json \
+              manifest.sha256 public-proof.json public-proof.sha256 \
+              signature-request.json | sort
+          )"
+          actual="$(
+            find "$incoming" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | sort
+          )"
+          test "$actual" = "$expected"
+          test "$(find "$incoming" -mindepth 1 -maxdepth 1 | wc -l)" -eq 8
+          jq -e \
+            --arg publisher "sha256:$PUBLISHER_SHA256" \
+            --arg learn "sha256:$LEARN_CORE_SHA256" \
+            --arg template "sha256:$PUBLIC_TEMPLATE_SHA256" '
+              .schema_version == 1 and
+              .kind == "aegis-unsigned-proof-bundle" and
+              .tools == {
+                learning_publish: $publisher,
+                learn: $learn,
+                public_template: $template
+              } and
+              (.sequence | type == "number") and .sequence >= 1 and
+              (.tag | test("^aegis-proof-v1-[0-9]{6}$"))
+            ' "$incoming/bundle-receipt.json" >/dev/null
+          unsigned=(
+            index.html ledger.jsonl manifest.json manifest.sha256
+            public-proof.json public-proof.sha256 signature-request.json
+          )
+          test "$(jq '.artifacts | length' "$incoming/bundle-receipt.json")" -eq 7
+          for name in "${unsigned[@]}"; do
+            test ! -L "$incoming/$name"
+            expected_sha="$(
+              jq -er --arg name "$name" '.artifacts[$name].sha256' \
+                "$incoming/bundle-receipt.json"
+            )"
+            expected_size="$(
+              jq -er --arg name "$name" '.artifacts[$name].size' \
+                "$incoming/bundle-receipt.json"
+            )"
+            test "$expected_sha" = "sha256:$(sha256sum "$incoming/$name" | cut -d ' ' -f 1)"
+            test "$expected_size" -eq "$(stat -c %s "$incoming/$name")"
+            test "$expected_size" -le 8000000
+          done
+          test "$(tail -n 1 "$incoming/ledger.jsonl" | jq -er .sequence)" \
+            -eq "$(jq -er .sequence "$incoming/bundle-receipt.json")"
+          for json_name in manifest.json public-proof.json signature-request.json; do
+            canonical="$RUNNER_TEMP/canonical-$json_name"
+            jq -cS . "$incoming/$json_name" > "$canonical"
+            cmp -- "$canonical" "$incoming/$json_name"
+          done
+          jq -e '
+            keys == ["artifacts", "ledger_head_sha256", "schema_version", "signature"] and
+            .schema_version == 1 and
+            .signature == {embedded: false, mode: "external-detached"} and
+            (.artifacts | keys) == [
+              "index.html", "ledger.jsonl", "public-proof.json",
+              "public-proof.sha256"
+            ]
+          ' "$incoming/manifest.json" >/dev/null
+          manifest_artifacts=(
+            index.html ledger.jsonl public-proof.json public-proof.sha256
+          )
+          for name in "${manifest_artifacts[@]}"; do
+            digest="sha256:$(sha256sum "$incoming/$name" | cut -d ' ' -f 1)"
+            test "$(jq -er --arg name "$name" '.artifacts[$name].sha256' \
+              "$incoming/manifest.json")" = "$digest"
+          done
+          ledger_head="sha256:$(tail -n 1 "$incoming/ledger.jsonl" | sha256sum | cut -d ' ' -f 1)"
+          test "$(jq -er .ledger_head_sha256 "$incoming/manifest.json")" \
+            = "$ledger_head"
+          proof_sha="sha256:$(sha256sum "$incoming/public-proof.json" | cut -d ' ' -f 1)"
+          test "$(tail -n 1 "$incoming/ledger.jsonl" | jq -er .proof_sha256)" \
+            = "$proof_sha"
+          test "$(cat "$incoming/public-proof.sha256")" \
+            = "${proof_sha#sha256:}  public-proof.json"
+          manifest_sha="$(sha256sum "$incoming/manifest.json" | cut -d ' ' -f 1)"
+          test "$(cat "$incoming/manifest.sha256")" = "$manifest_sha  manifest.json"
+          jq -e --arg digest "sha256:$manifest_sha" '
+            . == {
+              schema_version: 1,
+              kind: "external-detached-signature-request",
+              payload: "manifest.json",
+              payload_sha256: $digest,
+              status: "external_signature_expected"
+            }
+          ' "$incoming/signature-request.json" >/dev/null
+
+      - name: Sign and verify manifest
+        env:
+          SIGNING_KEY: ${{ secrets.PUBLIC_PROOF_SIGNING_KEY }}
+          EXPECTED_SIGNER_SHA256: ${{ vars.PUBLIC_PROOF_SIGNER_SHA256 }}
+        run: |
+          set -euo pipefail
+          unset BASH_ENV ENV CDPATH
+          export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          test -n "$SIGNING_KEY"
+          [[ "$EXPECTED_SIGNER_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          incoming="$RUNNER_TEMP/unsigned-proof"
+          signed="$RUNNER_TEMP/signed-proof"
+          mkdir -p "$signed"
+          chmod 700 "$signed"
+          for name in \
+            index.html ledger.jsonl manifest.json manifest.sha256 \
+            public-proof.json public-proof.sha256 signature-request.json \
+            bundle-receipt.json; do
+            install -m 0444 "$incoming/$name" "$signed/$name"
+          done
+          key_file="$RUNNER_TEMP/public-proof-signing-key"
+          allowed_signers="$RUNNER_TEMP/allowed-signers"
+          cleanup() {
+            rm -f -- "$key_file" "$allowed_signers"
+            unset SIGNING_KEY
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SIGNING_KEY" > "$key_file"
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" > "$signed/signer.pub"
+          read -r signer_type signer_blob signer_extra < "$signed/signer.pub"
+          test "$signer_type" = ssh-ed25519
+          [[ "$signer_blob" =~ ^[A-Za-z0-9+/]+={0,2}$ ]]
+          test -z "$signer_extra"
+          test "$(wc -l < "$signed/signer.pub")" -eq 1
+          ssh-keygen -l -f "$signed/signer.pub" >/dev/null
+          test "$(sha256sum "$signed/signer.pub" | cut -d ' ' -f 1)" \
+            = "$EXPECTED_SIGNER_SHA256"
+          ssh-keygen -Y sign \
+            -f "$key_file" \
+            -n aegis-learning-manifest \
+            "$signed/manifest.json"
+          printf 'aegis-learning-proof %s\n' \
+            "$(cat "$signed/signer.pub")" > "$allowed_signers"
+          ssh-keygen -Y verify \
+            -f "$allowed_signers" \
+            -I aegis-learning-proof \
+            -n aegis-learning-manifest \
+            -s "$signed/manifest.json.sig" \
+            < "$signed/manifest.json"
+          signer_sha="sha256:$(sha256sum "$signed/signer.pub" | cut -d ' ' -f 1)"
+          signer_size="$(stat -c %s "$signed/signer.pub")"
+          signature_sha="sha256:$(sha256sum "$signed/manifest.json.sig" | cut -d ' ' -f 1)"
+          signature_size="$(stat -c %s "$signed/manifest.json.sig")"
+          jq -cS \
+            --arg signer_sha "$signer_sha" \
+            --argjson signer_size "$signer_size" \
+            --arg signature_sha "$signature_sha" \
+            --argjson signature_size "$signature_size" '
+              .kind = "aegis-signed-proof-bundle" |
+              .artifacts["signer.pub"] = {
+                sha256: $signer_sha, size: $signer_size
+              } |
+              .artifacts["manifest.json.sig"] = {
+                sha256: $signature_sha, size: $signature_size
+              }
+            ' "$signed/bundle-receipt.json" > "$signed/.receipt.tmp"
+          mv "$signed/.receipt.tmp" "$signed/bundle-receipt.json"
+          chmod 0444 "$signed/bundle-receipt.json"
+
+      - name: Upload signed data artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: signed-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/signed-proof
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 1
+          compression-level: 0
+
+  policy:
+    name: Verify GitHub policy on a fresh runner
+    needs: [build, sign]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      default_branch: ${{ steps.policy.outputs.default_branch }}
+      public_head: ${{ steps.policy.outputs.public_head }}
+      policy_token_sha256: ${{ steps.policy.outputs.token_sha256 }}
+    steps:
+      - name: Verify branch, tag and immutable-release policies
+        id: policy
+        env:
+          PUBLIC_PROOF_POLICY_TOKEN: ${{ secrets.PUBLIC_PROOF_POLICY_TOKEN }}
+          PUBLIC_REPOSITORY: ${{ vars.PUBLIC_PROOF_REPOSITORY }}
+          BRANCH_RULESET_ID: ${{ vars.PUBLIC_PROOF_BRANCH_RULESET_ID }}
+          TAG_RULESET_ID: ${{ vars.PUBLIC_PROOF_TAG_RULESET_ID }}
+          EXPECTED_DEFAULT_BRANCH: ${{ needs.build.outputs.default_branch }}
+          FUTURE_TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          set -euo pipefail
+          unset BASH_ENV ENV CDPATH
+          export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          test -n "$PUBLIC_PROOF_POLICY_TOKEN"
+          [[ "$PUBLIC_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
+          [[ "$BRANCH_RULESET_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$TAG_RULESET_ID" =~ ^[1-9][0-9]*$ ]]
+          test "$BRANCH_RULESET_ID" != "$TAG_RULESET_ID"
+          [[ "$FUTURE_TAG" =~ ^aegis-proof-v1-[0-9]{6}$ ]]
+          snapshot="$RUNNER_TEMP/policy"
+          mkdir -p "$snapshot"
+          chmod 700 "$snapshot"
+          api_version="2026-03-10"
+          api() {
+            GH_TOKEN="$PUBLIC_PROOF_POLICY_TOKEN" gh api \
+              -H "X-GitHub-Api-Version: $api_version" "$@"
+          }
+          api "repos/$PUBLIC_REPOSITORY" > "$snapshot/repository.json"
+          test "$(jq -er .private "$snapshot/repository.json")" = false
+          test "$(jq -er .visibility "$snapshot/repository.json")" = public
+          default_branch="$(jq -er .default_branch "$snapshot/repository.json")"
+          test "$default_branch" = "$EXPECTED_DEFAULT_BRANCH"
+          encoded_branch="$(jq -nr --arg value "$default_branch" '$value | @uri')"
+          api "repos/$PUBLIC_REPOSITORY/rulesets/$BRANCH_RULESET_ID" \
+            > "$snapshot/branch-ruleset.json"
+          api "repos/$PUBLIC_REPOSITORY/rulesets/$TAG_RULESET_ID" \
+            > "$snapshot/tag-ruleset.json"
+          api --paginate \
+            "repos/$PUBLIC_REPOSITORY/rules/branches/$encoded_branch?per_page=100" \
+            --jq '.[]' | jq -s . > "$snapshot/effective-branch.json"
+          api "repos/$PUBLIC_REPOSITORY/immutable-releases" \
+            > "$snapshot/immutable.json"
+          jq -e \
+            --argjson id "$BRANCH_RULESET_ID" \
+            --arg branch "refs/heads/$default_branch" '
+              .id == $id and .target == "branch" and
+              .enforcement == "active" and .bypass_actors == [] and
+              .conditions.ref_name.exclude == [] and
+              (any(.conditions.ref_name.include[];
+                . == "~DEFAULT_BRANCH" or . == $branch)) and
+              ([.rules[].type] | contains(["deletion", "non_fast_forward"]))
+            ' "$snapshot/branch-ruleset.json" >/dev/null
+          jq -e \
+            --argjson id "$TAG_RULESET_ID" '
+              .id == $id and .target == "tag" and
+              .enforcement == "active" and .bypass_actors == [] and
+              .conditions.ref_name.exclude == [] and
+              .conditions.ref_name.include == ["refs/tags/aegis-proof-v1-*"] and
+              ([.rules[].type] | contains(["deletion", "update"]))
+            ' "$snapshot/tag-ruleset.json" >/dev/null
+          for rule in deletion non_fast_forward; do
+            jq -e --arg rule "$rule" --argjson id "$BRANCH_RULESET_ID" '
+              any(.[]; .type == $rule and .ruleset_id == $id)
+            ' "$snapshot/effective-branch.json" >/dev/null
+          done
+          jq -e '.enabled == true' "$snapshot/immutable.json" >/dev/null
+          public_head="$(
+            api "repos/$PUBLIC_REPOSITORY/commits/$encoded_branch" --jq .sha
+          )"
+          [[ "$public_head" =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]]
+          token_sha256="$(
+            printf '%s' "$PUBLIC_PROOF_POLICY_TOKEN" | sha256sum | cut -d ' ' -f 1
+          )"
+          {
+            printf 'default_branch=%s\n' "$default_branch"
+            printf 'public_head=%s\n' "$public_head"
+            printf 'token_sha256=%s\n' "$token_sha256"
+          } >> "$GITHUB_OUTPUT"
+          unset PUBLIC_PROOF_POLICY_TOKEN
+
+  publish:
+    name: Anchor and publish on a fresh runner
+    needs: [build, sign, policy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download signed data only
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: signed-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/signed-proof
+
+      - name: Check out exact public base
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          repository: ${{ vars.PUBLIC_PROOF_REPOSITORY }}
+          path: public-proof
+          ref: ${{ needs.policy.outputs.public_head }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate and assemble signed public commit without a secret
+        env:
+          DAY_ID: ${{ inputs.day_id }}
+          PUBLIC_DEFAULT_BRANCH: ${{ needs.policy.outputs.default_branch }}
+          POLICY_PUBLIC_HEAD: ${{ needs.policy.outputs.public_head }}
+          EXPECTED_SEQUENCE: ${{ needs.build.outputs.sequence }}
+          EXPECTED_TAG: ${{ needs.build.outputs.tag }}
+          EXPECTED_SIGNER_SHA256: ${{ vars.PUBLIC_PROOF_SIGNER_SHA256 }}
+        run: |
+          set -euo pipefail
+          unset BASH_ENV ENV CDPATH
+          export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          incoming="$RUNNER_TEMP/signed-proof"
+          expected="$(
+            printf '%s\n' \
+              bundle-receipt.json index.html ledger.jsonl manifest.json \
+              manifest.json.sig manifest.sha256 public-proof.json \
+              public-proof.sha256 signature-request.json signer.pub | sort
+          )"
+          actual="$(
+            find "$incoming" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | sort
+          )"
+          test "$actual" = "$expected"
+          test "$(find "$incoming" -mindepth 1 -maxdepth 1 | wc -l)" -eq 10
+          jq -e \
+            --arg publisher "sha256:$PUBLISHER_SHA256" \
+            --arg learn "sha256:$LEARN_CORE_SHA256" \
+            --arg template "sha256:$PUBLIC_TEMPLATE_SHA256" \
+            --argjson sequence "$EXPECTED_SEQUENCE" \
+            --arg tag "$EXPECTED_TAG" '
+              .schema_version == 1 and
+              .kind == "aegis-signed-proof-bundle" and
+              .sequence == $sequence and .tag == $tag and
+              .tools == {
+                learning_publish: $publisher,
+                learn: $learn,
+                public_template: $template
+              }
+            ' "$incoming/bundle-receipt.json" >/dev/null
+          artifacts=(
+            index.html ledger.jsonl manifest.json manifest.json.sig
+            manifest.sha256 public-proof.json public-proof.sha256
+            signature-request.json signer.pub
+          )
+          test "$(jq '.artifacts | length' "$incoming/bundle-receipt.json")" -eq 9
+          for name in "${artifacts[@]}"; do
+            test -f "$incoming/$name"
+            test ! -L "$incoming/$name"
+            expected_sha="$(
+              jq -er --arg name "$name" '.artifacts[$name].sha256' \
+                "$incoming/bundle-receipt.json"
+            )"
+            expected_size="$(
+              jq -er --arg name "$name" '.artifacts[$name].size' \
+                "$incoming/bundle-receipt.json"
+            )"
+            test "$expected_sha" = "sha256:$(sha256sum "$incoming/$name" | cut -d ' ' -f 1)"
+            test "$expected_size" -eq "$(stat -c %s "$incoming/$name")"
+            test "$expected_size" -le 8000000
+          done
+          [[ "$EXPECTED_SIGNER_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          read -r signer_type signer_blob signer_extra < "$incoming/signer.pub"
+          test "$signer_type" = ssh-ed25519
+          [[ "$signer_blob" =~ ^[A-Za-z0-9+/]+={0,2}$ ]]
+          test -z "$signer_extra"
+          test "$(wc -l < "$incoming/signer.pub")" -eq 1
+          ssh-keygen -l -f "$incoming/signer.pub" >/dev/null
+          test "$(sha256sum "$incoming/signer.pub" | cut -d ' ' -f 1)" \
+            = "$EXPECTED_SIGNER_SHA256"
+          allowed_signers="$RUNNER_TEMP/incoming-allowed-signers"
+          printf 'aegis-learning-proof %s\n' \
+            "$(cat "$incoming/signer.pub")" > "$allowed_signers"
+          ssh-keygen -Y verify \
+            -f "$allowed_signers" \
+            -I aegis-learning-proof \
+            -n aegis-learning-manifest \
+            -s "$incoming/manifest.json.sig" \
+            < "$incoming/manifest.json"
+          rm -f "$allowed_signers"
+          for json_name in manifest.json public-proof.json signature-request.json; do
+            canonical="$RUNNER_TEMP/publish-canonical-$json_name"
+            jq -cS . "$incoming/$json_name" > "$canonical"
+            cmp -- "$canonical" "$incoming/$json_name"
+          done
+          jq -e '
+            keys == ["artifacts", "ledger_head_sha256", "schema_version", "signature"] and
+            .schema_version == 1 and
+            .signature == {embedded: false, mode: "external-detached"} and
+            (.artifacts | keys) == [
+              "index.html", "ledger.jsonl", "public-proof.json",
+              "public-proof.sha256"
+            ]
+          ' "$incoming/manifest.json" >/dev/null
+          manifest_artifacts=(
+            index.html ledger.jsonl public-proof.json public-proof.sha256
+          )
+          for name in "${manifest_artifacts[@]}"; do
+            digest="sha256:$(sha256sum "$incoming/$name" | cut -d ' ' -f 1)"
+            test "$(jq -er --arg name "$name" '.artifacts[$name].sha256' \
+              "$incoming/manifest.json")" = "$digest"
+          done
+          ledger_head="sha256:$(tail -n 1 "$incoming/ledger.jsonl" | sha256sum | cut -d ' ' -f 1)"
+          test "$(jq -er .ledger_head_sha256 "$incoming/manifest.json")" \
+            = "$ledger_head"
+          proof_sha="sha256:$(sha256sum "$incoming/public-proof.json" | cut -d ' ' -f 1)"
+          test "$(tail -n 1 "$incoming/ledger.jsonl" | jq -er .proof_sha256)" \
+            = "$proof_sha"
+          test "$(cat "$incoming/public-proof.sha256")" \
+            = "${proof_sha#sha256:}  public-proof.json"
+          manifest_sha="$(sha256sum "$incoming/manifest.json" | cut -d ' ' -f 1)"
+          test "$(cat "$incoming/manifest.sha256")" = "$manifest_sha  manifest.json"
+          jq -e --arg digest "sha256:$manifest_sha" '
+            . == {
+              schema_version: 1,
+              kind: "external-detached-signature-request",
+              payload: "manifest.json",
+              payload_sha256: $digest,
+              status: "external_signature_expected"
+            }
+          ' "$incoming/signature-request.json" >/dev/null
+          sequence="$(tail -n 1 "$incoming/ledger.jsonl" | jq -er .sequence)"
+          test "$sequence" -eq "$EXPECTED_SEQUENCE"
+          test "$EXPECTED_TAG" = "$(printf 'aegis-proof-v1-%06d' "$sequence")"
+
+          repository="public-proof"
+          test "$POLICY_PUBLIC_HEAD" = "$(
+            git -C "$repository" rev-parse 'HEAD^{commit}'
+          )"
+          git -C "$repository" config --local core.hooksPath /dev/null
+          test -z "$(
+            git -C "$repository" config --local --get-regexp \
+              '^(credential\.|http\..*\.extraheader|include\.)' || true
+          )"
+          test -z "$(git -C "$repository" status --porcelain=v1 --untracked-files=all)"
+          docs="$repository/docs"
+          test ! -L "$docs"
+          mkdir -p "$docs"
+          base_ledger="$RUNNER_TEMP/base-ledger.jsonl"
+          if git -C "$repository" show \
+            "$POLICY_PUBLIC_HEAD:docs/ledger.jsonl" > "$base_ledger" 2>/dev/null; then
+            base_sequence="$(tail -n 1 "$base_ledger" | jq -er .sequence)"
+            base_size="$(stat -c %s "$base_ledger")"
+            head -c "$base_size" "$incoming/ledger.jsonl" | cmp -- "$base_ledger" -
+          else
+            base_sequence=0
+            test ! -s "$base_ledger"
+          fi
+          if git -C "$repository" cat-file -e \
+            "$POLICY_PUBLIC_HEAD:docs/signer.pub" 2>/dev/null; then
+            git -C "$repository" show "$POLICY_PUBLIC_HEAD:docs/signer.pub" \
+              | cmp -- - "$incoming/signer.pub"
+          fi
+          for name in "${artifacts[@]}"; do
+            install -m 0444 "$incoming/$name" "$docs/$name"
+          done
+          git -C "$repository" config user.name "aegis-proof-bot"
+          git -C "$repository" config user.email \
+            "aegis-proof-bot@users.noreply.github.com"
+          git -C "$repository" add -- \
+            docs/index.html docs/ledger.jsonl docs/manifest.json \
+            docs/manifest.json.sig docs/manifest.sha256 \
+            docs/public-proof.json docs/public-proof.sha256 \
+            docs/signature-request.json docs/signer.pub
+          if git -C "$repository" diff --cached --quiet; then
+            mode=verify-existing
+            test "$sequence" -eq "$base_sequence"
+          else
+            mode=create-or-recover
+            test "$sequence" -eq $((base_sequence + 1))
+            git -C "$repository" commit -m "Publish signed proof $DAY_ID"
+          fi
+          candidate_commit="$(git -C "$repository" rev-parse 'HEAD^{commit}')"
+          candidate_tree="$(git -C "$repository" rev-parse 'HEAD^{tree}')"
+          commit_line="$(git -C "$repository" rev-list --parents -n 1 "$candidate_commit")"
+          if [ "$mode" = create-or-recover ]; then
+            test "$commit_line" = "$candidate_commit $POLICY_PUBLIC_HEAD"
+            expected_parent="$POLICY_PUBLIC_HEAD"
+          else
+            expected_parent="${commit_line#"$candidate_commit"}"
+            expected_parent="${expected_parent# }"
+          fi
+          test -z "$(git -C "$repository" status --porcelain=v1 --untracked-files=all)"
+          for name in "${artifacts[@]}"; do
+            git -C "$repository" show "$candidate_commit:docs/$name" \
+              | cmp -- - "$incoming/$name"
+          done
+          anchor_artifacts='{}'
+          for name in ledger.jsonl manifest.json manifest.json.sig signer.pub; do
+            digest="sha256:$(sha256sum "$docs/$name" | cut -d ' ' -f 1)"
+            size="$(stat -c %s "$docs/$name")"
+            anchor_artifacts="$(
+              jq -cn \
+                --argjson current "$anchor_artifacts" \
+                --arg name "$name" \
+                --arg digest "$digest" \
+                --argjson size "$size" \
+                '$current + {($name): {sha256: $digest, size: $size}}'
+            )"
+          done
+          plan="$RUNNER_TEMP/anchor-plan.json"
+          jq -cS -n \
+            --arg mode "$mode" \
+            --arg branch "$PUBLIC_DEFAULT_BRANCH" \
+            --argjson sequence "$sequence" \
+            --argjson branch_sequence "$base_sequence" \
+            --arg tag "$EXPECTED_TAG" \
+            --arg candidate_commit "$candidate_commit" \
+            --arg candidate_tree "$candidate_tree" \
+            --arg branch_commit "$POLICY_PUBLIC_HEAD" \
+            --arg expected_parent "$expected_parent" \
+            --argjson artifacts "$anchor_artifacts" '
+              {
+                schema_version: 1,
+                mode: $mode,
+                default_branch: $branch,
+                sequence: $sequence,
+                branch_sequence: $branch_sequence,
+                tag: $tag,
+                previous_tag: (if $sequence > 1 then
+                  "aegis-proof-v1-" + (($sequence - 1) | tostring | "0" * (6 - length) + .)
+                else null end),
+                candidate_commit: $candidate_commit,
+                candidate_tree: $candidate_tree,
+                branch_commit: $branch_commit,
+                expected_parent: (if $expected_parent == "" then null else $expected_parent end),
+                artifacts: $artifacts
+              }
+            ' > "$plan"
+
+      - name: Anchor immutable release and advance branch
+        env:
+          PUBLIC_PROOF_TOKEN: ${{ secrets.PUBLIC_PROOF_TOKEN }}
+          POLICY_TOKEN_SHA256: ${{ needs.policy.outputs.policy_token_sha256 }}
+          PUBLIC_REPOSITORY: ${{ vars.PUBLIC_PROOF_REPOSITORY }}
+          PUBLIC_DEFAULT_BRANCH: ${{ needs.policy.outputs.default_branch }}
+        working-directory: public-proof
+        run: |
+          set -euo pipefail
+          unset BASH_ENV ENV CDPATH
+          export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          test -n "$PUBLIC_PROOF_TOKEN"
+          [[ "$POLICY_TOKEN_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          test "$(printf '%s' "$PUBLIC_PROOF_TOKEN" | sha256sum | cut -d ' ' -f 1)" \
+            != "$POLICY_TOKEN_SHA256"
+          test "$(git config --local core.hooksPath)" = /dev/null
+          test -z "$(
+            git config --local --get-regexp \
+              '^(credential\.|http\..*\.extraheader|include\.)' || true
+          )"
+          api_version="2026-03-10"
+          anchor_dir="$RUNNER_TEMP/public-proof-anchor"
+          mkdir -p "$anchor_dir"
+          chmod 700 "$anchor_dir"
+          plan="$RUNNER_TEMP/anchor-plan.json"
+          releases="$anchor_dir/releases.json"
+          target_release="$anchor_dir/target-release.json"
+          anchor_body="$anchor_dir/anchor-body.json"
+          askpass="$RUNNER_TEMP/public-proof-git-askpass"
+          cleanup() {
+            rm -f -- "$askpass"
+            unset GIT_ASKPASS GIT_TERMINAL_PROMPT GH_TOKEN PUBLIC_PROOF_TOKEN
+          }
+          trap cleanup EXIT
+          umask 077
+          # The single quotes deliberately defer these expansions to GIT_ASKPASS.
+          # shellcheck disable=SC2016
+          printf '%s\n' \
+            '#!/bin/sh' \
+            'case "$1" in' \
+            '  *Username*) printf "%s\\n" "x-access-token" ;;' \
+            '  *Password*) printf "%s\\n" "$PUBLIC_PROOF_TOKEN" ;;' \
+            '  *) exit 1 ;;' \
+            'esac' > "$askpass"
+          chmod 700 "$askpass"
+          export GIT_ASKPASS="$askpass"
+          export GIT_TERMINAL_PROMPT=0
+          export GH_TOKEN="$PUBLIC_PROOF_TOKEN"
+
+          mode="$(jq -er .mode "$plan")"
+          sequence="$(jq -er .sequence "$plan")"
+          branch_sequence="$(jq -er .branch_sequence "$plan")"
+          tag="$(jq -er .tag "$plan")"
+          previous_tag="$(jq -er '.previous_tag // empty' "$plan")"
+          candidate_commit="$(jq -er .candidate_commit "$plan")"
+          candidate_tree="$(jq -er .candidate_tree "$plan")"
+          branch_commit="$(jq -er .branch_commit "$plan")"
+          expected_parent="$(jq -er '.expected_parent // empty' "$plan")"
+          test "$(jq -er .default_branch "$plan")" = "$PUBLIC_DEFAULT_BRANCH"
+          GH_TOKEN="$PUBLIC_PROOF_TOKEN" gh api --paginate \
+            -H "X-GitHub-Api-Version: $api_version" \
+            "repos/$PUBLIC_REPOSITORY/releases?per_page=100" \
+            --jq '.[]' | jq -s . > "$releases"
+          anchor_count="$(
+            jq '[.[] | select(.tag_name | test("^aegis-proof-v1-[0-9]{6}$"))] | length' \
+              "$releases"
+          )"
+          release_count() {
+            jq --arg tag "$1" '[.[] | select(.tag_name == $tag)] | length' \
+              "$releases"
+          }
+          write_release() {
+            jq --arg tag "$1" '[.[] | select(.tag_name == $tag)][0]' \
+              "$releases" > "$2"
+          }
+          require_published() {
+            local release_tag="$1"
+            test "$(release_count "$release_tag")" -eq 1
+            jq -e --arg tag "$release_tag" '
+              .[] | select(.tag_name == $tag) |
+              .name == $tag and .draft == false and
+              .prerelease == false and .immutable == true and
+              (.published_at | type == "string")
+            ' "$releases" >/dev/null
+          }
+          prefix_sequence=1
+          while [ "$prefix_sequence" -le "$branch_sequence" ]; do
+            prefix_tag="$(printf 'aegis-proof-v1-%06d' "$prefix_sequence")"
+            require_published "$prefix_tag"
+            prefix_sequence=$((prefix_sequence + 1))
+          done
+          target_count="$(release_count "$tag")"
+          test "$target_count" -le 1
+          if [ "$mode" = create-or-recover ]; then
+            test "$sequence" -eq $((branch_sequence + 1))
+            test "$anchor_count" -eq $((branch_sequence + target_count))
+            if [ "$target_count" -eq 1 ]; then
+              write_release "$tag" "$target_release"
+              jq -e --arg tag "$tag" '
+                .name == $tag and .prerelease == false and
+                ((.draft == true and .immutable != true) or
+                 (.draft == false and .immutable == true and
+                  (.published_at | type == "string")))
+              ' "$target_release" >/dev/null
+            fi
+          else
+            test "$mode" = verify-existing
+            test "$sequence" -eq "$branch_sequence"
+            test "$target_count" -eq 1
+            test "$anchor_count" -eq "$sequence"
+            require_published "$tag"
+            write_release "$tag" "$target_release"
+          fi
+
+          remote_tag_state() {
+            local remote_tag="$1"
+            git ls-remote --refs origin "refs/tags/$remote_tag"
+          }
+          fetch_tag_commit() {
+            local remote_tag="$1"
+            local destination="$2"
+            git fetch --no-tags origin \
+              "refs/tags/$remote_tag:$destination" >/dev/null
+            git rev-parse "$destination^{commit}"
+          }
+          asset_names_json='["ledger.jsonl","manifest.json","manifest.json.sig","signer.pub"]'
+          verify_envelope() {
+            local release_file="$1"
+            local release_sequence="$2"
+            local release_tag="$3"
+            local release_commit="$4"
+            jq -e \
+              --argjson sequence "$release_sequence" \
+              --arg tag "$release_tag" \
+              --arg commit "$release_commit" '
+                .tag_name == $tag and .name == $tag and
+                .draft == false and .prerelease == false and
+                .immutable == true and (.published_at | type == "string") and
+                ((.body | fromjson) as $body |
+                  $body.schema_version == 1 and
+                  $body.kind == "aegis-learning-proof-release-anchor" and
+                  $body.sequence == $sequence and
+                  $body.tag == $tag and
+                  $body.public_commit == $commit)
+              ' "$release_file" >/dev/null
+          }
+          verify_assets() {
+            local release_file="$1"
+            local asset_dir="$2"
+            jq -e --argjson names "$asset_names_json" '
+              ([.assets[].name] | sort) == $names and
+              ((.body | fromjson | .artifacts | keys | sort) == $names)
+            ' "$release_file" >/dev/null
+            test "$(find "$asset_dir" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort | jq -Rsc 'split("\n")[:-1]')" \
+              = "$asset_names_json"
+            for asset_name in \
+              ledger.jsonl manifest.json manifest.json.sig signer.pub; do
+              asset_path="$asset_dir/$asset_name"
+              test -f "$asset_path"
+              test ! -L "$asset_path"
+              expected_sha="$(
+                jq -er --arg name "$asset_name" \
+                  '.body | fromjson | .artifacts[$name].sha256' "$release_file"
+              )"
+              expected_size="$(
+                jq -er --arg name "$asset_name" \
+                  '.body | fromjson | .artifacts[$name].size' "$release_file"
+              )"
+              test "$expected_sha" = "sha256:$(sha256sum "$asset_path" | cut -d ' ' -f 1)"
+              test "$expected_size" -eq "$(stat -c %s "$asset_path")"
+              jq -e --arg name "$asset_name" \
+                --arg digest "$expected_sha" \
+                --argjson size "$expected_size" '
+                  [.assets[] | select(.name == $name)] as $asset |
+                  ($asset | length) == 1 and
+                  $asset[0].state == "uploaded" and
+                  $asset[0].digest == $digest and
+                  $asset[0].size == $size
+                ' "$release_file" >/dev/null
+            done
+          }
+          verify_signature() {
+            local asset_dir="$1"
+            local allowed
+            allowed="$anchor_dir/allowed-$(basename "$asset_dir")"
+            printf 'aegis-learning-proof %s\n' \
+              "$(cat "$asset_dir/signer.pub")" > "$allowed"
+            ssh-keygen -Y verify \
+              -f "$allowed" -I aegis-learning-proof \
+              -n aegis-learning-manifest \
+              -s "$asset_dir/manifest.json.sig" \
+              < "$asset_dir/manifest.json"
+            rm -f "$allowed"
+          }
+          download_release() {
+            local release_tag="$1"
+            local release_dir
+            release_dir="$(mktemp -d "$RUNNER_TEMP/aegis-assets.XXXXXX")"
+            gh release download "$release_tag" \
+              --repo "$PUBLIC_REPOSITORY" --dir "$release_dir"
+            printf '%s\n' "$release_dir"
+          }
+
+          previous_commit=""
+          if [ "$sequence" -gt 1 ]; then
+            previous_release="$anchor_dir/previous-release.json"
+            write_release "$previous_tag" "$previous_release"
+            previous_state="$(remote_tag_state "$previous_tag")"
+            test "$(printf '%s\n' "$previous_state" | wc -l)" -eq 1
+            previous_commit="$(
+              fetch_tag_commit "$previous_tag" \
+                "refs/aegis-verify/previous-$sequence"
+            )"
+            test "$previous_commit" = "$expected_parent"
+            verify_envelope \
+              "$previous_release" "$((sequence - 1))" \
+              "$previous_tag" "$previous_commit"
+            previous_assets="$(download_release "$previous_tag")"
+            verify_assets "$previous_release" "$previous_assets"
+            verify_signature "$previous_assets"
+            cmp -- "$previous_assets/signer.pub" docs/signer.pub
+            for name in ledger.jsonl manifest.json manifest.json.sig signer.pub; do
+              git show "$previous_commit:docs/$name" | cmp -- - "$previous_assets/$name"
+            done
+          fi
+
+          pre_release_tag_state="$(remote_tag_state "$tag")"
+          if [ -n "$pre_release_tag_state" ]; then
+            test "$(printf '%s\n' "$pre_release_tag_state" | wc -l)" -eq 1
+            anchor_commit="$(
+              fetch_tag_commit "$tag" "refs/aegis-verify/target-pre-$sequence"
+            )"
+          else
+            test "$mode" = create-or-recover
+            test "$target_count" -eq 0
+            anchor_commit="$candidate_commit"
+            git -c credential.helper= push origin \
+              "$anchor_commit:refs/tags/$tag"
+            pre_release_tag_state="$(remote_tag_state "$tag")"
+            test "$(printf '%s\n' "$pre_release_tag_state" | wc -l)" -eq 1
+          fi
+          test "$(git rev-parse "$anchor_commit^{tree}")" = "$candidate_tree"
+          commit_line="$(git rev-list --parents -n 1 "$anchor_commit")"
+          if [ -n "$expected_parent" ]; then
+            test "$commit_line" = "$anchor_commit $expected_parent"
+          else
+            test "$commit_line" = "$anchor_commit"
+          fi
+          if [ "$sequence" -eq 1 ]; then
+            jq -S -n --slurpfile plan "$plan" --arg commit "$anchor_commit" '
+              ($plan[0]) as $plan | {
+                schema_version: 1,
+                kind: "aegis-learning-proof-release-anchor",
+                sequence: $plan.sequence,
+                tag: $plan.tag,
+                public_commit: $commit,
+                previous_anchor: null,
+                artifacts: $plan.artifacts
+              }
+            ' > "$anchor_body"
+          else
+            jq -S -n \
+              --slurpfile plan "$plan" \
+              --arg commit "$anchor_commit" \
+              --arg previous_commit "$previous_commit" '
+                ($plan[0]) as $plan | {
+                  schema_version: 1,
+                  kind: "aegis-learning-proof-release-anchor",
+                  sequence: $plan.sequence,
+                  tag: $plan.tag,
+                  public_commit: $commit,
+                  previous_anchor: {
+                    sequence: ($plan.sequence - 1),
+                    tag: $plan.previous_tag,
+                    public_commit: $previous_commit
+                  },
+                  artifacts: $plan.artifacts
+                }
+              ' > "$anchor_body"
+          fi
+          asset_paths=(
+            docs/ledger.jsonl docs/manifest.json
+            docs/manifest.json.sig docs/signer.pub
+          )
+          if [ "$target_count" -eq 0 ]; then
+            gh release create "$tag" \
+              --repo "$PUBLIC_REPOSITORY" --verify-tag --draft \
+              --title "$tag" --notes-file "$anchor_body" \
+              "${asset_paths[@]}"
+            gh release edit "$tag" \
+              --repo "$PUBLIC_REPOSITORY" --draft=false
+          elif jq -e '.draft == true' "$target_release" >/dev/null; then
+            jq -e --argjson names "$asset_names_json" '
+              ([.assets[].name] - $names | length) == 0
+            ' "$target_release" >/dev/null
+            gh release edit "$tag" \
+              --repo "$PUBLIC_REPOSITORY" --draft \
+              --title "$tag" --notes-file "$anchor_body"
+            gh release upload "$tag" \
+              --repo "$PUBLIC_REPOSITORY" --clobber "${asset_paths[@]}"
+            gh release edit "$tag" \
+              --repo "$PUBLIC_REPOSITORY" --draft=false
+          fi
+
+          encoded_tag="$(jq -nr --arg value "$tag" '$value | @uri')"
+          GH_TOKEN="$PUBLIC_PROOF_TOKEN" gh api \
+            -H "X-GitHub-Api-Version: $api_version" \
+            "repos/$PUBLIC_REPOSITORY/releases/tags/$encoded_tag" \
+            > "$target_release"
+          verify_envelope "$target_release" "$sequence" "$tag" "$anchor_commit"
+          jq -e --slurpfile expected "$anchor_body" '
+            (.body | fromjson) == $expected[0]
+          ' "$target_release" >/dev/null
+          current_assets="$(download_release "$tag")"
+          verify_assets "$target_release" "$current_assets"
+          verify_signature "$current_assets"
+          for name in ledger.jsonl manifest.json manifest.json.sig signer.pub; do
+            cmp -- "docs/$name" "$current_assets/$name"
+            git show "$anchor_commit:docs/$name" | cmp -- - "$current_assets/$name"
+          done
+
+          post_release_tag_state="$(remote_tag_state "$tag")"
+          test "$post_release_tag_state" = "$pre_release_tag_state"
+          post_release_commit="$(
+            fetch_tag_commit "$tag" "refs/aegis-verify/target-post-$sequence"
+          )"
+          test "$post_release_commit" = "$anchor_commit"
+          remote_head="$(
+            git ls-remote --heads origin \
+              "refs/heads/$PUBLIC_DEFAULT_BRANCH" | cut -f 1
+          )"
+          if [ "$remote_head" = "$anchor_commit" ]; then
+            : # Idempotent retry after the final push.
+          elif [ "$remote_head" = "$branch_commit" ]; then
+            test "$(remote_tag_state "$tag")" = "$post_release_tag_state"
+            git -c credential.helper= push origin \
+              "$anchor_commit:refs/heads/$PUBLIC_DEFAULT_BRANCH"
+          else
+            echo "Public branch moved outside the anchored transaction" >&2
+            exit 1
+          fi
+          test "$(
+            git ls-remote --heads origin \
+              "refs/heads/$PUBLIC_DEFAULT_BRANCH" | cut -f 1
+          )" = "$anchor_commit"
+          test "$(remote_tag_state "$tag")" = "$post_release_tag_state"

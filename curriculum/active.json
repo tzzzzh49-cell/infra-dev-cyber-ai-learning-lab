@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "active_version": "2.1.0",
+  "guide_path": "curriculum/v2.1.0/Guide_370_jours_RNCP41996_Secure_AI_Ops_pas_a_pas.md",
+  "sha256": "0442ff3a279cdcb39bd226de93e21dcbdc45ca942da18472827e277652b6d6d8",
+  "total_main_days": 370,
+  "total_consolidation_days": 20,
+  "audited_phases": [
+    0
+  ],
+  "global_contract_reviewed": true,
+  "audit_reports": {
+    "phase-0": {
+      "path": "curriculum/audits/phase-00-v2.1.0.md",
+      "sha256": "8ce02519db4a5bf20a2e98edd8e07487d08bb840dd35e2ec1c43ee89cb6e95a2"
+    }
+  },
+  "source": {
+    "version": "1.0.0",
+    "original_path": "/home/labadmin/AegisOps/Guide_370_jours_RNCP41996_Secure_AI_Ops_pas_a_pas.md",
+    "imported_path": "curriculum/v1.0.0/Guide_370_jours_RNCP41996_Secure_AI_Ops_pas_a_pas.md",
+    "sha256": "f38dbd6b9d97ed6ccab21f15619789559792565bed8b5d733155299b1d36b77d",
+    "immutable": true
+  },
+  "versions": {
+    "1.0.0": {
+      "status": "historical-source",
+      "guide_path": "curriculum/v1.0.0/Guide_370_jours_RNCP41996_Secure_AI_Ops_pas_a_pas.md",
+      "sha256": "f38dbd6b9d97ed6ccab21f15619789559792565bed8b5d733155299b1d36b77d"
+    },
+    "2.0.0": {
+      "status": "superseded-noncreditable",
+      "guide_path": "curriculum/v2.0.0/Guide_370_jours_RNCP41996_Secure_AI_Ops_pas_a_pas.md",
+      "sha256": "2684cc3bb270c69e8a8c9513f4bac25b5a267609f46327977bed049fb77782ea",
+      "derived_from": "1.0.0",
+      "active_audit_boundary": "phase-0",
+      "audited_phases": [
+        0
+      ],
+      "audit_reports": {
+        "phase-0": {
+          "path": "curriculum/audits/phase-00.md",
+          "sha256": "eebb3981cfafec4a575e29e587bc4ac1e289f256c8d63cb8d61424fce177256f"
+        }
+      }
+    },
+    "2.1.0": {
+      "status": "active",
+      "guide_path": "curriculum/v2.1.0/Guide_370_jours_RNCP41996_Secure_AI_Ops_pas_a_pas.md",
+      "sha256": "0442ff3a279cdcb39bd226de93e21dcbdc45ca942da18472827e277652b6d6d8",
+      "derived_from": "2.0.0",
+      "active_audit_boundary": "phase-0",
+      "audited_phases": [
+        0
+      ],
+      "audit_reports": {
+        "phase-0": {
+          "path": "curriculum/audits/phase-00-v2.1.0.md",
+          "sha256": "8ce02519db4a5bf20a2e98edd8e07487d08bb840dd35e2ec1c43ee89cb6e95a2"
+        }
+      }
+    }
+  },
+  "semver_policy": {
+    "patch": "Correction éditoriale sans effet pédagogique",
+    "minor": "Clarification ou ajout pédagogique compatible",
+    "major": "Changement de structure, de contrat ou de validation"
+  }
+}

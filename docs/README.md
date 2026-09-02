@@ -13,6 +13,7 @@ Markdown stables des fichiers suivis.
 - [Reproductibilité](#reproductibilite)
 - [Diagnostics et API](#diagnostics-et-api)
 - [VPS et backups](#vps-et-backups)
+- [Parcours d'apprentissage](#parcours-dapprentissage)
 
 ## Architecture
 
@@ -45,3 +46,8 @@ Markdown stables des fichiers suivis.
 - [Backups](backups/README.md)
 - [Restic local-first](backups/restic-local-first.md)
 - [Restic S3-compatible](backups/restic-s3-compatible.md)
+
+## Parcours d'apprentissage
+
+- [Contrat technique du cockpit](learning-cockpit.md)
+- [Archives d'apprentissage non canoniques](archive/legacy-learning/README.md)

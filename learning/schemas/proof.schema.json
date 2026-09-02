@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "repo://learning/schemas/proof.schema.json",
+  "title": "Aegis learning proof",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "day_id",
+    "guide",
+    "activation",
+    "source_mode",
+    "learner_status",
+    "commits",
+    "checks",
+    "review",
+    "raw_evidence",
+    "section_digests",
+    "conformity",
+    "timestamps"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "day_id": {"type": "string", "pattern": "^J[0-9]{3}$"},
+    "guide": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "sha256", "refs"],
+      "properties": {
+        "version": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "activation": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": ["audited-phase", "blocked-day", "pathway-completion"]
+        },
+        "phase": {"type": "integer", "minimum": 0, "maximum": 13},
+        "triggered_by": {"type": "string", "pattern": "^J[0-9]{3}$"}
+      }
+    },
+    "source_mode": {"enum": ["guide-only", "training-only"]},
+    "learner_status": {
+      "enum": ["En cours", "À reprendre", "Bloqué", "Validé"]
+    },
+    "commits": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"}
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["positive", "negative", "rollback", "ci"],
+      "properties": {
+        "positive": {"type": "boolean"},
+        "negative": {"type": "boolean"},
+        "rollback": {"type": "boolean"},
+        "ci": {"enum": ["pending", "conforme", "non_conforme"]}
+      }
+    },
+    "review": {"type": "object"},
+    "raw_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256"],
+      "properties": {
+        "id": {
+          "anyOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^j[0-9]{3}-[0-9a-f]{32}$"}
+          ]
+        },
+        "sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "section_digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Ma prévision",
+        "Mes observations",
+        "Mon explication",
+        "Test positif",
+        "Refus attendu",
+        "Rollback",
+        "Synthèse personnelle sans notes",
+        "Résumé public FR",
+        "Résumé public EN approuvé",
+        "Assertions publiques",
+        "Erreur utile",
+        "Statut"
+      ],
+      "properties": {
+        "Ma prévision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "Mes observations": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "Mon explication": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "Test positif": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "Refus attendu": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "Rollback": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "Synthèse personnelle sans notes": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "Résumé public FR": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "Résumé public EN approuvé": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "Assertions publiques": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "Erreur utile": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "Statut": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "conformity": {"enum": ["pending", "non_conforme", "conforme"]},
+    "timestamps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at", "updated_at"],
+      "properties": {
+        "started_at": {"type": ["string", "null"], "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

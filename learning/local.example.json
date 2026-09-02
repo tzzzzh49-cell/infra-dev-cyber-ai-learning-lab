@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "aliases": {
+    "fedora": "fedora-lab",
+    "ubuntu": "ubuntu-lab",
+    "vps": "vps-lab"
+  },
+  "editor": "code",
+  "age_recipient": "age1<DEDICATED_PUBLIC_RECIPIENT>",
+  "raw_store": "/path/outside/repository/encrypted-evidence",
+  "offline_store": "/mounted/offline-disk/encrypted-evidence"
+}

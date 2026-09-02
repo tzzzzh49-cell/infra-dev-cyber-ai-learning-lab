@@ -1,107 +1,73 @@
-# Profil
+# Secure AI Ops Learning Lab
 
 [![CI](https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab/actions/workflows/ci.yml)
 
-Administrateur systèmes/réseaux junior en construction, orienté Linux, Docker, sécurité défensive, automatisation et documentation d'exploitation.
+Ce dépôt permet d'apprendre en construisant un lab d'infrastructure sécurisé et
+de produire des preuves GitHub vérifiables. La promesse publique reste simple :
+**« J'apprends avec rigueur. »**
 
-## Projet principal
-
-Je construis [`infra-dev-cyber-ai-learning-lab`](https://github.com/tzzzzh49-cell/infra-dev-cyber-ai-learning-lab), un lab d'infrastructure sécurisé, reproductible et documenté.
-
-Le projet sert surtout à démontrer une démarche d'exploitation d'infrastructure, avec des diagnostics système/réseau et des procédures rejouables.
-
-Déjà visible dans le dépôt :
-
-- API FastAPI avec endpoints de santé, version, diagnostic et exports ;
-- Docker Compose pour lancer le lab localement ;
-- diagnostics système/réseau en lecture seule ;
-- tests Python, Ruff, ShellCheck et validation Docker Compose ;
-- CI GitHub Actions avec contrôles qualité et sécurité ;
-- image Docker durcie avec utilisateur non-root ;
-- documentation sécurité, architecture, VPS et sauvegardes ;
-- scripts Restic local-first et restauration de test locale ;
-- protection locale de `/diag` par hash de jeton et protection VPS préparée
-  par OIDC/RBAC.
-
-En cours ou préparé :
-
-- validation Ubuntu Server ;
-- préparation VPS documentée ;
-- DNS, HTTPS et reverse proxy documentés ;
-- protection de `/diag` avant toute exposition publique ;
-- Restic distant S3-compatible avec placeholders uniquement ;
-- IA utilisée comme aide à l'analyse, sans exécution automatique de commandes dangereuses.
-
-Documentation technique : [`docs/README.md`](docs/README.md).
-
-## Démarrage local rapide
-
-Un hash est une empreinte du jeton : l'application reçoit le hash, le client
-garde le jeton en clair. Ne commiter ni l'un ni l'autre.
+## Commencer ici
 
 ```bash
-make check
-python3 scripts/generate_diag_token.py
-export APP_ENV=lab
-export DIAG_CLIENT_TOKEN='<JETON_AFFICHE_PAR_LE_SCRIPT>'
-export DIAG_ACCESS_TOKEN_HASH='<HASH_AFFICHE_PAR_LE_SCRIPT>'
-make run
-make health
-make diag
-make diag-json
-make diag-md
-make reports
-make down
+make learn
 ```
 
-En mode VPS (`APP_ENV=vps`), le jeton local est refusé : les routes `/diag`
-attendent un JWT OIDC validé par l'API.
+C'est la seule commande à retenir. Au premier lancement, elle vérifie le guide,
+la confidentialité du dépôt, Git, GitHub CLI, `age`, l'éditeur, la signature Git
+personnelle et les alias du lab. Ensuite, elle reprend toujours la journée
+active.
 
-## Compétences mises en pratique
+Pour une prise en main expliquée pas à pas, consulte
+[`TUTORIEL.md`](TUTORIEL.md).
 
-- **Systèmes** : Linux, SSH, utilisateurs, services, logs.
-- **Réseau** : DNS, HTTPS, reverse proxy, diagnostic réseau.
-- **Conteneurs** : Docker, Docker Compose, images non-root.
-- **Sécurité** : moindre privilège, secrets hors Git, lecture seule, CI sécurité.
-- **Automatisation** : Makefile, scripts Bash, Ansible local, GitHub Actions.
-- **Documentation** : runbooks, checklists, journaux de validation.
+Le cockpit affiche seulement :
 
-## Ce que je construis actuellement
+- la synthèse précédente ;
+- l'objectif et le garde-fou du jour ;
+- la prochaine question ou commande logique ;
+- l'état des contrôles.
 
-Je transforme progressivement un lab local reproductible en portfolio d'exploitation d'infrastructure.
+Il ouvre automatiquement l'unique fichier à rédiger, `learner.md`, sur la bonne
+rubrique. Les métadonnées de preuve et la mécanique GitHub restent en
+arrière-plan.
 
-Priorités actuelles :
+## Contrat d'apprentissage
 
-- rejouer et documenter la validation Ubuntu Server ;
-- consolider la préparation VPS ;
-- tester les sauvegardes et restaurations ;
-- maintenir la documentation sécurité ;
-- préparer une exposition publique limitée, protégée et vérifiable.
+- Le guide actif versionné dans `curriculum/` est l'unique source
+  d'enseignement et d'évaluation.
+- La fiche France Compétences n'est pas une source d'apprentissage.
+- Seul l'apprenant rédige `learner.md` et écrit `Statut: Validé`.
+- Une tentative aidée par une autre source ou une démonstration est un
+  entraînement ; elle doit être reconstruite depuis un état propre pour devenir
+  créditable.
+- Une journée passe seulement avec le statut de l'apprenant, une CI conforme et
+  une revue Codex `ready`.
+- La progression publique est `journées conformes / 390`. Ce n'est ni une note,
+  ni une certification, ni une déclaration d'expertise.
 
-## Preuves concrètes dans mes dépôts
+Pour une séance de professorat, invoquer explicitement `$aegis-professor`. Les
+tâches Codex ordinaires ne déclenchent aucun rituel pédagogique.
 
-- [`app/`](app/) : API FastAPI, authentification et diagnostics.
-- [`compose.yaml`](compose.yaml) et [`app/Dockerfile`](app/Dockerfile) : exécution conteneurisée et durcissement Docker.
-- [`Makefile`](Makefile) : commandes de validation, tests, lint, diagnostics et sauvegardes.
-- [`.github/workflows/ci.yml`](.github/workflows/ci.yml) : CI GitHub Actions.
-- [`backup/`](backup/) : scripts Restic locaux et restauration de test.
-- [`docs/vps/`](docs/vps/) : préparation VPS, SSH, firewall, Docker, Compose, HTTPS, DNS et OIDC.
-- [`docs/securite.md`](docs/securite.md) : posture de sécurité du lab.
+## Ce que contient le lab
 
-## Objectifs à court terme
+Le support technique existant est conservé : API FastAPI, Docker Compose,
+diagnostics système et réseau en lecture seule, Ansible, CI de qualité et de
+sécurité, procédures VPS, mTLS, OIDC et sauvegardes Restic. Ces éléments sont des
+candidats à auditer ; ils ne donnent aucun crédit automatique.
 
-- finaliser une validation propre sur Ubuntu Server ;
-- documenter les écarts et corrections de reproductibilité ;
-- renforcer les procédures de sauvegarde/restauration ;
-- garder `/diag` protégé avant toute exposition publique ;
-- améliorer les runbooks d'exploitation.
+La correspondance entre le guide et le dépôt se trouve dans
+[`learning/lab-map.yml`](learning/lab-map.yml). La roadmap est générée depuis la
+version active du guide dans [`learning/roadmap.md`](learning/roadmap.md).
 
-## Objectif professionnel
+## Maintenance du lab
 
-Ce profil vise des postes ou stages en :
+Les commandes techniques restent disponibles sans encombrer le parcours :
 
-- administration systèmes/réseaux ;
-- support infrastructure ;
-- exploitation Linux ;
-- DevOps junior ;
-- cybersécurité défensive junior.
+```bash
+make help-dev
+make check
+```
+
+La documentation d'architecture et d'exploitation reste indexée dans
+[`docs/README.md`](docs/README.md). Les anciens journaux d'apprentissage sont
+conservés dans `docs/archive/legacy-learning/` comme archives non canoniques.
