@@ -68,6 +68,10 @@ outputs/backups/*
 outputs/reports/*
 outputs/logs/*
 
+# Anciens emplacements locaux, jamais versionnés
+/backups/
+/private/
+
 # Garder les dossiers vides dans Git
 !outputs/raw/.gitkeep
 !outputs/rendered/.gitkeep

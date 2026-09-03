@@ -14,7 +14,14 @@
 
 ## Objectif
 
-Ce projet est un lab d’apprentissage autour de Linux, des réseaux, de Docker, de FastAPI, de l’automatisation et de la cybersécurité défensive.
+Ce projet est **AegisOps Twin**, un lab d’apprentissage autour de Linux, des
+réseaux, de PostgreSQL, de Docker, de FastAPI, de l’automatisation, de l'IA et
+de la cybersécurité défensive.
+
+La cible à long terme est une plateforme Secure AI Ops pour une PME multi-site,
+capable d'historiser ses observations et de produire des hypothèses sourcées
+avec validation humaine. L'architecture ci-dessous décrit le socle actuellement
+réalisé, pas encore l'ensemble de cette cible.
 
 L’objectif est de construire progressivement une application capable de :
 

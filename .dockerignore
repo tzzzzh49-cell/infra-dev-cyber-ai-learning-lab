@@ -25,6 +25,7 @@ outputs/*
 
 app/tests/
 app/requirements-dev.txt
+app/README.md
 
 docs/*
 
