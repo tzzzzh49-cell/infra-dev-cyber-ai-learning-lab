@@ -8,12 +8,19 @@ Markdown stables des fichiers suivis.
 
 ## Sommaire
 
+- [Démarrage et orientation](#demarrage-et-orientation)
 - [Architecture](#architecture)
 - [Sécurité](#securite)
 - [Reproductibilité](#reproductibilite)
 - [Diagnostics et API](#diagnostics-et-api)
 - [VPS et backups](#vps-et-backups)
 - [Parcours d'apprentissage](#parcours-dapprentissage)
+
+## Démarrage et orientation
+
+- [Tutoriel de prise en main](../TUTORIEL.md)
+- [Carte du dépôt](repository-map.md)
+- [Contrat technique du cockpit](learning-cockpit.md)
 
 ## Architecture
 
@@ -50,4 +57,6 @@ Markdown stables des fichiers suivis.
 ## Parcours d'apprentissage
 
 - [Contrat technique du cockpit](learning-cockpit.md)
+- [Espace de progression](../learning/README.md)
+- [Cursus versionné](../curriculum/README.md)
 - [Archives d'apprentissage non canoniques](archive/legacy-learning/README.md)

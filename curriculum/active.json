@@ -12,7 +12,7 @@
   "audit_reports": {
     "phase-0": {
       "path": "curriculum/audits/phase-00-v2.1.0.md",
-      "sha256": "8ce02519db4a5bf20a2e98edd8e07487d08bb840dd35e2ec1c43ee89cb6e95a2"
+      "sha256": "134551b16207c027096b962b60e5c76a8c46338c84144e4c16dfc66ba6a63b3c"
     }
   },
   "source": {
@@ -56,7 +56,7 @@
       "audit_reports": {
         "phase-0": {
           "path": "curriculum/audits/phase-00-v2.1.0.md",
-          "sha256": "8ce02519db4a5bf20a2e98edd8e07487d08bb840dd35e2ec1c43ee89cb6e95a2"
+          "sha256": "134551b16207c027096b962b60e5c76a8c46338c84144e4c16dfc66ba6a63b3c"
         }
       }
     }

@@ -516,6 +516,18 @@ def test_workflow_uses_fresh_jobs_and_data_only_artifacts_for_each_secret():
     assert workflow.count('test "$signer_type" = ssh-ed25519') == 2
 
 
+def test_workflow_requires_distinct_public_source_and_target_repositories():
+    document = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
+    boundary = document["jobs"]["build"]["steps"][0]["run"]
+
+    assert 'test "${SOURCE_REPOSITORY,,}" != "${PUBLIC_REPOSITORY,,}"' in boundary
+    assert '--json visibility,isPrivate' in boundary
+    assert 'test "$(jq -r .visibility <<< "$source_metadata")" = "PUBLIC"' in boundary
+    assert 'test "$(jq -r .isPrivate <<< "$source_metadata")" = "false"' in boundary
+    assert 'test "$(jq -r .visibility <<< "$target_metadata")" = "PUBLIC"' in boundary
+    assert '"PRIVATE"' not in boundary
+
+
 def test_workflow_hardcoded_publisher_hashes_match_the_executed_sources():
     document = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
 

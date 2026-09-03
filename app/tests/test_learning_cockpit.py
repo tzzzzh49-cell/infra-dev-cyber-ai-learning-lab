@@ -128,7 +128,8 @@ def test_every_guide_command_keeps_observations_as_the_active_step() -> None:
 
     markdown = markdown.replace(
         "_Je conserve uniquement la sortie utile, le code retour et l'horodatage\n"
-        "technique. Je retire secrets, données personnelles et adresses inutiles._",
+        "technique. Ce dépôt est public : je retire secrets, données personnelles,\n"
+        "adresses réelles, noms DNS réels et chemins propres à mes machines._",
         "J'ai interprété séparément les quatre résultats et leurs codes retour.",
     )
     assert (
@@ -3377,6 +3378,49 @@ def test_professor_launch_explicitly_invokes_the_repo_skill(
     assert "Ne rédige pas le contenu apprenant" in calls[0][-1]
 
 
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        ({"visibility": "PUBLIC", "isPrivate": False}, True),
+        ({"visibility": "PRIVATE", "isPrivate": True}, False),
+        ({"visibility": "INTERNAL", "isPrivate": False}, False),
+    ],
+)
+def test_remote_visibility_requires_an_explicitly_public_repository(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    payload: dict[str, object],
+    expected: bool,
+) -> None:
+    monkeypatch.setattr(learn, "_command_available", lambda command: command == "gh")
+
+    def fake_run(
+        arguments: list[str], **_kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        assert arguments == [
+            "gh",
+            "repo",
+            "view",
+            "--json",
+            "visibility,isPrivate,nameWithOwner",
+        ]
+        return subprocess.CompletedProcess(
+            arguments,
+            0,
+            stdout=json.dumps(payload),
+            stderr="",
+        )
+
+    monkeypatch.setattr(learn, "run", fake_run)
+
+    check = learn.remote_visibility(tmp_path)
+
+    assert check.name == "Dépôt public"
+    assert check.ok is expected
+    assert check.blocking is True
+    assert ("confirme PUBLIC" in check.detail) is expected
+
+
 def test_noninteractive_cockpit_prepares_exactly_one_day(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -3403,8 +3447,8 @@ def test_noninteractive_cockpit_prepares_exactly_one_day(
     monkeypatch.setattr(learn, "selected_editor", lambda: "vim")
     monkeypatch.setattr(
         learn,
-        "remote_privacy",
-        lambda _root: learn.DoctorCheck("Dépôt privé", True, True, "PRIVATE"),
+        "remote_visibility",
+        lambda _root: learn.DoctorCheck("Dépôt public", True, True, "PUBLIC"),
     )
     monkeypatch.setattr(
         learn,

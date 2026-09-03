@@ -4,6 +4,27 @@ This repository combines a secure infrastructure lab with verifiable GitHub
 learning evidence. Its public claim is deliberately modest: **“I learn with
 rigour.”**
 
+It is the long-running project behind **AegisOps Twin**: a Secure AI Ops
+platform progressively built to observe Linux, networks and PostgreSQL, then
+produce evidence-backed hypotheses under human approval.
+
+## Find your way
+
+You do not need to understand the whole tree before starting. Pick the entry
+that matches your current goal:
+
+| I want to… | Start here |
+| --- | --- |
+| learn or resume the active day | `make learn` |
+| see the learning plan | [`learning/roadmap.md`](learning/roadmap.md) |
+| understand where things belong | [`docs/repository-map.md`](docs/repository-map.md) |
+| understand the lab architecture | [`docs/architecture.en.md`](docs/architecture.en.md) |
+| develop, test or operate the lab | `make help-dev` then [`docs/README.md`](docs/README.md) |
+
+The key distinction is: `curriculum/` defines **what to learn**, `learning/`
+holds **the journey and its evidence**, and the technical directories (`app/`,
+`ansible/`, `nginx/`, `backup/`…) contain **what is being built**.
+
 ## Start here
 
 ```bash
@@ -11,8 +32,10 @@ make learn
 ```
 
 This is the only learner command to remember. On first use it checks the active
-guide, repository privacy, Git, GitHub CLI, `age`, the editor, personal Git
-signing and pseudonymous lab aliases. Later runs resume the active day.
+guide, public repository visibility, Git, GitHub CLI, `age`, the editor,
+personal Git signing and pseudonymous lab aliases. Later runs resume the active
+day. Because every tracked file is visible, secrets, raw evidence and real
+identifiers stay outside the repository.
 
 The cockpit shows one objective, one safety guardrail and one next action. It
 opens the learner-owned `learner.md` at the expected section; proof metadata and

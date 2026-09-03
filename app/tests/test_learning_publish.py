@@ -763,7 +763,7 @@ def test_prediction_and_attempt_must_be_real_ancestral_checkpoints(tmp_path):
         ("sha256", "c" * 64, "does not match"),
     ],
 )
-def test_private_raw_evidence_receipt_is_strict_and_matches_proof(
+def test_minimal_raw_evidence_receipt_is_strict_and_matches_proof(
     tmp_path, field, value, error
 ):
     inputs = _write_inputs(tmp_path / "inputs")
@@ -776,7 +776,7 @@ def test_private_raw_evidence_receipt_is_strict_and_matches_proof(
         _publish(inputs, tmp_path / "public")
 
 
-def test_private_raw_evidence_receipt_must_exist_with_no_extra_fields(tmp_path):
+def test_minimal_raw_evidence_receipt_must_exist_with_no_extra_fields(tmp_path):
     missing_inputs = _write_inputs(tmp_path / "missing-inputs")
     (missing_inputs[1].parent / "raw-evidence.json").unlink()
     with pytest.raises(learning_publish.PublicationError, match="does not exist"):

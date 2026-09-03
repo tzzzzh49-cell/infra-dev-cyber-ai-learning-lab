@@ -5,6 +5,28 @@
 Ce dépôt permet d'apprendre en construisant un lab d'infrastructure sécurisé et
 de produire des preuves GitHub vérifiables.
 
+Il sert de fil rouge à **AegisOps Twin** : une plateforme Secure AI Ops
+progressivement capable d'observer Linux, le réseau et PostgreSQL, puis de
+produire des hypothèses sourcées avec validation humaine.
+
+## Se repérer
+
+Tu n'as pas besoin de comprendre toute l'arborescence pour avancer. Choisis
+simplement l'entrée correspondant à ton besoin :
+
+| Je veux… | Point d'entrée |
+| --- | --- |
+| apprendre ou reprendre ma journée | `make learn` puis [`TUTORIEL.md`](TUTORIEL.md) |
+| voir le parcours et la progression prévue | [`learning/roadmap.md`](learning/roadmap.md) |
+| comprendre où se trouve chaque chose | [`docs/repository-map.md`](docs/repository-map.md) |
+| comprendre l'architecture du lab | [`docs/architecture.md`](docs/architecture.md) |
+| développer, tester ou exploiter le lab | `make help-dev` puis [`docs/README.md`](docs/README.md) |
+
+La distinction essentielle est la suivante : `curriculum/` décrit **ce qu'il
+faut apprendre**, `learning/` conserve **le parcours et les preuves**, et les
+dossiers techniques (`app/`, `ansible/`, `nginx/`, `backup/`…) contiennent **ce
+que tu construis**.
+
 ## Commencer ici
 
 ```bash
@@ -12,9 +34,10 @@ make learn
 ```
 
 C'est la seule commande à retenir. Au premier lancement, elle vérifie le guide,
-la confidentialité du dépôt, Git, GitHub CLI, `age`, l'éditeur, la signature Git
-personnelle et les alias du lab. Ensuite, elle reprend toujours la journée
-active.
+la visibilité publique du dépôt, Git, GitHub CLI, `age`, l'éditeur, la signature
+Git personnelle et les alias du lab. Ensuite, elle reprend toujours la journée
+active. Tout contenu versionné étant visible, les secrets, preuves brutes et
+identifiants réels restent hors du dépôt.
 
 Pour une prise en main expliquée pas à pas, consulte
 [`TUTORIEL.md`](TUTORIEL.md).

@@ -136,6 +136,11 @@ check_paths() {
     local required_paths=(
         README.md
         README.en.md
+        TUTORIEL.md
+        app/README.md
+        backup/README.md
+        curriculum/README.md
+        learning/README.md
         learning/roadmap.md
         curriculum/active.json
         learning/lab-map.yml
@@ -166,6 +171,7 @@ check_paths() {
         .env.vps.example
         .env.backup.example
         docs/README.md
+        docs/repository-map.md
         docs/api-examples.md
         docs/architecture.en.md
         docs/security.en.md
@@ -178,6 +184,7 @@ check_paths() {
         nginx/api_proxy.conf
         nginx/oauth2_proxy.conf
         systemd/infra-lab-public-proxy.service.in
+        tools/README.md
         docs/backups/restic-s3-compatible.md
     )
 

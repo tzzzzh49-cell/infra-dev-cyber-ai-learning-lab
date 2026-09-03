@@ -45,9 +45,12 @@ phases respectives.
 
 Cette activation atteste uniquement que la phase 0 est prête à être utilisée
 par le cockpit. Elle ne crédite aucune journée et ne valide aucun acquis de
-l'apprenant. Les alias du lab, le dépôt GitHub privé, la clé publique de
+l'apprenant. Le dépôt GitHub public, les alias du lab, la clé publique de
 chiffrement et les deux emplacements de preuve hors Git restent des
-préconditions locales contrôlées au premier lancement.
+préconditions contrôlées au premier lancement. Tout contenu versionné est donc
+considéré publiable ; secrets, preuves brutes et identifiants réels restent hors
+du dépôt. Le registre public de preuves demeure dans un dépôt distinct et ne
+reçoit que les champs dérivés explicitement autorisés.
 
 Une phase ultérieure ne pourra être activée qu'après une revue dédiée de toutes
 ses fiches, la correction des écarts observés, une nouvelle empreinte du guide

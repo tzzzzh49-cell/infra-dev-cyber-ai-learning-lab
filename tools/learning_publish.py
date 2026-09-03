@@ -2,7 +2,7 @@
 """Build a minimal publication from one validated learning day.
 
 The module has no network integration.  It accepts the learner-owned Markdown
-file, derived proof/review records and a private raw-evidence receipt, validates
+file, derived proof/review records and a minimal raw-evidence receipt, validates
 their Git revision and checkpoint ancestry, then emits an allowlisted static
 bundle.  The JSONL ledger is opened in append-only mode; existing entries are
 never rewritten by this program.
@@ -492,7 +492,7 @@ def _validate_raw_evidence_receipt(
     projection = {"id": receipt["id"], "sha256": receipt["sha256"]}
     if proof["raw_evidence"] != projection:
         raise PublicationError(
-            "proof.raw_evidence does not match the private raw-evidence receipt"
+            "proof.raw_evidence does not match the minimal raw-evidence receipt"
         )
     return receipt_path, f"sha256:{receipt['sha256']}"
 

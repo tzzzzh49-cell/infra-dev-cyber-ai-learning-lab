@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "repo://learning/schemas/raw-evidence.schema.json",
-  "title": "Aegis private raw-evidence receipt",
+  "title": "Aegis minimal raw-evidence receipt",
   "type": "object",
   "additionalProperties": false,
   "required": [
