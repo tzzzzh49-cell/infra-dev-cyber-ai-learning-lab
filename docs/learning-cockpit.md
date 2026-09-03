@@ -17,6 +17,11 @@ Les schémas publics de l'état et de la preuve se trouvent dans
 `learning/schemas/`. Toute évolution incompatible exige une migration explicite
 et une nouvelle valeur de `schema_version`.
 
+Le dépôt source est public : tout fichier, commit, issue et historique poussé
+doit être considéré comme visible. Le cockpit utilise donc uniquement les alias
+pseudonymes dans Git ; secrets, preuves brutes, adresses réelles, noms DNS réels
+et chemins personnels restent hors du dépôt.
+
 ## État local non versionné
 
 Le premier `make learn` crée `.learning/local.json`, ignoré par Git. Ce fichier
@@ -35,7 +40,7 @@ Le cockpit refuse de démarrer une preuve créditable si :
 
 - le hash du guide diffère du manifeste ;
 - la phase n'est pas auditée ;
-- le dépôt GitHub n'est pas privé ;
+- le dépôt GitHub n'est pas public ;
 - Git, `age`, GNU tar avec `--zstd`, l'éditeur, la signature Git personnelle ou
   la configuration locale manquent.
 
@@ -63,7 +68,8 @@ historiques, tandis que seule la clé courante chargée signe le nouveau jalon.
 
 ## Cycle d'une journée
 
-Une issue est créée quand la journée démarre. La branche locale est créée par le
+Une issue publique est créée quand la journée démarre ; elle ne contient que la
+référence et l'objectif issus du guide. La branche locale est créée par le
 cockpit ; les commits et le push restent déclenchés par l'apprenant. Une draft PR
 est créée après le premier push. La branche doit être fusionnée sans squash afin
 de conserver prévision, tentative et résultat final.
@@ -79,7 +85,7 @@ modification ultérieure la rend automatiquement périmée. Le jalon `attempt`
 attend toutes les rubriques et toutes les commandes de la fiche. Son commit
 inclut aussi les livrables du lab modifiés hors de `learning/days/`; le plan de
 contrôle pédagogique reste protégé. Les jalons `prediction` et `final` restent
-bornés aux artefacts privés de la journée ; un livrable du lab changé après la
+bornés aux artefacts propres à la journée ; un livrable du lab changé après la
 revue ne peut donc pas entrer dans le scellement final. Les trois jalons
 `prediction`, `attempt` et `final` ne sont enregistrés qu'après leur commit et
 leur push. La preuve embarque
@@ -102,7 +108,7 @@ Après cette fusion, la journée suivante est toujours créée depuis le nouveau
 `origin/master`, jamais depuis l'ancien HEAD de la branche quotidienne.
 
 Si une correction ou une mise à jour de branche rend le jalon `final` obsolète,
-l'action `reopen-final` conserve une trace privée de l'ancien cycle. Une simple
+l'action `reopen-final` conserve une trace minimale de l'ancien cycle. Une simple
 mise à jour par commit de fusion ne garde tentative, revue et preuve brute que
 si son autre parent appartient au `origin/master` vérifié et si son arbre est
 exactement celui de la fusion Git déterministe attendue ; elle exige ensuite une
@@ -118,7 +124,7 @@ Si le cache local disparaît, les jalons manquants sont reconstruits dans
 l'ordre uniquement depuis les commits présents sur la branche distante et dont
 le plan versionné reste valide.
 
-Cinq reçus privés versionnés rendent ces transitions durables :
+Cinq reçus mécaniques minimaux rendent ces transitions durables :
 `source-mode.json` conserve le choix d'une aide extérieure,
 `checkpoint-plan.json` lie chaque jalon à sa baseline et à la liste de chemins
 gelée avant le commit, `final-seal.json` atteste le troisième jalon,
@@ -134,7 +140,7 @@ l'issue, de la branche et de la PR.
 
 La commande interne `tools/learn.py archive` crée une archive
 `.tar.zst.age` sous un identifiant opaque, la copie vers deux stockages distincts
-et conserve dans Git un reçu privé strict, sans chemin de stockage. Juste avant
+et conserve dans Git un reçu minimal strict, sans chemin de stockage. Juste avant
 la fusion, les deux fichiers sont retrouvés hors dépôt, leurs systèmes de
 fichiers doivent être distincts et leur SHA-256 est recalculé. La publication
 publique ne projette que l'identifiant opaque et l'empreinte. La rétention prévue
@@ -169,10 +175,11 @@ permettent de reconstruire cette transition même si le cache local disparaît.
 Le générateur `tools/learning_publish.py` applique une liste blanche. Il vérifie
 aussi `curriculum/active.json`, l'empreinte réelle du guide, le rapport d'audit
 de la phase, l'activation des consolidations, la révision Git source et
-l'ascendance des deux jalons. Le reçu privé `.proof/raw-evidence.json` doit
+l'ascendance des deux jalons. Le reçu minimal `.proof/raw-evidence.json` doit
 confirmer deux copies, la politique de rétention et l'identifiant projeté dans
-`proof.json` ; il n'est jamais publié. Le générateur n'accepte que les résumés
-publics approuvés, assertions, erreur significative corrigée, progression et
+`proof.json` ; il n'est jamais recopié dans le dépôt de preuves. Le générateur
+n'accepte que les résumés publics approuvés, assertions, erreur significative
+corrigée, progression et
 empreintes. Sa sortie doit être publiée dans un dépôt GitHub Pages séparé ;
 guide, sources, journaux complets et preuves brutes sont interdits. Le registre
 refuse également toute adresse IPv4/IPv6 et tout nom DNS : les résumés publics
@@ -181,9 +188,11 @@ journée principale hors ordre, une consolidation de blocage
 dont la journée déclencheuse est déjà publiée, et une consolidation finale tant
 que J370 n'est pas publiée.
 
-Le workflow réaffirme que le dépôt source est privé, que la cible est distincte
-et publique, puis transmet le SHA du checkout source à la preuve publique. Ce
-champ lie la publication à la révision fusionnée sans tenter d'inscrire dans un
+Le workflow réaffirme que le dépôt source et la cible sont publics mais
+distincts, puis transmet le SHA du checkout source à la preuve publique. Cette
+séparation conserve un registre de preuves minimal et immuable sans dupliquer
+le guide, le code, les journaux complets ni les preuves brutes. Le champ source
+lie la publication à la révision fusionnée sans tenter d'inscrire dans un
 commit sa propre empreinte, opération intrinsèquement circulaire. Avant de
 signer, il exige également une exécution réussie de `ci.yml` pour ce SHA et
 refuse une exécution lancée depuis une autre branche que `master`.

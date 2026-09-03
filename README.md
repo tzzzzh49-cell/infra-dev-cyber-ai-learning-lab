@@ -34,9 +34,10 @@ make learn
 ```
 
 C'est la seule commande à retenir. Au premier lancement, elle vérifie le guide,
-la confidentialité du dépôt, Git, GitHub CLI, `age`, l'éditeur, la signature Git
-personnelle et les alias du lab. Ensuite, elle reprend toujours la journée
-active.
+la visibilité publique du dépôt, Git, GitHub CLI, `age`, l'éditeur, la signature
+Git personnelle et les alias du lab. Ensuite, elle reprend toujours la journée
+active. Tout contenu versionné étant visible, les secrets, preuves brutes et
+identifiants réels restent hors du dépôt.
 
 Pour une prise en main expliquée pas à pas, consulte
 [`TUTORIEL.md`](TUTORIEL.md).

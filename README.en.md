@@ -32,8 +32,10 @@ make learn
 ```
 
 This is the only learner command to remember. On first use it checks the active
-guide, repository privacy, Git, GitHub CLI, `age`, the editor, personal Git
-signing and pseudonymous lab aliases. Later runs resume the active day.
+guide, public repository visibility, Git, GitHub CLI, `age`, the editor,
+personal Git signing and pseudonymous lab aliases. Later runs resume the active
+day. Because every tracked file is visible, secrets, raw evidence and real
+identifiers stay outside the repository.
 
 The cockpit shows one objective, one safety guardrail and one next action. It
 opens the learner-owned `learner.md` at the expected section; proof metadata and

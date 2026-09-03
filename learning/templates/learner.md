@@ -18,7 +18,8 @@ _Avant la première action, j'écris ce que je pense observer et pourquoi._
 ## Mes observations
 
 _Je conserve uniquement la sortie utile, le code retour et l'horodatage
-technique. Je retire secrets, données personnelles et adresses inutiles._
+technique. Ce dépôt est public : je retire secrets, données personnelles,
+adresses réelles, noms DNS réels et chemins propres à mes machines._
 
 ## Mon explication
 

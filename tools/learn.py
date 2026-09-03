@@ -687,7 +687,7 @@ def _tar_supports_zstd(root: Path) -> bool:
     return result.returncode == 0 and "--zstd" in result.stdout
 
 
-def remote_privacy(root: Path) -> DoctorCheck:
+def remote_visibility(root: Path) -> DoctorCheck:
     if not _command_available("gh"):
         return DoctorCheck("GitHub", False, True, "`gh` est absent.")
     result = run(
@@ -698,7 +698,7 @@ def remote_privacy(root: Path) -> DoctorCheck:
         message = (result.stderr or result.stdout).strip().splitlines()
         detail = message[0] if message else "Impossible d'interroger GitHub."
         return DoctorCheck(
-            "Dépôt privé",
+            "Dépôt public",
             False,
             True,
             f"{detail} Relance `gh auth login -h github.com` puis `make learn`.",
@@ -706,13 +706,20 @@ def remote_privacy(root: Path) -> DoctorCheck:
     try:
         payload = json.loads(result.stdout)
     except json.JSONDecodeError:
-        return DoctorCheck("Dépôt privé", False, True, "Réponse GitHub illisible.")
-    private = bool(payload.get("isPrivate")) or payload.get("visibility") == "PRIVATE"
+        return DoctorCheck("Dépôt public", False, True, "Réponse GitHub illisible.")
+    public = (
+        payload.get("isPrivate") is False
+        and str(payload.get("visibility", "")).upper() == "PUBLIC"
+    )
     return DoctorCheck(
-        "Dépôt privé",
-        private,
+        "Dépôt public",
+        public,
         True,
-        "GitHub confirme PRIVATE." if private else "Le dépôt GitHub est encore public.",
+        (
+            "GitHub confirme PUBLIC : tout contenu versionné est visible."
+            if public
+            else "Le dépôt GitHub n'est pas public."
+        ),
     )
 
 
@@ -965,7 +972,7 @@ def doctor(root: Path, *, include_remote: bool = True) -> list[DoctorCheck]:
         ]
     )
     if include_remote:
-        checks.append(remote_privacy(root))
+        checks.append(remote_visibility(root))
     return checks
 
 
@@ -2415,7 +2422,7 @@ def ensure_github_tracking(
                 day_state["issue_url"] = exact["url"]
                 day_state["issue_number"] = exact["number"]
             elif interactive and confirm(
-                "Créer le suivi privé de cette journée sur GitHub ?"
+                "Créer l'issue publique de suivi pour cette journée sur GitHub ?"
             ):
                 result = run(
                     [

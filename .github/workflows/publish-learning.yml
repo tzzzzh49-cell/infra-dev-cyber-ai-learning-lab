@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PUBLISHER_SHA256: 35690b4b94f4f0520d8ed9decdf6b16f2f2af8a17d01ae9407de8d658cfbe9a3
-  LEARN_CORE_SHA256: bdbd86aaa74e057e20e4d5a2243bcbea0d41afc7739f6b7b0548f86da813cd93
+  PUBLISHER_SHA256: b8ed1d2a4888fdc634392ec7d3509f68f23625b1e4ca655795d8e987e2443828
+  LEARN_CORE_SHA256: 8fc0c193a541d849e2778138514520a256774b9a605c161493dd05cbcea1afe4
   PUBLIC_TEMPLATE_SHA256: 481e7c495cf636cbe640cb063b8b66a9cb3c0475a5a0d276b1fb8edbacb381eb
 
 jobs:
@@ -49,15 +49,16 @@ jobs:
           esac
           [[ "$PUBLIC_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
           test "${SOURCE_REPOSITORY,,}" != "${PUBLIC_REPOSITORY,,}"
-          source_visibility="$(
+          source_metadata="$(
             GH_TOKEN="$SOURCE_TOKEN" gh repo view "$SOURCE_REPOSITORY" \
-              --json visibility --jq .visibility
+              --json visibility,isPrivate
           )"
           target_metadata="$(
             GH_TOKEN="$SOURCE_TOKEN" gh repo view "$PUBLIC_REPOSITORY" \
               --json visibility,defaultBranchRef
           )"
-          test "$source_visibility" = "PRIVATE"
+          test "$(jq -r .visibility <<< "$source_metadata")" = "PUBLIC"
+          test "$(jq -r .isPrivate <<< "$source_metadata")" = "false"
           test "$(jq -r .visibility <<< "$target_metadata")" = "PUBLIC"
           default_branch="$(
             jq -r '.defaultBranchRef.name // empty' <<< "$target_metadata"
@@ -65,7 +66,7 @@ jobs:
           git check-ref-format --branch "$default_branch" >/dev/null
           printf 'default_branch=%s\n' "$default_branch" >> "$GITHUB_OUTPUT"
 
-      - name: Check out private source
+      - name: Check out public source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           path: source

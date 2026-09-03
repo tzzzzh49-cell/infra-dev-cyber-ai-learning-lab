@@ -3,6 +3,10 @@
 Ce dossier relie le guide officiel, le lab technique et les preuves produites
 par l'apprenant.
 
+Le dépôt étant public, tout contenu ajouté ici doit être publiable. Les preuves
+brutes chiffrées, secrets et identifiants réels restent dans les stockages
+locaux prévus par le cockpit, jamais dans Git.
+
 | Emplacement | Rôle | Modification manuelle |
 | --- | --- | --- |
 | `roadmap.md` | vue d'ensemble générée du guide actif | non ; utiliser `make learn-roadmap` |

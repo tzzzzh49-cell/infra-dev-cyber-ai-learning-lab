@@ -36,6 +36,11 @@ Avant toute manipulation, retiens ces six règles :
 6. Tu n'exécutes aucune action destructive, privilégiée ou facturable sans
    vérifier la cible, les conséquences et le retour arrière.
 
+> Ce dépôt est public. Tout fichier, commit, issue et historique poussé sur
+> GitHub doit être considéré comme visible par tous. Utilise uniquement les
+> alias du lab et conserve secrets, preuves brutes, adresses réelles, noms DNS
+> réels et chemins personnels hors du dépôt.
+
 La fiche RNCP du site France Compétences ne doit pas être utilisée pour
 compléter le guide. Si tu consultes une solution, une démonstration ou une autre
 source, la tentative devient un entraînement non créditable. Le cockpit permet
@@ -59,7 +64,7 @@ cd /opt/infra-dev-cyber-ai-learning-lab
 
 Le premier `make learn` vérifie notamment :
 
-- Git et l'accès au dépôt GitHub privé ;
+- Git et la visibilité publique du dépôt GitHub ;
 - GitHub CLI avec une session active ;
 - un éditeur de texte ;
 - une signature Git personnelle ;
